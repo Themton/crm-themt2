@@ -263,6 +263,18 @@ function App() {
   async function addProduct(d){try{var r=await api("addProduct",null,d);if(r.success){notify("เพิ่มสินค้า "+d.name);await loadProducts();return true;}else{notify(r.error||"ผิดพลาด","warning");return false;}}catch(e){notify(e.message,"warning");return false;}}
   async function delProduct(name){try{await api("deleteProduct",{name:name});notify("ลบสินค้าแล้ว","warning");await loadProducts();}catch(e){notify("ผิดพลาด","warning");}}
   async function editProduct(oldName,data){try{var r=await api("editProduct",null,{oldName:oldName,name:data.name,price:data.price});if(r.success){notify("แก้ไขสินค้าสำเร็จ");await loadProducts();return true;}else{notify(r.error||"ผิดพลาด","warning");return false;}}catch(e){notify(e.message,"warning");return false;}}
+  function moveProduct(name,dir){
+    setProducts(function(prev){
+      var idx=-1;
+      for(var i=0;i<prev.length;i++){if(prev[i].name===name){idx=i;break;}}
+      if(idx<0)return prev;
+      var toIdx=dir==="up"?idx-1:idx+1;
+      if(toIdx<0||toIdx>=prev.length)return prev;
+      var arr=prev.slice();
+      var tmp=arr[idx];arr[idx]=arr[toIdx];arr[toIdx]=tmp;
+      return arr;
+    });
+  }
 
   return (
     <div style={S.app}>
@@ -298,7 +310,7 @@ function App() {
         {page==="orders" && <OrdersPage orders={filtered} stats={stats} search={search} setSearch={setSearch} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onUploadSlip={uploadSlip} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} loading={loading} products={products}/>}
         {page==="report" && <ReportPage user={user} reportType={reportType} setReportType={setReportType} accounts={accounts}/>}
         {page==="team" && isAdmin && <TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onToggleUpsell={toggleUpsell} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}
-        {page==="products" && isAdmin && <ProductsPage products={products} onAddProduct={addProduct} onEditProduct={editProduct} onDelProduct={delProduct}/>}
+        {page==="products" && isAdmin && <ProductsPage products={products} onAddProduct={addProduct} onEditProduct={editProduct} onDelProduct={delProduct} onMoveProduct={moveProduct}/>}
       </main>
     </div>
   );
@@ -856,7 +868,7 @@ function TeamPage({accounts,onAdd,onToggle,onToggleUpsell,onSaveUpsellBatch,onDe
   );
 }
 
-function ProductsPage({products,onAddProduct,onEditProduct,onDelProduct}) {
+function ProductsPage({products,onAddProduct,onEditProduct,onDelProduct,onMoveProduct}) {
   var [showAdd,setShowAdd] = useState(false);
   var [pBrand,setPBrand] = useState("");
   var [pName,setPName] = useState("");
@@ -873,7 +885,12 @@ function ProductsPage({products,onAddProduct,onEditProduct,onDelProduct}) {
           <button onClick={function(){setShowAdd(!showAdd);}} style={{padding:"8px 18px",borderRadius:8,border:"1px solid #e2e8f0",background:showAdd?"#fef2f2":"#f8fafc",color:showAdd?"#ef4444":"#475569",fontSize:13,fontWeight:600,cursor:"pointer"}}>{showAdd?"✕ ปิด":"＋ เพิ่มสินค้า"}</button>
         </div>
         {showAdd && <div style={{padding:16,marginBottom:16,borderRadius:10,background:"#f8fafc",border:"1px solid #e2e8f0"}}><div style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:10,alignItems:"end"}}><div><label style={S.fLabel}>กลุ่ม</label><select value={pBrand} onChange={function(e){setPBrand(e.target.value);}} style={S.pInput}><option value="">-- เลือก --</option>{getCategories(products||[]).map(function(c){return <option key={c} value={c}>{c}</option>;})}<option value="__new">+ สร้างกลุ่มใหม่</option></select></div><div><label style={S.fLabel}>ชื่อโปร</label><input value={pName} onChange={function(e){setPName(e.target.value);}} placeholder="KISO 5(10g) สบู่1" style={S.pInput}/></div><div><label style={S.fLabel}>ราคา</label><input value={pPrice} onChange={function(e){setPPrice(e.target.value);}} placeholder="399" style={S.pInput}/></div><button onClick={async function(){if(!pName){alert("กรอกชื่อ");return;}var b=pBrand;if(b==="__new"){b=prompt("ชื่อกลุ่มใหม่:");if(!b)return;}if(!b){alert("เลือกกลุ่ม");return;}var ok=await onAddProduct({name:"["+b+"] "+pName,price:pPrice||0});if(ok){setPName("");setPPrice("");}}} style={{padding:"9px 20px",borderRadius:8,border:"none",background:"#d97706",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>เพิ่ม</button></div></div>}
-        {getCategories(products||[]).map(function(cat){var items=(products||[]).filter(function(p){var m=p.name.match(/^\[([^\]]+)\]/);return m?m[1]===cat:cat==="อื่นๆ";}).map(function(p){var m=p.name.match(/^\[([^\]]+)\]\s*(.*)/);return{name:p.name,shortName:m?m[2]:p.name,price:p.price};});return <div key={cat}><div style={{padding:"10px 16px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",fontSize:13,fontWeight:700,color:"#475569",display:"flex",justifyContent:"space-between"}}><span>{cat}</span><span style={{color:"#94a3b8",fontWeight:400}}>{items.length}</span></div>{items.map(function(p){return <div key={p.name} style={{display:"flex",alignItems:"center",padding:"10px 16px",borderTop:"1px solid #f1f5f9",fontSize:13,gap:12}}><div style={{flex:1}}>{p.shortName}</div><div style={{fontWeight:700,color:"#d97706",minWidth:70,textAlign:"right"}}>฿{p.price.toLocaleString()}</div><button onClick={function(){setEditProd({oldName:p.name,name:p.name,price:String(p.price)});}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,cursor:"pointer"}}>แก้ไข</button><button onClick={function(){if(confirm("ลบ?"))onDelProduct(p.name);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:11,cursor:"pointer"}}>ลบ</button></div>;})}</div>;})}
+        {getCategories(products||[]).map(function(cat){var items=(products||[]).filter(function(p){var m=p.name.match(/^\[([^\]]+)\]/);return m?m[1]===cat:cat==="อื่นๆ";}).map(function(p){var m=p.name.match(/^\[([^\]]+)\]\s*(.*)/);return{name:p.name,shortName:m?m[2]:p.name,price:p.price};});return <div key={cat}><div style={{padding:"10px 16px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",fontSize:13,fontWeight:700,color:"#475569",display:"flex",justifyContent:"space-between"}}><span>{cat}</span><span style={{color:"#94a3b8",fontWeight:400}}>{items.length}</span></div>{items.map(function(p,idx){return <div key={p.name} style={{display:"flex",alignItems:"center",padding:"8px 16px",borderTop:"1px solid #f1f5f9",fontSize:13,gap:8}}>
+              <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
+                <button onClick={function(){onMoveProduct(p.name,"up");}} style={{width:22,height:18,borderRadius:4,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>▲</button>
+                <button onClick={function(){onMoveProduct(p.name,"down");}} style={{width:22,height:18,borderRadius:4,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>▼</button>
+              </div>
+              <div style={{flex:1}}>{p.shortName}</div><div style={{fontWeight:700,color:"#d97706",minWidth:70,textAlign:"right"}}>฿{p.price.toLocaleString()}</div><button onClick={function(){setEditProd({oldName:p.name,name:p.name,price:String(p.price)});}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,cursor:"pointer"}}>แก้ไข</button><button onClick={function(){if(confirm("ลบ?"))onDelProduct(p.name);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:11,cursor:"pointer"}}>ลบ</button></div>;})}</div>;})}
         {(products||[]).length===0 && <div style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ยังไม่มีสินค้า</div>}
       </div>
     </div>
