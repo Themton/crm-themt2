@@ -55,29 +55,41 @@ async function api(action, params, body) {
 }
 
 /* ===== SMART PARSE ===== */
+// ค้นหารหัสไปรษณีย์จาก ตำบล+อำเภอ อัตโนมัติ
+function lookupZIP(sub, dist) {
+  if (!sub || typeof TH === "undefined") return "";
+  for (var i = 0; i < TH.length; i++) {
+    // TH[i] = [ตำบล, อำเภอ, จังหวัด, ZIP]
+    if (TH[i][0] === sub && (!dist || TH[i][1].indexOf(dist) >= 0)) return TH[i][3];
+  }
+  // ลองค้นแค่ตำบล
+  for (var i = 0; i < TH.length; i++) {
+    if (TH[i][0] === sub) return TH[i][3];
+  }
+  return "";
+}
+
 function smartParse(t) {
   t = t.trim(); if (!t) return null;
   var r = {MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:""};
   var pm = t.match(/\b(0[689]\d[\s-]?\d{3,4}[\s-]?\d{4})\b/);
-  if (pm) r.MobileNo = pm[1].replace(/[\s-]/g,"");
+  if (pm) { var ph=pm[1].replace(/[\s-]/g,""); r.MobileNo = ph.substring(0,10); }
   var zm = t.match(/\b(\d{5})\b/);
-  if (zm) r.ZIP = zm[1];
+  if (zm) r.ZIP = zm[1].substring(0,5);
   var pp = [/ปลายทาง\s*(\d[\d,]*)\s*(?:บาท)?/i,/(?:COD|cod)\s*[:=]?\s*(\d[\d,]*)/i,/(\d[\d,]*)\s*บาท/];
   for (var i=0;i<pp.length;i++){var m=t.match(pp[i]);if(m){r.COD=r.SalePrice=m[1].replace(/,/g,"");break;}}
   var prp = [/(Kiso\S*(?:\s*\([^)]*\))?)/i,/สินค้า\s*[:：]?\s*([^\n]+)/];
   for (var i=0;i<prp.length;i++){var m=t.match(prp[i]);if(m){r.Remark=m[1].trim()+(t.indexOf("ปลายทาง")>=0?" ปลายทาง":"");break;}}
   var lines = t.split(/\n/).map(function(l){return l.trim();}).filter(Boolean);
-  // หาชื่อ: ถ้ามีคำนำหน้า (คุณ/นาย/นาง) ใช้เลย ถ้าไม่มีใช้บรรทัดแรกที่ไม่ใช่เบอร์/ที่อยู่/ราคา
   var nl = lines.find(function(l){return /^(คุณ|นาย|นาง|น\.?ส\.?|นางสาว|mr\.?|mrs\.?|ms\.?)/i.test(l);});
   if (!nl) {
-    // หาบรรทัดแรกที่เป็นชื่อ (ไม่ใช่เบอร์ ไม่ใช่ที่อยู่ ไม่ใช่ราคา ไม่ใช่สินค้า)
     nl = lines.find(function(l){
-      if (/^0[689]\d/.test(l)) return false; // เบอร์โทร
-      if (/^\d+[\s/]|ถนน|ซอย|หมู่|ม\./.test(l)) return false; // ที่อยู่
-      if (/\d{5}/.test(l) && !/\S+\s+\S+/.test(l.replace(/\d{5}/,""))) return false; // แค่ zip
-      if (/บาท|ปลายทาง|COD|cod|ราคา/i.test(l)) return false; // ราคา
-      if (/^[Pp]\s*[:：]/i.test(l)) return false; // พนักงาน
-      if (/Kiso|สินค้า|product/i.test(l)) return false; // สินค้า
+      if (/^0[689]\d/.test(l)) return false;
+      if (/^\d+[\s/]|ถนน|ซอย|หมู่|ม\./.test(l)) return false;
+      if (/\d{5}/.test(l) && !/\S+\s+\S+/.test(l.replace(/\d{5}/,""))) return false;
+      if (/บาท|ปลายทาง|COD|cod|ราคา/i.test(l)) return false;
+      if (/^[Pp]\s*[:：]/i.test(l)) return false;
+      if (/Kiso|สินค้า|product/i.test(l)) return false;
       if (l.length < 2) return false;
       return true;
     });
@@ -92,6 +104,11 @@ function smartParse(t) {
     if(sdm) r.SubDistrict=sdm[1]; if(dm) r.District=dm[1];
     if(!r.SubDistrict||!r.District){var pts=rem.split(/\s+/).filter(function(p){return p.length>0;});if(pts.length>=3){var ae=0;for(var i=0;i<pts.length;i++){if(/\d|ถนน|ซอย|หมู่/.test(pts[i]))ae=i+1;}var af=pts.slice(ae);if(!r.SubDistrict&&af.length>=1)r.SubDistrict=af[0];if(!r.District&&af.length>=2)r.District=af[1];r.Address=pts.slice(0,ae).join(" ");}else r.Address=rem;}
     else{var a=rem;if(r.SubDistrict)a=a.replace(r.SubDistrict,"");if(r.District)a=a.replace(r.District,"");r.Address=a.replace(/(?:ต\.|ตำบล|แขวง|อ\.|อำเภอ|เขต)\s*/g,"").trim();}
+  }
+  // ถ้าจับ ตำบล/อำเภอ ได้ แต่ไม่มี ZIP → ค้นหาอัตโนมัติ
+  if (!r.ZIP && (r.SubDistrict || r.District)) {
+    var autoZip = lookupZIP(r.SubDistrict, r.District);
+    if (autoZip) r.ZIP = autoZip;
   }
   return r;
 }
@@ -536,7 +553,21 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
   // Per-category selections
   var [catSelections,setCatSelections] = useState({});
 
-  function set(k,v){setF(function(p){var n={};for(var x in p)n[x]=p[x];n[k]=v;return n;});}
+  function set(k,v){
+    setF(function(p){
+      var n={};for(var x in p)n[x]=p[x];n[k]=v;
+      // ถ้าเปลี่ยนตำบลหรืออำเภอ → ค้นหารหัสไปรษณีย์อัตโนมัติ
+      if ((k==="SubDistrict" || k==="District") && v) {
+        var sub = k==="SubDistrict" ? v : n.SubDistrict;
+        var dist = k==="District" ? v : n.District;
+        if (sub) {
+          var autoZip = lookupZIP(sub, dist);
+          if (autoZip) n.ZIP = autoZip;
+        }
+      }
+      return n;
+    });
+  }
 
   function handleText(t) {
     setRaw(t);
@@ -568,8 +599,10 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
     var missing = [];
     if(!selectedProduct) missing.push("เลือกสินค้า");
     if(!f.MobileNo) missing.push("เบอร์โทร");
+    else if(f.MobileNo.length!==10) missing.push("เบอร์โทรต้อง 10 หลัก");
     if(!f.Name) missing.push("ชื่อลูกค้า");
     if(!f.ZIP) missing.push("รหัส ปณ.");
+    else if(f.ZIP.length!==5) missing.push("รหัส ปณ. ต้อง 5 หลัก");
     if(!f.SalePrice) missing.push("ราคาขาย");
     if(!isTransfer && !f.COD && f.COD!=="0") missing.push("ยอด COD");
     if(missing.length>0){alert("กรุณากรอกให้ครบ:\n• "+missing.join("\n• "));return;}
@@ -622,14 +655,14 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
           <div style={{background:"#fff",borderRadius:16,padding:24,border:"1px solid #e2e8f0"}}>
             <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 16px"}}>👤 ข้อมูลลูกค้า</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-              <div><label style={S.fLabel}>เบอร์โทร <span style={{color:"#ef4444"}}>*</span></label><input value={f.MobileNo||""} onChange={function(e){set("MobileNo",e.target.value);}} placeholder="0xx-xxx-xxxx" style={S.pInput}/></div>
+              <div><label style={S.fLabel}>เบอร์โทร <span style={{color:"#ef4444"}}>*</span></label><input value={f.MobileNo||""} onChange={function(e){var v=e.target.value.replace(/[^0-9]/g,"");if(v.length<=10)set("MobileNo",v);}} placeholder="0xxxxxxxxx" maxLength={10} style={S.pInput}/></div>
               <div><label style={S.fLabel}>ชื่อลูกค้า</label><input value={f.Name||""} onChange={function(e){set("Name",e.target.value);}} placeholder="ชื่อ-นามสกุล" style={S.pInput}/></div>
             </div>
             <div style={{marginBottom:12}}><label style={S.fLabel}>ที่อยู่</label><input value={f.Address||""} onChange={function(e){set("Address",e.target.value);}} placeholder="บ้านเลขที่ ซอย ถนน" style={S.pInput}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
               <AddrAC label="ตำบล" value={f.SubDistrict} field="s" onSelect={function(item){set("SubDistrict",item[0]);set("District",item[1]);set("ZIP",item[3]);}} onChange={function(v){set("SubDistrict",v);}}/>
               <AddrAC label="อำเภอ" value={f.District} field="d" onSelect={function(item){set("SubDistrict",item[0]);set("District",item[1]);set("ZIP",item[3]);}} onChange={function(v){set("District",v);}}/>
-              <div><label style={S.fLabel}>รหัส ปณ. <span style={{color:"#ef4444"}}>*</span></label><input value={f.ZIP||""} onChange={function(e){set("ZIP",e.target.value);}} placeholder="xxxxx" style={S.pInput}/></div>
+              <div><label style={S.fLabel}>รหัส ปณ. <span style={{color:"#ef4444"}}>*</span></label><input value={f.ZIP||""} onChange={function(e){var v=e.target.value.replace(/[^0-9]/g,"");if(v.length<=5)set("ZIP",v);}} placeholder="xxxxx" maxLength={5} style={S.pInput}/></div>
             </div>
             <div><label style={S.fLabel}>FB/Line (ไม่บังคับ)</label><input value={f.CustomerFBLine||""} onChange={function(e){set("CustomerFBLine",e.target.value);}} placeholder="ชื่อ FB หรือ Line ID" style={S.pInput}/></div>
           </div>
