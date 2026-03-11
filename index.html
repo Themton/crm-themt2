@@ -33,7 +33,7 @@ var useEffect = React.useEffect;
 var useRef = React.useRef;
 
 /* ===== API ===== */
-var DEFAULT_API = "https://script.google.com/macros/s/AKfycbxxXhfjp9P5c1CCl0OSu3PeSEatsdU_fT2mD3lhzQPQ7741oORrM8hPbgLjZwzYkwcTeQ/exec";
+var DEFAULT_API = "https://script.google.com/macros/s/AKfycbyTVsmaz82vDsGBXlL-YUBxAxrGDnTwFLlqLhisjGrPUcbpK0V9aSubp30fz-gXPmfE8A/exec";
 // ล้าง URL เก่าที่ cache ไว้ ให้ใช้ DEFAULT_API เสมอ
 try { var _old = localStorage.getItem("ps_api"); if(_old && _old !== DEFAULT_API) localStorage.removeItem("ps_api"); } catch(e){}
 function getApiUrl(){ return localStorage.getItem("ps_api") || DEFAULT_API; }
@@ -702,7 +702,10 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
             <button onClick={function(){if(isTransfer)return;setIsTransfer(true);set("COD","0");if(selectedProduct){var sn=selectedProduct.replace(/^\[[^\]]+\]\s*/,"");set("Remark",sn+" โอนเงิน");}}}
               style={{padding:"10px 16px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:isTransfer?"#10b981":"#f1f5f9",color:isTransfer?"#fff":"#94a3b8"}}>โอนเงิน</button>
             {(user.canUpsell||user.role==="admin") && <button onClick={function(){setUpsell(!upsell);}}
-              style={{padding:"10px 16px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:upsell?"#ea580c":"#f1f5f9",color:upsell?"#fff":"#94a3b8"}}>Upsell</button>}
+              style={{padding:"10px 16px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:upsell?"#ea580c":"#f1f5f9",color:upsell?"#fff":"#94a3b8",display:"flex",alignItems:"center",gap:6}}>
+              <div style={{width:16,height:16,borderRadius:4,border:upsell?"2px solid #fff":"2px solid #cbd5e1",background:upsell?"#fff":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#ea580c",flexShrink:0}}>{upsell?"✓":""}</div>
+              Upsell
+            </button>}
           </div>
         </div>
 
@@ -729,7 +732,7 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
               <div style={{display:"flex",gap:8}}>
                 <button onClick={onCancel} disabled={saving} style={{padding:"10px 16px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer"}}>ยกเลิก</button>
                 <button onClick={submit} disabled={saving} style={{padding:"10px 24px",borderRadius:8,border:"none",background:upsell?"#ea580c":isTransfer?"#10b981":"#d97706",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                  {saving?"⏳ บันทึก...":"✅ บันทึก"}
+                  {saving?"⏳ บันทึก...":upsell?"🔥 Upsell":"✅ บันทึก"}
                 </button>
               </div>
             </div>
