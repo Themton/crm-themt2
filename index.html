@@ -58,13 +58,23 @@ async function api(action, params, body) {
 // ค้นหารหัสไปรษณีย์จาก ตำบล+อำเภอ อัตโนมัติ
 function lookupZIP(sub, dist) {
   if (!sub || typeof TH === "undefined") return "";
+  // ค้นหาแบบตรง ตำบล+อำเภอ
   for (var i = 0; i < TH.length; i++) {
-    // TH[i] = [ตำบล, อำเภอ, จังหวัด, ZIP]
-    if (TH[i][0] === sub && (!dist || TH[i][1].indexOf(dist) >= 0)) return TH[i][3];
+    if (TH[i][0] === sub && dist && TH[i][1] === dist) return String(TH[i][3]);
   }
-  // ลองค้นแค่ตำบล
+  // ค้นแบบ contains
   for (var i = 0; i < TH.length; i++) {
-    if (TH[i][0] === sub) return TH[i][3];
+    if (TH[i][0] === sub && (!dist || TH[i][1].indexOf(dist) >= 0 || dist.indexOf(TH[i][1]) >= 0)) return String(TH[i][3]);
+  }
+  // ค้นแค่ตำบล
+  for (var i = 0; i < TH.length; i++) {
+    if (TH[i][0] === sub) return String(TH[i][3]);
+  }
+  // ค้นจากอำเภอ
+  if (dist) {
+    for (var i = 0; i < TH.length; i++) {
+      if (TH[i][1] === dist) return String(TH[i][3]);
+    }
   }
   return "";
 }
@@ -556,14 +566,11 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
   function set(k,v){
     setF(function(p){
       var n={};for(var x in p)n[x]=p[x];n[k]=v;
-      // ถ้าเปลี่ยนตำบลหรืออำเภอ → ค้นหารหัสไปรษณีย์อัตโนมัติ
       if ((k==="SubDistrict" || k==="District") && v) {
         var sub = k==="SubDistrict" ? v : n.SubDistrict;
         var dist = k==="District" ? v : n.District;
-        if (sub) {
-          var autoZip = lookupZIP(sub, dist);
-          if (autoZip) n.ZIP = autoZip;
-        }
+        var autoZip = lookupZIP(sub||"", dist||"");
+        if (autoZip) n.ZIP = String(autoZip);
       }
       return n;
     });
@@ -573,7 +580,14 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
     setRaw(t);
     if (t.trim().length > 8) {
       var r = smartParse(t);
-      if (r) { setF(function(p){var n={};for(var k in p)n[k]=r[k]||p[k];return n;}); }
+      if (r) {
+        // ถ้า smartParse ไม่ได้ ZIP แต่ได้ ตำบล/อำเภอ → ค้นหาเพิ่ม
+        if (!r.ZIP && (r.SubDistrict || r.District)) {
+          var z = lookupZIP(r.SubDistrict, r.District);
+          if (z) r.ZIP = z;
+        }
+        setF(function(p){var n={};for(var k in p)n[k]=r[k]||p[k];return n;});
+      }
     }
   }
 
@@ -625,34 +639,34 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
         <div style={{fontSize:13,color:"#94a3b8"}}>{dateStr} • {timeStr}</div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1.2fr",gap:24}}>
-        {/* === LEFT: เลือกสินค้า === */}
+      <div style={{display:"flex",flexDirection:"column",gap:20}}>
+        {/* === เลือกสินค้า === */}
         <div style={{background:"#fff",borderRadius:16,padding:24,border:"1px solid #e2e8f0"}}>
-          <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 16px"}}>🍪 เลือกสินค้า</h3>
+          <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 16px"}}>🛒 เลือกสินค้า</h3>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12}}>
           {getCategories(products||[]).map(function(cat,idx){
             var items = (products||[]).filter(function(p){var m=p.name.match(/^\[([^\]]+)\]/);return m?m[1]===cat:cat==="อื่นๆ";}).map(function(p){var m=p.name.match(/^\[([^\]]+)\]\s*(.*)/);return{name:p.name,shortName:m?m[2]:p.name,price:p.price};});
-            return <div key={cat} style={{marginBottom:14,padding:"12px 16px",borderRadius:12,border:catSelections[cat]?"2px solid #d97706":"1px solid #f1f5f9",background:catSelections[cat]?"#fffbeb":"#fafbff"}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#92400e",marginBottom:6}}>{icons[idx%icons.length]} {cat}</div>
+            return <div key={cat}>
+              <div style={{fontSize:12,fontWeight:700,color:"#92400e",marginBottom:4}}>{cat}</div>
               <select value={catSelections[cat]||""} onChange={function(e){selectFromCat(cat,e.target.value);}}
-                style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,color:catSelections[cat]?"#1e293b":"#94a3b8",background:"#fff",cursor:"pointer"}}>
+                style={{width:"100%",padding:"10px 12px",borderRadius:8,border:catSelections[cat]?"2px solid #d97706":"1.5px solid #e2e8f0",fontSize:13,color:catSelections[cat]?"#1e293b":"#94a3b8",background:catSelections[cat]?"#fffbeb":"#fff",cursor:"pointer"}}>
                 <option value="">-- เลือก --</option>
                 {items.map(function(p){return <option key={p.name} value={p.name}>{p.shortName} — ฿{p.price.toLocaleString()}</option>;})}
               </select>
             </div>;
           })}
+          </div>
         </div>
 
-        {/* === RIGHT: ข้อมูลลูกค้า === */}
-        <div style={{display:"flex",flexDirection:"column",gap:20}}>
-          {/* Auto-Parse */}
-          <div style={{background:"#fff",borderRadius:16,padding:24,border:"1px solid #e2e8f0"}}>
-            <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 12px"}}>📋 วางข้อมูลลูกค้า (Auto-Parse)</h3>
-            <textarea value={raw} onChange={function(e){handleText(e.target.value);}} placeholder="วางข้อมูลลูกค้าทั้งหมดที่นี่..." style={{width:"100%",padding:14,borderRadius:10,border:"1.5px solid #dbeafe",fontSize:14,lineHeight:1.6,color:"#1e293b",background:"#eff6ff",resize:"vertical",outline:"none",fontFamily:"'Noto Sans Thai',sans-serif",minHeight:90,boxSizing:"border-box"}} rows={4}/>
-            <button onClick={clear} style={{marginTop:8,padding:"8px 16px",borderRadius:8,border:"1px solid #e2e8f0",background:"#f8fafc",color:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>🗑 ล้าง</button>
-          </div>
+        {/* === วางข้อมูลลูกค้า === */}
+        <div style={{background:"#fff",borderRadius:16,padding:24,border:"1px solid #e2e8f0"}}>
+          <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 12px"}}>📋 วางข้อมูลลูกค้า (Auto-Parse)</h3>
+          <textarea value={raw} onChange={function(e){handleText(e.target.value);}} placeholder="วางข้อมูลลูกค้าทั้งหมดที่นี่..." style={{width:"100%",padding:14,borderRadius:10,border:"1.5px solid #dbeafe",fontSize:14,lineHeight:1.6,color:"#1e293b",background:"#eff6ff",resize:"vertical",outline:"none",fontFamily:"'Noto Sans Thai',sans-serif",minHeight:80,boxSizing:"border-box"}} rows={3}/>
+          <button onClick={clear} style={{marginTop:8,padding:"8px 16px",borderRadius:8,border:"1px solid #e2e8f0",background:"#f8fafc",color:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>🗑 ล้าง</button>
+        </div>
 
-          {/* Customer Info */}
-          <div style={{background:"#fff",borderRadius:16,padding:24,border:"1px solid #e2e8f0"}}>
+        {/* === ข้อมูลลูกค้า === */}
+        <div style={{background:"#fff",borderRadius:16,padding:24,border:"1px solid #e2e8f0"}}>
             <h3 style={{fontSize:16,fontWeight:700,margin:"0 0 16px"}}>👤 ข้อมูลลูกค้า</h3>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
               <div><label style={S.fLabel}>เบอร์โทร <span style={{color:"#ef4444"}}>*</span></label><input value={f.MobileNo||""} onChange={function(e){var v=e.target.value.replace(/[^0-9]/g,"");if(v.length<=10)set("MobileNo",v);}} placeholder="0xxxxxxxxx" maxLength={10} style={S.pInput}/></div>
@@ -660,52 +674,35 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
             </div>
             <div style={{marginBottom:12}}><label style={S.fLabel}>ที่อยู่</label><input value={f.Address||""} onChange={function(e){set("Address",e.target.value);}} placeholder="บ้านเลขที่ ซอย ถนน" style={S.pInput}/></div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:12}}>
-              <AddrAC label="ตำบล" value={f.SubDistrict} field="s" onSelect={function(item){set("SubDistrict",item[0]);set("District",item[1]);set("ZIP",item[3]);}} onChange={function(v){set("SubDistrict",v);}}/>
-              <AddrAC label="อำเภอ" value={f.District} field="d" onSelect={function(item){set("SubDistrict",item[0]);set("District",item[1]);set("ZIP",item[3]);}} onChange={function(v){set("District",v);}}/>
+              <AddrAC label="ตำบล" value={f.SubDistrict} field="s" onSelect={function(item){set("SubDistrict",item[0]);set("District",item[1]);set("ZIP",String(item[3]));}} onChange={function(v){set("SubDistrict",v);}}/>
+              <AddrAC label="อำเภอ" value={f.District} field="d" onSelect={function(item){set("SubDistrict",item[0]);set("District",item[1]);set("ZIP",String(item[3]));}} onChange={function(v){set("District",v);}}/>
               <div><label style={S.fLabel}>รหัส ปณ. <span style={{color:"#ef4444"}}>*</span></label><input value={f.ZIP||""} onChange={function(e){var v=e.target.value.replace(/[^0-9]/g,"");if(v.length<=5)set("ZIP",v);}} placeholder="xxxxx" maxLength={5} style={S.pInput}/></div>
             </div>
             <div><label style={S.fLabel}>FB/Line (ไม่บังคับ)</label><input value={f.CustomerFBLine||""} onChange={function(e){set("CustomerFBLine",e.target.value);}} placeholder="ชื่อ FB หรือ Line ID" style={S.pInput}/></div>
           </div>
-        </div>
       </div>
 
       {/* === BOTTOM BAR === */}
       <div style={{marginTop:20,background:"#fff",borderRadius:16,padding:20,border:"1px solid #e2e8f0"}}>
 
-        {/* 3 ปุ่ม: COD / โอนเงิน / Upsell */}
-        <div style={{display:"flex",gap:8,marginBottom:16}}>
-          {/* COD */}
-          <button onClick={function(){if(!isTransfer)return;setIsTransfer(false);setSlipPreview(null);if(selectedProduct){var sn=selectedProduct.replace(/^\[[^\]]+\]\s*/,"");set("Remark",sn+" ปลายทาง");var pr=(products||[]).find(function(p){return p.name===selectedProduct;});if(pr)set("COD",String(pr.price));}}}
-            style={{padding:"10px 20px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",
-              background:!isTransfer?"#ef4444":"#f1f5f9",color:!isTransfer?"#fff":"#94a3b8"}}>
-            🔴 COD
-          </button>
-          {/* โอนเงิน */}
-          <button onClick={function(){if(isTransfer)return;setIsTransfer(true);set("COD","0");if(selectedProduct){var sn=selectedProduct.replace(/^\[[^\]]+\]\s*/,"");set("Remark",sn+" โอนเงิน");}}}
-            style={{padding:"10px 20px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",
-              background:isTransfer?"#10b981":"#f1f5f9",color:isTransfer?"#fff":"#94a3b8"}}>
-            🟢 โอนเงิน
-          </button>
-          {/* Upsell */}
-          {(user.canUpsell || user.role==="admin") &&
-            <button onClick={function(){setUpsell(!upsell);}}
-              style={{padding:"10px 20px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",
-                background:upsell?"#ea580c":"#f1f5f9",color:upsell?"#fff":"#94a3b8"}}>
-              🔥 Upsell
-            </button>
-          }
-        </div>
-
-        {/* ราคา + COD */}
-        <div style={{display:"flex",gap:12,marginBottom:16}}>
-          <div style={{flex:1}}>
-            <label style={{fontSize:12,fontWeight:600,color:"#475569",marginBottom:4,display:"block"}}>ราคาขาย</label>
+        {/* ราคา + COD + ปุ่ม 3 อัน */}
+        <div style={{display:"flex",gap:12,marginBottom:16,alignItems:"flex-end",flexWrap:"wrap"}}>
+          <div style={{width:120}}>
+            <label style={{fontSize:12,fontWeight:600,color:"#475569",display:"block",marginBottom:4}}>ราคาขาย</label>
             <input value={f.SalePrice||""} onChange={function(e){set("SalePrice",e.target.value);}} placeholder="0" style={{...S.pInput,fontWeight:700,fontSize:16,textAlign:"center"}}/>
           </div>
-          <div style={{flex:1}}>
-            <label style={{fontSize:12,fontWeight:600,color:isTransfer?"#94a3b8":"#ef4444",marginBottom:4,display:"block"}}>{isTransfer?"COD (ปิด)":"ยอด COD"}</label>
+          <div style={{width:120}}>
+            <label style={{fontSize:12,fontWeight:600,color:isTransfer?"#cbd5e1":"#ef4444",display:"block",marginBottom:4}}>{isTransfer?"COD (ปิด)":"ยอด COD"}</label>
             <input value={isTransfer?"0":f.COD||""} onChange={function(e){if(!isTransfer)set("COD",e.target.value);}} disabled={isTransfer}
               style={{...S.pInput,fontWeight:700,fontSize:16,textAlign:"center",color:isTransfer?"#cbd5e1":"#ef4444",background:isTransfer?"#f8fafc":"#fff",borderColor:isTransfer?"#e2e8f0":"#fecaca"}}/>
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <button onClick={function(){if(!isTransfer)return;setIsTransfer(false);setSlipPreview(null);if(selectedProduct){var sn=selectedProduct.replace(/^\[[^\]]+\]\s*/,"");set("Remark",sn+" ปลายทาง");var pr=(products||[]).find(function(p){return p.name===selectedProduct;});if(pr)set("COD",String(pr.price));}}}
+              style={{padding:"10px 16px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:!isTransfer?"#ef4444":"#f1f5f9",color:!isTransfer?"#fff":"#94a3b8"}}>COD</button>
+            <button onClick={function(){if(isTransfer)return;setIsTransfer(true);set("COD","0");if(selectedProduct){var sn=selectedProduct.replace(/^\[[^\]]+\]\s*/,"");set("Remark",sn+" โอนเงิน");}}}
+              style={{padding:"10px 16px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:isTransfer?"#10b981":"#f1f5f9",color:isTransfer?"#fff":"#94a3b8"}}>โอนเงิน</button>
+            {(user.canUpsell||user.role==="admin") && <button onClick={function(){setUpsell(!upsell);}}
+              style={{padding:"10px 16px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:upsell?"#ea580c":"#f1f5f9",color:upsell?"#fff":"#94a3b8"}}>Upsell</button>}
           </div>
         </div>
 
@@ -726,8 +723,8 @@ function OrderForm({onSubmit,onCancel,user,isAdmin,loading,products}) {
         {selectedProduct
           ? <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",borderRadius:10,background:"#f8fafc",border:"1px solid #e2e8f0"}}>
               <div>
-                <div style={{fontSize:14,fontWeight:700}}>{selectedProduct.replace(/^\[[^\]]+\]\s*/,"")} <span style={{fontSize:12,color:isTransfer?"#10b981":"#ef4444"}}>{isTransfer?"โอนเงิน":"COD"}{upsell?" • 🔥Upsell":""}</span></div>
-                <div style={{fontSize:12,color:"#94a3b8"}}>{f.Name||"—"} • {f.MobileNo||"—"} • ฿{Number(f.SalePrice||0).toLocaleString()}</div>
+                <div style={{fontSize:14,fontWeight:700}}>{selectedProduct.replace(/^\[[^\]]+\]\s*/,"")}</div>
+                <div style={{fontSize:12,color:"#94a3b8"}}>{f.Name||"—"} • {f.MobileNo||"—"} • ฿{Number(f.SalePrice||0).toLocaleString()} {isTransfer?"🟢โอน":"🔴COD"}{upsell?" 🟠Upsell":""}</div>
               </div>
               <div style={{display:"flex",gap:8}}>
                 <button onClick={onCancel} disabled={saving} style={{padding:"10px 16px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:13,fontWeight:600,cursor:"pointer"}}>ยกเลิก</button>
