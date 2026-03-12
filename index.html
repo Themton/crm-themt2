@@ -22,6 +22,8 @@ body{font-family:'Noto Sans Thai',sans-serif;background:#faf8f3}
 textarea:focus,input:focus,select:focus{border-color:#fbbf24!important;box-shadow:0 0 0 3px rgba(251,191,36,.15)!important}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:#fde68a;border-radius:3px}
 .shake{animation:shake .4s}
+[draggable]{cursor:grab}
+[draggable]:active{cursor:grabbing}
 </style>
 </head>
 <body>
@@ -263,12 +265,17 @@ function App() {
   async function addProduct(d){try{var r=await api("addProduct",null,d);if(r.success){notify("เพิ่มสินค้า "+d.name);await loadProducts();return true;}else{notify(r.error||"ผิดพลาด","warning");return false;}}catch(e){notify(e.message,"warning");return false;}}
   async function delProduct(name){try{await api("deleteProduct",{name:name});notify("ลบสินค้าแล้ว","warning");await loadProducts();}catch(e){notify("ผิดพลาด","warning");}}
   async function editProduct(oldName,data){try{var r=await api("editProduct",null,{oldName:oldName,name:data.name,price:data.price});if(r.success){notify("แก้ไขสินค้าสำเร็จ");await loadProducts();return true;}else{notify(r.error||"ผิดพลาด","warning");return false;}}catch(e){notify(e.message,"warning");return false;}}
-  function moveProduct(name,dir){
+  function moveProduct(name,dirOrArr){
+    if(name==="__reorder"&&Array.isArray(dirOrArr)){
+      // ลากจัดลำดับ → รับ array ใหม่ตรงๆ
+      setProducts(dirOrArr);
+      return;
+    }
     setProducts(function(prev){
       var idx=-1;
       for(var i=0;i<prev.length;i++){if(prev[i].name===name){idx=i;break;}}
       if(idx<0)return prev;
-      var toIdx=dir==="up"?idx-1:idx+1;
+      var toIdx=dirOrArr==="up"?idx-1:idx+1;
       if(toIdx<0||toIdx>=prev.length)return prev;
       var arr=prev.slice();
       var tmp=arr[idx];arr[idx]=arr[toIdx];arr[toIdx]=tmp;
@@ -875,22 +882,112 @@ function ProductsPage({products,onAddProduct,onEditProduct,onDelProduct,onMovePr
   var [pPrice,setPPrice] = useState("");
   var [editProd,setEditProd] = useState(null);
   var [editSaving,setEditSaving] = useState(false);
+  var [dragItem,setDragItem] = useState(null); // {type:"item"|"group", name, cat}
+  var [dragOver,setDragOver] = useState(null); // {type, name, cat, pos:"before"|"after"}
+
+  // จัดกลุ่ม
+  var cats = getCategories(products||[]);
+  var grouped = {};
+  cats.forEach(function(c){grouped[c]=(products||[]).filter(function(p){var m=p.name.match(/^\[([^\]]+)\]/);return m?m[1]===c:c==="อื่นๆ";}).map(function(p){var m=p.name.match(/^\[([^\]]+)\]\s*(.*)/);return{name:p.name,shortName:m?m[2]:p.name,price:p.price,cat:c};});});
+
+  function onDragStartItem(e,p){setDragItem({type:"item",name:p.name,cat:p.cat});e.dataTransfer.effectAllowed="move";}
+  function onDragStartGroup(e,cat){setDragItem({type:"group",cat:cat});e.dataTransfer.effectAllowed="move";}
+  function onDragOverItem(e,p,pos){e.preventDefault();setDragOver({type:"item",name:p.name,cat:p.cat,pos:pos||"before"});}
+  function onDragOverGroup(e,cat){e.preventDefault();setDragOver({type:"group",cat:cat});}
+  function onDragEnd(){setDragItem(null);setDragOver(null);}
+
+  function onDropItem(e,targetP){
+    e.preventDefault();
+    if(!dragItem||dragItem.type!=="item")return onDragEnd();
+    // ย้ายสินค้า
+    var arr=(products||[]).slice();
+    var fromIdx=-1,toIdx=-1;
+    for(var i=0;i<arr.length;i++){
+      if(arr[i].name===dragItem.name)fromIdx=i;
+      if(arr[i].name===targetP.name)toIdx=i;
+    }
+    if(fromIdx>=0&&toIdx>=0&&fromIdx!==toIdx){
+      var item=arr.splice(fromIdx,1)[0];
+      // เปลี่ยนกลุ่มถ้าลากข้ามกลุ่ม
+      if(dragItem.cat!==targetP.cat){
+        item={...item,name:item.name.replace(/^\[[^\]]+\]/,"["+targetP.cat+"]")};
+      }
+      var newTo=toIdx>fromIdx?toIdx-1:toIdx;
+      if(dragOver&&dragOver.pos==="after")newTo++;
+      arr.splice(newTo,0,item);
+      onMoveProduct("__reorder",arr);
+    }
+    onDragEnd();
+  }
+
+  function onDropGroup(e,targetCat){
+    e.preventDefault();
+    if(!dragItem||dragItem.type!=="group")return onDragEnd();
+    if(dragItem.cat===targetCat)return onDragEnd();
+    // ย้ายกลุ่ม: สลับลำดับกลุ่มทั้งหมด
+    var newCats=cats.slice();
+    var fromI=newCats.indexOf(dragItem.cat);
+    var toI=newCats.indexOf(targetCat);
+    if(fromI>=0&&toI>=0){
+      newCats.splice(fromI,1);
+      newCats.splice(toI,0,dragItem.cat);
+      // เรียงสินค้าใหม่ตามลำดับกลุ่ม
+      var newArr=[];
+      newCats.forEach(function(c){if(grouped[c])newArr=newArr.concat(grouped[c].map(function(p){return(products||[]).find(function(x){return x.name===p.name;});}));});
+      onMoveProduct("__reorder",newArr.filter(Boolean));
+    }
+    onDragEnd();
+  }
+
+  var dragStyle={opacity:.4,background:"#fef3c7"};
+  var dropLineStyle={height:3,background:"#d97706",borderRadius:2,margin:"0 16px"};
+
   return (
     <div>
       <div style={S.pageHeader}><h1 style={S.pageTitle}>🛒 จัดการสินค้า</h1></div>
       {editProd && <div style={S.modalOverlay} onClick={function(){setEditProd(null);}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440}} onClick={function(e){e.stopPropagation();}}><h3 style={{margin:"0 0 20px",fontWeight:700}}>✏️ แก้ไขสินค้า</h3><div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}><div><label style={S.fLabel}>ชื่อโปร</label><input value={editProd.name} onChange={function(e){setEditProd({...editProd,name:e.target.value});}} style={S.pInput}/></div><div><label style={S.fLabel}>ราคา</label><input value={editProd.price} onChange={function(e){setEditProd({...editProd,price:e.target.value});}} type="number" style={S.pInput}/></div></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button style={S.cancelBtn} onClick={function(){setEditProd(null);}}>ยกเลิก</button><button style={S.submitBtn} disabled={editSaving} onClick={async function(){if(!editProd.name){alert("กรอกชื่อ");return;}setEditSaving(true);var ok=await onEditProduct(editProd.oldName,{name:editProd.name,price:editProd.price});setEditSaving(false);if(ok)setEditProd(null);}}>บันทึก</button></div></div></div>}
       <div style={{background:"#fff",borderRadius:16,padding:24,border:"1px solid #e2e8f0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <span style={{fontSize:14,color:"#64748b"}}>{(products||[]).length} รายการ</span>
+          <div><span style={{fontSize:14,color:"#64748b"}}>{(products||[]).length} รายการ</span><span style={{fontSize:12,color:"#cbd5e1",marginLeft:12}}>ลากเพื่อจัดลำดับ</span></div>
           <button onClick={function(){setShowAdd(!showAdd);}} style={{padding:"8px 18px",borderRadius:8,border:"1px solid #e2e8f0",background:showAdd?"#fef2f2":"#f8fafc",color:showAdd?"#ef4444":"#475569",fontSize:13,fontWeight:600,cursor:"pointer"}}>{showAdd?"✕ ปิด":"＋ เพิ่มสินค้า"}</button>
         </div>
-        {showAdd && <div style={{padding:16,marginBottom:16,borderRadius:10,background:"#f8fafc",border:"1px solid #e2e8f0"}}><div style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:10,alignItems:"end"}}><div><label style={S.fLabel}>กลุ่ม</label><select value={pBrand} onChange={function(e){setPBrand(e.target.value);}} style={S.pInput}><option value="">-- เลือก --</option>{getCategories(products||[]).map(function(c){return <option key={c} value={c}>{c}</option>;})}<option value="__new">+ สร้างกลุ่มใหม่</option></select></div><div><label style={S.fLabel}>ชื่อโปร</label><input value={pName} onChange={function(e){setPName(e.target.value);}} placeholder="KISO 5(10g) สบู่1" style={S.pInput}/></div><div><label style={S.fLabel}>ราคา</label><input value={pPrice} onChange={function(e){setPPrice(e.target.value);}} placeholder="399" style={S.pInput}/></div><button onClick={async function(){if(!pName){alert("กรอกชื่อ");return;}var b=pBrand;if(b==="__new"){b=prompt("ชื่อกลุ่มใหม่:");if(!b)return;}if(!b){alert("เลือกกลุ่ม");return;}var ok=await onAddProduct({name:"["+b+"] "+pName,price:pPrice||0});if(ok){setPName("");setPPrice("");}}} style={{padding:"9px 20px",borderRadius:8,border:"none",background:"#d97706",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>เพิ่ม</button></div></div>}
-        {getCategories(products||[]).map(function(cat){var items=(products||[]).filter(function(p){var m=p.name.match(/^\[([^\]]+)\]/);return m?m[1]===cat:cat==="อื่นๆ";}).map(function(p){var m=p.name.match(/^\[([^\]]+)\]\s*(.*)/);return{name:p.name,shortName:m?m[2]:p.name,price:p.price};});return <div key={cat}><div style={{padding:"10px 16px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",fontSize:13,fontWeight:700,color:"#475569",display:"flex",justifyContent:"space-between"}}><span>{cat}</span><span style={{color:"#94a3b8",fontWeight:400}}>{items.length}</span></div>{items.map(function(p,idx){return <div key={p.name} style={{display:"flex",alignItems:"center",padding:"8px 16px",borderTop:"1px solid #f1f5f9",fontSize:13,gap:8}}>
-              <div style={{display:"flex",flexDirection:"column",gap:2,flexShrink:0}}>
-                <button onClick={function(){onMoveProduct(p.name,"up");}} style={{width:22,height:18,borderRadius:4,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>▲</button>
-                <button onClick={function(){onMoveProduct(p.name,"down");}} style={{width:22,height:18,borderRadius:4,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>▼</button>
-              </div>
-              <div style={{flex:1}}>{p.shortName}</div><div style={{fontWeight:700,color:"#d97706",minWidth:70,textAlign:"right"}}>฿{p.price.toLocaleString()}</div><button onClick={function(){setEditProd({oldName:p.name,name:p.name,price:String(p.price)});}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,cursor:"pointer"}}>แก้ไข</button><button onClick={function(){if(confirm("ลบ?"))onDelProduct(p.name);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:11,cursor:"pointer"}}>ลบ</button></div>;})}</div>;})}
+        {showAdd && <div style={{padding:16,marginBottom:16,borderRadius:10,background:"#f8fafc",border:"1px solid #e2e8f0"}}><div style={{display:"grid",gridTemplateColumns:"1fr 2fr 1fr auto",gap:10,alignItems:"end"}}><div><label style={S.fLabel}>กลุ่ม</label><select value={pBrand} onChange={function(e){setPBrand(e.target.value);}} style={S.pInput}><option value="">-- เลือก --</option>{cats.map(function(c){return <option key={c} value={c}>{c}</option>;})}<option value="__new">+ สร้างกลุ่มใหม่</option></select></div><div><label style={S.fLabel}>ชื่อโปร</label><input value={pName} onChange={function(e){setPName(e.target.value);}} placeholder="KISO 5(10g) สบู่1" style={S.pInput}/></div><div><label style={S.fLabel}>ราคา</label><input value={pPrice} onChange={function(e){setPPrice(e.target.value);}} placeholder="399" style={S.pInput}/></div><button onClick={async function(){if(!pName){alert("กรอกชื่อ");return;}var b=pBrand;if(b==="__new"){b=prompt("ชื่อกลุ่มใหม่:");if(!b)return;}if(!b){alert("เลือกกลุ่ม");return;}var ok=await onAddProduct({name:"["+b+"] "+pName,price:pPrice||0});if(ok){setPName("");setPPrice("");}}} style={{padding:"9px 20px",borderRadius:8,border:"none",background:"#d97706",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>เพิ่ม</button></div></div>}
+
+        {cats.map(function(cat){
+          var items=grouped[cat]||[];
+          var isGroupDragging=dragItem&&dragItem.type==="group"&&dragItem.cat===cat;
+          var isGroupOver=dragOver&&dragOver.type==="group"&&dragOver.cat===cat;
+          return <div key={cat}
+            draggable onDragStart={function(e){onDragStartGroup(e,cat);}}
+            onDragOver={function(e){if(dragItem&&dragItem.type==="group")onDragOverGroup(e,cat);}}
+            onDrop={function(e){if(dragItem&&dragItem.type==="group")onDropGroup(e,cat);}}
+            onDragEnd={onDragEnd}
+            style={isGroupDragging?dragStyle:{}}>
+            {isGroupOver && dragItem.cat!==cat && <div style={dropLineStyle}/>}
+            <div style={{padding:"10px 16px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",fontSize:13,fontWeight:700,color:"#475569",display:"flex",justifyContent:"space-between",cursor:"grab",userSelect:"none"}}>
+              <span>☰ {cat}</span><span style={{color:"#94a3b8",fontWeight:400}}>{items.length}</span>
+            </div>
+            {items.map(function(p){
+              var isItemDrag=dragItem&&dragItem.type==="item"&&dragItem.name===p.name;
+              var isItemOver=dragOver&&dragOver.type==="item"&&dragOver.name===p.name;
+              return <div key={p.name}>
+                {isItemOver&&dragOver.pos==="before"&&<div style={dropLineStyle}/>}
+                <div draggable onDragStart={function(e){e.stopPropagation();onDragStartItem(e,p);}}
+                  onDragOver={function(e){e.stopPropagation();var rect=e.currentTarget.getBoundingClientRect();var pos=e.clientY<rect.top+rect.height/2?"before":"after";onDragOverItem(e,p,pos);}}
+                  onDrop={function(e){e.stopPropagation();onDropItem(e,p);}}
+                  onDragEnd={onDragEnd}
+                  style={{display:"flex",alignItems:"center",padding:"8px 16px",borderTop:"1px solid #f1f5f9",fontSize:13,gap:8,cursor:"grab",userSelect:"none",...(isItemDrag?dragStyle:{})}}>
+                  <span style={{color:"#cbd5e1",fontSize:11,flexShrink:0}}>☰</span>
+                  <div style={{flex:1}}>{p.shortName}</div>
+                  <div style={{fontWeight:700,color:"#d97706",minWidth:70,textAlign:"right"}}>฿{p.price.toLocaleString()}</div>
+                  <button onClick={function(e){e.stopPropagation();setEditProd({oldName:p.name,name:p.name,price:String(p.price)});}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,cursor:"pointer"}}>แก้ไข</button>
+                  <button onClick={function(e){e.stopPropagation();if(confirm("ลบ?"))onDelProduct(p.name);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:11,cursor:"pointer"}}>ลบ</button>
+                </div>
+                {isItemOver&&dragOver.pos==="after"&&<div style={dropLineStyle}/>}
+              </div>;
+            })}
+          </div>;
+        })}
         {(products||[]).length===0 && <div style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ยังไม่มีสินค้า</div>}
       </div>
     </div>
