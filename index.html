@@ -34,6 +34,14 @@ var sbReady = !!(SUPABASE_URL && SUPABASE_KEY);
 
 // Google Sheet Sync (ใส่ URL Apps Script ที่นี่)
 var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbwP5z4tXTEDOC5ckff9G2K0VuBkcqcfLFWERGQY5I84OGtSj-9bjRr0qVwswf5lwmjBRw/exec";
+// Flash Express API (Supabase Edge Function)
+var FLASH_URL = SUPABASE_URL + "/functions/v1/flash";
+async function flashAPI(action,data){
+  var u=FLASH_URL+"?action="+action;
+  var res=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+SUPABASE_KEY},body:JSON.stringify(data||{})});
+  if(!res.ok)throw new Error("HTTP "+res.status);
+  return await res.json();
+}
 async function syncToSheet(action,data){
   if(!SHEET_URL)return;
   try{
@@ -99,7 +107,7 @@ function searchAddr(q,field){if(!q||q.length<1||typeof TH==="undefined")return[]
 function AddrAC({label,value,field,onSelect,onChange}){var[show,setShow]=useState(false);var[items,setItems]=useState([]);function hc(v){onChange(v);if(v.length>=1){setItems(searchAddr(v,field));setShow(true);}else setShow(false);}function pick(it){onSelect(it);setShow(false);}return<div style={{position:"relative"}}><label style={S.fLabel}>{label}</label><input value={value||""} onChange={function(e){hc(e.target.value);}} onFocus={function(){if(value)hc(value);}} onBlur={function(){setTimeout(function(){setShow(false);},200);}} style={S.pInput}/>{show&&items.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #e2e8f0",borderRadius:8,maxHeight:200,overflowY:"auto",zIndex:50,boxShadow:"0 8px 24px rgba(0,0,0,.1)"}}>{items.map(function(it,i){return<div key={i} onClick={function(){pick(it);}} style={{padding:"8px 12px",cursor:"pointer",fontSize:12,borderBottom:"1px solid #f1f5f9"}} onMouseEnter={function(e){e.currentTarget.style.background="#fffbeb";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>{it[0]} › {it[1]} › {it[2]} <span style={{color:"#d97706",fontWeight:700}}>{it[3]}</span></div>;})}</div>}</div>;}
 
 /* ===== SUPABASE DATA LAYER ===== */
-function mapRow(r){return{OrderID:r.order_id,Timestamp:r.timestamp,MobileNo:r.mobile_no,Name:r.name,Address:r.address,SubDistrict:r.sub_district,District:r.district,Province:r.province,ZIP:r.zip,CustomerFBLine:r.customer_fb_line,SalesChannel:r.sales_channel,SalesPerson:r.sales_person,SalePrice:r.sale_price,COD:r.cod,Remark:r.remark,SlipURL:r.slip_url};}
+function mapRow(r){return{OrderID:r.order_id,Timestamp:r.timestamp,MobileNo:r.mobile_no,Name:r.name,Address:r.address,SubDistrict:r.sub_district,District:r.district,Province:r.province,ZIP:r.zip,CustomerFBLine:r.customer_fb_line,SalesChannel:r.sales_channel,SalesPerson:r.sales_person,SalePrice:r.sale_price,COD:r.cod,Remark:r.remark,SlipURL:r.slip_url,FlashPNO:r.flash_pno||""};}
 async function dbGetAccounts(){try{var data=await sbFetch("accounts?select=*");return(data||[]).map(function(a){return{username:a.email,password:String(a.password),displayName:a.display_name,role:a.role,active:a.active,canUpsell:a.can_upsell};});}catch(e){console.error("dbGetAccounts:",e);return[];}}
 async function dbGetOrders(userId){try{var q="orders?select=*&order=timestamp.desc";if(userId&&userId!=="ALL")q+="&sales_person=eq."+encodeURIComponent(userId);var data=await sbFetch(q);return(data||[]).map(mapRow);}catch(e){console.error("dbGetOrders:",e);return[];}}
 async function dbGetUpsell(userId){try{var q="upsell?select=*&order=timestamp.desc";if(userId&&userId!=="ALL")q+="&sales_person=eq."+encodeURIComponent(userId);var data=await sbFetch(q);return(data||[]).map(mapRow);}catch(e){console.error("dbGetUpsell:",e);return[];}}
@@ -160,11 +168,17 @@ function App(){var _s=useState;
   async function delAcc(u){try{await dbDeleteAccount(u);notify("ลบแล้ว","warning");await loadAccounts();}catch(e){}}
   async function resetPw(u,pw){try{await dbResetPassword(u,pw);notify("รีเซ็ตแล้ว");}catch(e){}}
   async function editAcc(old,data){try{await dbEditAccount(old,data);notify("แก้ไขสำเร็จ");await loadAccounts();var cur=userRef.current;if(cur&&cur.username===old){var u2={...cur,...data};userRef.current=u2;setUser(u2);localStorage.setItem("ps_user",JSON.stringify(u2));}return true;}catch(e){return false;}}
+  async function updateFlashPNO(orderId,pno){
+    try{await sbFetch("orders?order_id=eq."+encodeURIComponent(orderId),{method:"PATCH",body:{flash_pno:pno}});}catch(e){}
+    try{await sbFetch("upsell?order_id=eq."+encodeURIComponent(orderId),{method:"PATCH",body:{flash_pno:pno}});}catch(e){}
+    setAllOrders(function(p){return p.map(function(o){return o.OrderID===orderId?{...o,FlashPNO:pno}:o;});});
+    setUpsellOrders(function(p){return p.map(function(o){return o.OrderID===orderId?{...o,FlashPNO:pno}:o;});});
+  }
   var canUpsell=user.canUpsell||isAdmin;
   var navItems=[{id:"orders",icon:"📋",label:"ออเดอร์"}];if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});
   return(<div style={S.app}>{notif&&<div style={{...S.notif,background:notif.type==="success"?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#f59e0b,#d97706)"}}>{notif.type==="success"?"✅":"⚠️"} {notif.msg}</div>}{slipProgress!==null&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:"#fff",borderRadius:20,padding:"36px 48px",textAlign:"center",minWidth:280}}><div style={{fontSize:40,marginBottom:8}}>{slipProgress>=100?"✅":"🧾"}</div><div style={{fontSize:16,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706"}}>{slipProgress>=100?"เสร็จสิ้น!":"อัพโหลดสลิป..."}</div><div style={{fontSize:28,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706",margin:"8px 0"}}>{slipProgress}%</div><div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:slipProgress+"%",background:slipProgress>=100?"#10b981":"#d97706",borderRadius:4,transition:"width .3s"}}/></div></div></div>}
-    <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:isAdmin?"#fbbf24":"#fcd34d"}}>{isAdmin?"แอดมิน":"พนักงาน"}</span></div></div><nav style={S.nav}>{navItems.map(function(item){return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
-    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} selDate={selDate} setSelDate={setSelDate} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onUploadSlip={uploadSlip} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} user={user} orders={upsellOrders} onRefresh={loadUpsell}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
+    <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:isAdmin?"#fbbf24":"#fcd34d"}}>{isAdmin?"แอดมิน":"พนักงาน"}</span></div></div><nav style={S.nav}>{navItems.map(function(item){return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:localStorage.getItem("flash_sender")?"rgba(16,185,129,.15)":"transparent",color:localStorage.getItem("flash_sender")?"#6ee7b7":"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=localStorage.getItem("flash_sender")||'{"srcName":"THE MT","srcPhone":"","srcProvince":"","srcCity":"","srcDistrict":"","srcZip":"","srcAddress":""}';var v=prompt("ที่อยู่ผู้ส่ง Flash (JSON):",cur);if(v!==null){try{JSON.parse(v);localStorage.setItem("flash_sender",v);alert("✅ บันทึกที่อยู่ผู้ส่งแล้ว");}catch(e){alert("JSON ไม่ถูกต้อง");}}}}>📦 {localStorage.getItem("flash_sender")?"Flash: ตั้งค่าแล้ว":"ตั้งค่า Flash ผู้ส่ง"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
+    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} selDate={selDate} setSelDate={setSelDate} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onUploadSlip={uploadSlip} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} onUpdateFlash={updateFlashPNO}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} user={user} orders={upsellOrders} onRefresh={loadUpsell}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
 
 /* ===== SETUP (Supabase URL+Key) ===== */
 function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useState("");var[testing,setTesting]=useState(false);var[error,setError]=useState("");
@@ -173,7 +187,7 @@ function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useS
 
 /* ===== LOGIN ===== */
 function LoginScreen({accounts,onLogin,onReload,onSetup}){var[username,setUsername]=useState("");var[password,setPassword]=useState("");var[error,setError]=useState("");var ref=useRef(null);function shake(){if(ref.current){ref.current.classList.remove("shake");void ref.current.offsetWidth;ref.current.classList.add("shake");}}function go(){if(!username||!password){setError("กรอก Email และ Password");shake();return;}var acc=accounts.find(function(a){return a.username===username;});if(!acc){setError("ไม่พบ Email");shake();return;}if(!acc.active){setError("บัญชีถูกระงับ");shake();return;}if(String(acc.password)!==String(password)){setError("Password ไม่ถูก");shake();return;}onLogin(acc);}return<div style={S.loginBg}><div ref={ref} style={S.loginCard}><div style={{textAlign:"center",marginBottom:30}}><img src="LOGO_THEMT.png" alt="" style={{width:80,height:80,objectFit:"contain",marginBottom:8}}/><h1 style={{fontSize:22,fontWeight:800}}>THE MT TELESALE</h1><p style={{fontSize:11,color:"#10b981",marginTop:4}}>⚡ Supabase</p></div><div style={{marginBottom:14}}><label style={S.fLabel}>Email</label><input value={username} onChange={function(e){setUsername(e.target.value);setError("");}} onKeyDown={function(e){if(e.key==="Enter")document.getElementById("pw")?.focus();}} type="email" style={{...S.pInput,padding:"12px 16px"}}/></div><div style={{marginBottom:18}}><label style={S.fLabel}>Password</label><input id="pw" type="password" value={password} onChange={function(e){setPassword(e.target.value);setError("");}} onKeyDown={function(e){if(e.key==="Enter")go();}} style={{...S.pInput,padding:"12px 16px"}}/></div>{error&&<div style={{background:"#fef2f2",color:"#dc2626",padding:10,borderRadius:10,fontSize:13,marginBottom:12}}>❌ {error}</div>}<button onClick={go} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontSize:16,fontWeight:700,cursor:"pointer",marginBottom:12}}>เข้าสู่ระบบ</button><div style={{display:"flex",gap:8,justifyContent:"center"}}><button onClick={onReload} style={{...S.sm,background:"#f1f5f9",color:"#64748b"}}>🔄 โหลดบัญชี</button><button onClick={onSetup} style={{...S.sm,background:"#f1f5f9",color:"#64748b"}}>⚙️ เปลี่ยน Supabase</button></div></div></div>;}
-function OrdersPage({orders,selDate,setSelDate,showForm,setShowForm,onAdd,onDel,onUploadSlip,user,viewOrder,setViewOrder,isAdmin,accounts}){
+function OrdersPage({orders,selDate,setSelDate,showForm,setShowForm,onAdd,onDel,onUploadSlip,user,viewOrder,setViewOrder,isAdmin,accounts,onUpdateFlash}){
   var[search,setSearch]=useState("");var[pg,setPg]=useState(1);var perPage=50;
   var filtered=orders;if(search){var sl=search.toLowerCase();filtered=orders.filter(function(o){return(o.Name||"").toLowerCase().indexOf(sl)>=0||String(o.MobileNo||"").indexOf(sl)>=0||(o.Remark||"").toLowerCase().indexOf(sl)>=0||(o.SalesPerson||"").toLowerCase().indexOf(sl)>=0;});}
   useEffect(function(){setPg(1);},[search,selDate]);
@@ -187,7 +201,7 @@ function OrdersPage({orders,selDate,setSelDate,showForm,setShowForm,onAdd,onDel,
     {persons.length>0&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}><div style={{fontSize:13,fontWeight:700,marginBottom:10}}>👤 สรุปรายคน — {selDate}</div><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:"#f8fafc"}}>{["พนักงาน","ออเดอร์","ยอดขาย","COD","โอนเงิน","เริ่ม","ล่าสุด"].map(function(h,i){return<th key={i} style={{padding:"8px 10px",textAlign:"left",fontSize:11,fontWeight:600,color:"#64748b",borderBottom:"1px solid #e2e8f0"}}>{h}</th>;})}</tr></thead><tbody>{persons.map(function(p,i){return<tr key={p.name} style={{borderBottom:"1px solid #f1f5f9"}}><td style={{padding:"8px 10px",fontWeight:600}}>{i===0?"🥇 ":i===1?"🥈 ":i===2?"🥉 ":""}{p.name}</td><td style={{padding:"8px 10px",fontWeight:700}}>{p.count}</td><td style={{padding:"8px 10px"}}>฿{p.sales.toLocaleString()}</td><td style={{padding:"8px 10px",color:"#ef4444"}}>฿{p.cod.toLocaleString()}</td><td style={{padding:"8px 10px",color:"#10b981"}}>฿{p.transfer.toLocaleString()}</td><td style={{padding:"8px 10px",color:"#10b981",fontSize:11}}>{p.first==="99:99"?"—":p.first}</td><td style={{padding:"8px 10px",color:"#64748b",fontSize:11}}>{p.last==="00:00"?"—":p.last}</td></tr>;})}</tbody></table></div>}
     {showForm&&<OrderForm onSubmit={onAdd} onCancel={function(){setShowForm(false);}} user={user}/>}
     <div style={{display:"flex",gap:10,marginBottom:14}}><div style={S.searchBox}><span>🔍</span><input placeholder="ค้นหา..." value={search} onChange={function(e){setSearch(e.target.value);}} style={S.searchInput}/></div><span style={{fontSize:12,color:"#94a3b8",alignSelf:"center"}}>{filtered.length}</span></div>
-    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={onDel} onUploadSlip={onUploadSlip} isAdmin={isAdmin}/>}
+    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={onDel} onUploadSlip={onUploadSlip} isAdmin={isAdmin} onUpdateFlash={onUpdateFlash}/>}
     <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"auto"}}><table style={S.table}><thead><tr>{["#","เวลา","ลูกค้า","เบอร์","ราคา","ประเภท","พนักงาน","หมายเหตุ"].map(function(h,i){return<th key={i} style={S.th}>{h}</th>;})}</tr></thead><tbody>{pageOrders.length===0?<tr><td colSpan={8} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่พบออเดอร์</td></tr>:pageOrders.map(function(o,idx){var isCOD=Number(o.COD||0)>0;var rowNum=(pg-1)*perPage+idx+1;return<tr key={o.OrderID} style={{cursor:"pointer",borderLeft:isCOD?"3px solid #ef4444":"3px solid #10b981"}} onClick={function(){setViewOrder(o);}} onMouseEnter={function(e){e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}><td style={{...S.td,fontWeight:700,color:"#d97706",fontSize:12,textAlign:"center",minWidth:32}}>{rowNum}</td><td style={S.td}><span style={{fontSize:12,fontWeight:600}}>{getTime(o.Timestamp)}</span></td><td style={{...S.td,fontWeight:600}}>{o.Name}</td><td style={{...S.td,fontSize:12}}>{o.MobileNo}</td><td style={{...S.td,fontWeight:700}}>฿{Number(o.SalePrice||0).toLocaleString()}</td><td style={S.td}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span></td><td style={{...S.td,fontSize:12}}>{o.SalesPerson}</td><td style={{...S.td,fontSize:11,color:"#64748b",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.Remark}</td></tr>;})}</tbody></table></div>
     {totalPages>1&&<div style={{display:"flex",justifyContent:"center",gap:6,marginTop:14}}>{Array.from({length:Math.min(5,totalPages)},function(_,i){var st=Math.max(1,Math.min(pg-2,totalPages-4));var p=st+i;if(p>totalPages)return null;return<button key={p} onClick={function(){setPg(p);}} style={{padding:"5px 10px",borderRadius:6,border:pg===p?"none":"1px solid #e2e8f0",background:pg===p?"#d97706":"#fff",color:pg===p?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{p}</button>;})}
     <span style={{fontSize:11,color:"#94a3b8",alignSelf:"center",marginLeft:8}}>หน้า {pg}/{totalPages}</span></div>}
@@ -232,7 +246,7 @@ function UpsellPage({showForm,setShowForm,onAdd,user,orders,onRefresh}){
       </div>;})}
     </div>}
 
-    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onUploadSlip={function(){}} isAdmin={false}/>}
+    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onUploadSlip={function(){}} isAdmin={false} onUpdateFlash={function(){}}/>}
 
     <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"auto"}}>
       <table style={S.table}><thead><tr>{["#","เวลา","ลูกค้า","เบอร์","ราคา","ประเภท","พนักงาน","หมายเหตุ"].map(function(h,i){return<th key={i} style={S.th}>{h}</th>;})}</tr></thead>
@@ -283,8 +297,49 @@ function OrderForm({onSubmit,onCancel,user,forceUpsell}){var[raw,setRaw]=useStat
     {saving&&<div style={{position:"absolute",inset:0,zIndex:10,background:"rgba(255,255,255,.85)",borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}><div style={{width:36,height:36,border:"4px solid #fde68a",borderTopColor:"#d97706",borderRadius:"50%",animation:"spin .8s linear infinite"}}/><div style={{fontSize:14,fontWeight:700,color:"#d97706"}}>กำลังบันทึก...</div></div>}
   </div>);}
 
-function DetailModal({order,onClose,onDel,onUploadSlip,isAdmin}){var o=order;var fileRef=useRef(null);var[viewSlip,setViewSlip]=useState(false);
+function DetailModal({order,onClose,onDel,onUploadSlip,isAdmin,onUpdateFlash}){var o=order;var fileRef=useRef(null);var[viewSlip,setViewSlip]=useState(false);
+  var[flashLoading,setFlashLoading]=useState(false);
+  var[flashTrack,setFlashTrack]=useState(null);
   function handleFile(e){var file=e.target.files&&e.target.files[0];if(!file)return;if(file.size>5*1024*1024){alert("ไฟล์ใหญ่เกิน 5MB");return;}var reader=new FileReader();reader.onload=function(ev){onUploadSlip(o.OrderID,ev.target.result);};reader.readAsDataURL(file);}
+  // ส่ง Flash
+  async function sendFlash(){
+    var srcInfo=null;try{srcInfo=JSON.parse(localStorage.getItem("flash_sender")||"null");}catch(e){}
+    if(!srcInfo||!srcInfo.srcPhone){alert("ยังไม่ได้ตั้งค่าที่อยู่ผู้ส่ง\n\nเปิด Console (F12) แล้วพิมพ์:\nlocalStorage.setItem('flash_sender', JSON.stringify({srcName:'THE MT',srcPhone:'08XXXXXXXX',srcProvince:'กรุงเทพมหานคร',srcCity:'...',srcDistrict:'...',srcZip:'10200',srcAddress:'...'}))");return;}
+    if(!confirm("ส่ง Flash Express?\n"+o.Name+" — "+o.MobileNo))return;
+    setFlashLoading(true);
+    try{
+      var cod=Number(o.COD)||0;
+      var res=await flashAPI("createOrder",{
+        orderId:o.OrderID,
+        srcName:srcInfo.srcName||"THE MT",srcPhone:srcInfo.srcPhone,srcProvince:srcInfo.srcProvince||"",srcCity:srcInfo.srcCity||"",srcDistrict:srcInfo.srcDistrict||"",srcZip:srcInfo.srcZip||"",srcAddress:srcInfo.srcAddress||"",
+        dstName:o.Name,dstPhone:o.MobileNo,dstProvince:o.Province||"",dstCity:o.District||"",dstDistrict:o.SubDistrict||"",dstZip:o.ZIP||"",dstAddress:o.Address||"",
+        codEnabled:cod>0,codAmount:cod,weight:500,remark:o.Remark||""
+      });
+      if(res.code===1&&res.data&&res.data.pno){
+        alert("✅ ส่ง Flash สำเร็จ!\nTracking: "+res.data.pno);
+        if(onUpdateFlash)onUpdateFlash(o.OrderID,res.data.pno);
+      }else{
+        alert("❌ Flash Error:\n"+(res.message||JSON.stringify(res)));
+      }
+    }catch(e){alert("❌ "+e.message);}
+    setFlashLoading(false);
+  }
+  // ปริ้นใบปะหน้า
+  async function printLabel(){
+    var pno=o.FlashPNO;if(!pno){alert("ยังไม่มีเลข Tracking");return;}
+    try{
+      var res=await flashAPI("getLabel",{pno:pno});
+      if(res.code===1&&res.data&&res.data.labelUrl){window.open(res.data.labelUrl,"_blank");}
+      else if(res.data&&res.data.label){
+        var w=window.open();w.document.write('<img src="data:image/png;base64,'+res.data.label+'" style="width:100%"/>');
+      }else{alert("ไม่สามารถดาวน์โหลดใบปะหน้า:\n"+(res.message||JSON.stringify(res)));}
+    }catch(e){alert("❌ "+e.message);}
+  }
+  // ติดตามสถานะ
+  async function trackOrder(){
+    var pno=o.FlashPNO;if(!pno){alert("ยังไม่มีเลข Tracking");return;}
+    try{var res=await flashAPI("track",{pno:pno});if(res.code===1)setFlashTrack(res.data);else alert(res.message||"ไม่พบข้อมูล");}catch(e){alert("❌ "+e.message);}
+  }
   // Full-screen slip viewer
   if(viewSlip)return<div style={S.modalOverlay} onClick={function(){setViewSlip(false);}}>
     <div style={{position:"relative",maxWidth:"90vw",maxHeight:"90vh"}} onClick={function(e){e.stopPropagation();}}>
@@ -294,9 +349,26 @@ function DetailModal({order,onClose,onDel,onUploadSlip,isAdmin}){var o=order;var
     </div>
   </div>;
   // Normal detail modal
-  return<div style={S.modalOverlay} onClick={onClose}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:480,maxHeight:"90vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
+  return<div style={S.modalOverlay} onClick={onClose}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
   <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div><div style={{fontSize:11,fontFamily:"'JetBrains Mono'",color:"#d97706",fontWeight:600}}>{o.OrderID}</div><div style={{fontSize:12,color:"#94a3b8"}}>{o.Timestamp} • {o.SalesPerson}</div></div><button onClick={onClose} style={S.closeBtn}>✕</button></div>
   <div style={{display:"grid",gap:6,fontSize:13}}><div><span style={{color:"#94a3b8"}}>ชื่อ: </span><b>{o.Name}</b></div><div><span style={{color:"#94a3b8"}}>เบอร์: </span>{o.MobileNo}</div><div><span style={{color:"#94a3b8"}}>ที่อยู่: </span>{[o.Address,o.SubDistrict,o.District,o.Province,o.ZIP].filter(Boolean).join(" ")}</div>{o.CustomerFBLine&&<div><span style={{color:"#94a3b8"}}>FB/Line: </span>{o.CustomerFBLine}</div>}<div><span style={{color:"#94a3b8"}}>ราคา: </span><b style={{color:"#d97706"}}>฿{Number(o.SalePrice||0).toLocaleString()}</b></div><div><span style={{color:"#94a3b8"}}>ประเภท: </span>{Number(o.COD||0)>0?<span style={{color:"#ef4444"}}>🔴 COD ฿{Number(o.COD).toLocaleString()}</span>:<span style={{color:"#10b981"}}>🟢 โอนเงิน</span>}</div>{o.Remark&&<div><span style={{color:"#94a3b8"}}>หมายเหตุ: </span>{o.Remark}</div>}</div>
+  {/* Flash Express */}
+  <div style={{marginTop:16,padding:14,borderRadius:10,background:"#fffbeb",border:"1px solid #fde68a"}}>
+    {o.FlashPNO?<div>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+        <span style={{fontSize:14}}>📦</span>
+        <span style={{fontFamily:"'JetBrains Mono'",fontSize:13,fontWeight:700,color:"#d97706"}}>{o.FlashPNO}</span>
+        <span style={{fontSize:11,color:"#10b981",fontWeight:600}}>✅ ส่งแล้ว</span>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <button onClick={printLabel} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #fde68a",background:"#fff",color:"#92400e",fontSize:12,fontWeight:600,cursor:"pointer"}}>🖨️ ใบปะหน้า</button>
+        <button onClick={trackOrder} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #fde68a",background:"#fff",color:"#92400e",fontSize:12,fontWeight:600,cursor:"pointer"}}>📍 ติดตามสถานะ</button>
+      </div>
+      {flashTrack&&<div style={{marginTop:10,fontSize:12}}>{(flashTrack.routes||[]).map(function(r,i){return<div key={i} style={{padding:"6px 0",borderBottom:"1px solid #fef3c7",display:"flex",gap:8}}><span style={{color:"#94a3b8",minWidth:50,fontSize:11}}>{r.routeAction||""}</span><span>{r.routeDesc||r.message||""}</span><span style={{color:"#94a3b8",fontSize:10,marginLeft:"auto"}}>{r.routeDateTime||""}</span></div>;})}</div>}
+    </div>
+    :<button onClick={sendFlash} disabled={flashLoading} style={{width:"100%",padding:"10px",borderRadius:8,border:"none",background:flashLoading?"#94a3b8":"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontSize:13,fontWeight:700,cursor:flashLoading?"not-allowed":"pointer"}}>{flashLoading?"⏳ กำลังส่ง...":"📦 ส่ง Flash Express"}</button>}
+  </div>
+  {/* สลิป */}
   {Number(o.COD||0)===0&&<div style={{marginTop:14}}><input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>{o.SlipURL?<div style={{textAlign:"center"}}><img src={o.SlipURL} alt="slip" onClick={function(){setViewSlip(true);}} style={{maxWidth:"100%",maxHeight:200,borderRadius:10,cursor:"pointer",border:"2px solid #e2e8f0"}}/><div style={{fontSize:10,color:"#94a3b8",marginTop:4}}>กดที่รูปเพื่อขยาย</div><div style={{marginTop:8}}><button onClick={function(){fileRef.current.click();}} style={{...S.sm,background:"#f0fdf4",color:"#059669"}}>🔄 เปลี่ยน</button></div></div>:<button onClick={function(){fileRef.current.click();}} style={{padding:"8px 16px",borderRadius:8,border:"1px dashed #bbf7d0",background:"#f0fdf4",color:"#059669",fontSize:12,fontWeight:600,cursor:"pointer"}}>📎 อัพโหลดสลิป</button>}</div>}
   {isAdmin&&<div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #f1f5f9",textAlign:"right"}}><button onClick={function(){if(confirm("ลบ?"))onDel(o.OrderID);}} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:12,cursor:"pointer"}}>🗑 ลบ</button></div>}
 </div></div>;}
@@ -427,7 +499,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       </div>;
     })}
 
-    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onUploadSlip={function(){}} isAdmin={false}/>}
+    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onUploadSlip={function(){}} isAdmin={false} onUpdateFlash={function(){}}/>}
   </div>;
 }
 
