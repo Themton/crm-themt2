@@ -27,7 +27,7 @@ textarea:focus,input:focus,select:focus{border-color:#fbbf24!important;box-shado
 <div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1a1409,#92400e)"><div style="text-align:center;color:#fff"><div style="font-size:18px;font-weight:700">กำลังโหลด...</div></div></div></div>
 <script type="text/babel">
 var {useState,useEffect,useRef} = React;
-var DEFAULT_API = "https://script.google.com/macros/s/AKfycbwhTfL8hiNlLX5oKz1-CWd5-cFmMm23hmegnXGIyA1IADDz9q65yR1wyZShKoQggFqVXQ/exec";
+var DEFAULT_API = "https://script.google.com/macros/s/AKfycbxxXhfjp9P5c1CCl0OSu3PeSEatsdU_fT2mD3lhzQPQ7741oORrM8hPbgLjZwzYkwcTeQ/exec";
 function getApiUrl(){return localStorage.getItem("ps_api")||DEFAULT_API;}
 function setApiUrl(u){localStorage.setItem("ps_api",u);}
 async function api(action,params,body){var base=getApiUrl();if(!base)throw new Error("NO_API");var u=new URL(base);u.searchParams.set("action",action);if(params)Object.keys(params).forEach(function(k){u.searchParams.set(k,params[k]);});var opts=body?{method:"POST",body:JSON.stringify(body),redirect:"follow"}:{redirect:"follow"};var r=await fetch(u.toString(),opts);return await r.json();}
@@ -230,7 +230,8 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   var[dateFrom,setDateFrom]=useState(todayStr());
   var[dateTo,setDateTo]=useState(todayStr());
   var[expandDate,setExpandDate]=useState(null);
-  var[tab,setTab]=useState("orders"); // "orders" | "upsell"
+  var[tab,setTab]=useState("orders");
+  var[viewOrder,setViewOrder]=useState(null);
 
   var sourceOrders=tab==="upsell"?(upsellOrders||[]):(allOrders||[]);
 
@@ -334,7 +335,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         {isOpen&&<div style={{borderTop:"1px solid #e2e8f0"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
             <thead><tr style={{background:"#f8fafc"}}>{["#","เวลา","ลูกค้า","เบอร์","ประเภท","ยอด","พนักงาน","หมายเหตุ"].map(function(h,i){return<th key={i} style={{padding:"8px 12px",textAlign:"left",fontWeight:600,color:"#64748b",fontSize:11,borderBottom:"1px solid #e2e8f0"}}>{h}</th>;})}</tr></thead>
-            <tbody>{day.orders.sort(function(a,b){return String(a.Timestamp||"").localeCompare(String(b.Timestamp||""));}).map(function(o,idx){var isCOD=Number(o.COD||0)>0;return<tr key={o.OrderID} style={{borderBottom:"1px solid #f1f5f9",borderLeft:isCOD?"3px solid #ef4444":"3px solid #10b981"}}>
+            <tbody>{day.orders.sort(function(a,b){return String(a.Timestamp||"").localeCompare(String(b.Timestamp||""));}).map(function(o,idx){var isCOD=Number(o.COD||0)>0;return<tr key={o.OrderID} style={{borderBottom:"1px solid #f1f5f9",borderLeft:isCOD?"3px solid #ef4444":"3px solid #10b981",cursor:"pointer"}} onClick={function(){setViewOrder(o);}} onMouseEnter={function(e){e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>
               <td style={{padding:"8px 12px",fontWeight:700,color:"#d97706",fontSize:11,textAlign:"center",minWidth:28}}>{idx+1}</td>
               <td style={{padding:"8px 12px",fontSize:11}}>{getTime(o.Timestamp)}</td>
               <td style={{padding:"8px 12px",fontWeight:600}}>{o.Name}</td>
@@ -347,6 +348,9 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
           </table>
         </div>}
       </div>;
+    })}
+
+    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onUploadSlip={function(){}} isAdmin={false}/>}
     })}
   </div>;
 }
