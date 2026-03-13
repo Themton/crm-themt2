@@ -8,7 +8,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>if(!window.supabase)document.write('<scr'+'ipt src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"><\/scr'+'ipt>');</script>
 <script src="thai-addr.js"></script>
 <script src="thai_addr.js"></script>
 <style>
@@ -33,13 +34,15 @@ var SUPABASE_URL = localStorage.getItem("sb_url") || "https://sfwbzcrvesbeymvlsx
 var SUPABASE_KEY = localStorage.getItem("sb_key") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmd2J6Y3J2ZXNiZXltdmxzeHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTMzNTgsImV4cCI6MjA4ODkyOTM1OH0.E4Zvq43f0M29hAZzKg78W9HRpthv0I9U37LDo_0Pyvo";
 var sb = null;
 function initSB(){
-  if(SUPABASE_URL && SUPABASE_KEY){
-    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    return true;
-  }
+  try{
+    if(SUPABASE_URL && SUPABASE_KEY && window.supabase){
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      return true;
+    }
+  }catch(e){console.error("initSB error:",e);}
   return false;
 }
-initSB();
+try{initSB();}catch(e){console.error(e);}
 
 /* ===== HELPERS ===== */
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
@@ -62,14 +65,14 @@ function AddrAC({label,value,field,onSelect,onChange}){var[show,setShow]=useStat
 
 /* ===== SUPABASE DATA LAYER ===== */
 function mapRow(r){return{OrderID:r.order_id,Timestamp:r.timestamp,MobileNo:r.mobile_no,Name:r.name,Address:r.address,SubDistrict:r.sub_district,District:r.district,Province:r.province,ZIP:r.zip,CustomerFBLine:r.customer_fb_line,SalesChannel:r.sales_channel,SalesPerson:r.sales_person,SalePrice:r.sale_price,COD:r.cod,Remark:r.remark,SlipURL:r.slip_url};}
-async function dbGetAccounts(){var{data,error}=await sb.from("accounts").select("*");if(error)throw error;return(data||[]).map(function(a){return{username:a.email,password:String(a.password),displayName:a.display_name,role:a.role,active:a.active,canUpsell:a.can_upsell};});}
-async function dbGetOrders(userId){var q=sb.from("orders").select("*").order("timestamp",{ascending:false});if(userId&&userId!=="ALL")q=q.eq("sales_person",userId);var{data,error}=await q;if(error)throw error;return(data||[]).map(mapRow);}
-async function dbGetUpsell(userId){var q=sb.from("upsell").select("*").order("timestamp",{ascending:false});if(userId&&userId!=="ALL")q=q.eq("sales_person",userId);var{data,error}=await q;if(error)throw error;return(data||[]).map(mapRow);}
+async function dbGetAccounts(){if(!sb)return[];var{data,error}=await sb.from("accounts").select("*");if(error){console.error("dbGetAccounts:",error);return[];}return(data||[]).map(function(a){return{username:a.email,password:String(a.password),displayName:a.display_name,role:a.role,active:a.active,canUpsell:a.can_upsell};});}
+async function dbGetOrders(userId){if(!sb)return[];var q=sb.from("orders").select("*").order("timestamp",{ascending:false});if(userId&&userId!=="ALL")q=q.eq("sales_person",userId);var{data,error}=await q;if(error){console.error("dbGetOrders:",error);return[];}return(data||[]).map(mapRow);}
+async function dbGetUpsell(userId){if(!sb)return[];var q=sb.from("upsell").select("*").order("timestamp",{ascending:false});if(userId&&userId!=="ALL")q=q.eq("sales_person",userId);var{data,error}=await q;if(error){console.error("dbGetUpsell:",error);return[];}return(data||[]).map(mapRow);}
 async function dbAddOrder(d,isUpsell){
+  if(!sb)throw new Error("ไม่ได้เชื่อมต่อ Supabase");
   var table=isUpsell?"upsell":"orders";
-  // Generate order ID
-  var{data:seqData}=await sb.rpc("generate_order_id");
-  var oid=seqData||("ORD-"+todayStr().replace(/-/g,"")+"-"+String(Math.floor(Math.random()*9999)).padStart(4,"0"));
+  var oid;
+  try{var{data:seqData,error:seqErr}=await sb.rpc("generate_order_id");if(seqErr||!seqData)throw seqErr||"no data";oid=seqData;}catch(e){oid="ORD-"+todayStr().replace(/-/g,"")+"-"+String(Date.now()).slice(-4);}
   var row={order_id:oid,mobile_no:d.MobileNo,name:d.Name,address:d.Address,sub_district:d.SubDistrict,district:d.District,province:d.Province||"",zip:d.ZIP,customer_fb_line:d.CustomerFBLine||"",sales_channel:"CRM",sales_person:d.SalesPerson,sale_price:Number(d.SalePrice)||0,cod:Number(d.COD)||0,remark:d.Remark||"",slip_url:""};
   var{data,error}=await sb.from(table).insert(row).select();
   if(error)throw error;
