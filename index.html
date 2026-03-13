@@ -294,6 +294,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   var[expandDate,setExpandDate]=useState(null);
   var[tab,setTab]=useState("orders");
   var[viewOrder,setViewOrder]=useState(null);
+  var[activePeriod,setActivePeriod]=useState("");
 
   var sourceOrders=tab==="upsell"?(upsellOrders||[]):(allOrders||[]);
 
@@ -347,9 +348,9 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         <input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13}}/>
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>ถึง</span>
         <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13}}/>
-        <button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>วันนี้</button>
-        <button onClick={function(){var d=new Date();d.setDate(d.getDate()-7);setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));setDateTo(todayStr());}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>7 วัน</button>
-        <button onClick={function(){var d=new Date();setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01");setDateTo(todayStr());}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>เดือนนี้</button>
+        <button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());setActivePeriod("today");}} style={{padding:"7px 14px",borderRadius:8,border:activePeriod==="today"?"2px solid #d97706":"1px solid #e2e8f0",background:activePeriod==="today"?"#fef3c7":"#fff",color:activePeriod==="today"?"#92400e":"#64748b",fontSize:12,fontWeight:activePeriod==="today"?800:600,cursor:"pointer"}}>วันนี้</button>
+        <button onClick={function(){var d=new Date();d.setDate(d.getDate()-7);setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));setDateTo(todayStr());setActivePeriod("7day");}} style={{padding:"7px 14px",borderRadius:8,border:activePeriod==="7day"?"2px solid #d97706":"1px solid #e2e8f0",background:activePeriod==="7day"?"#fef3c7":"#fff",color:activePeriod==="7day"?"#92400e":"#64748b",fontSize:12,fontWeight:activePeriod==="7day"?800:600,cursor:"pointer"}}>7 วัน</button>
+        <button onClick={function(){var d=new Date();setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01");setDateTo(todayStr());setActivePeriod("month");}} style={{padding:"7px 14px",borderRadius:8,border:activePeriod==="month"?"2px solid #d97706":"1px solid #e2e8f0",background:activePeriod==="month"?"#fef3c7":"#fff",color:activePeriod==="month"?"#92400e":"#64748b",fontSize:12,fontWeight:activePeriod==="month"?800:600,cursor:"pointer"}}>เดือนนี้</button>
       </div>
       {/* เลือกพนักงาน */}
       {isAdmin&&<div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
