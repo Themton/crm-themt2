@@ -33,7 +33,7 @@ var SUPABASE_KEY = localStorage.getItem("sb_key") || "eyJhbGciOiJIUzI1NiIsInR5cC
 var sbReady = !!(SUPABASE_URL && SUPABASE_KEY);
 
 // Google Sheet Sync (ใส่ URL Apps Script ที่นี่)
-var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbwPkWkyNPQNto8QRmKnAv7gxbjorD-eQX_vqDHQcxjOlbtdeWKptxxZWfuwMXsqZ084/exec";
+var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbz7ntk6PHNWZdssflhXpzUNxzW_PyMDwmgqCknrgul5VqaHRHiRZopx3y8nAQCn6JWfKw/exec";
 async function syncToSheet(action,data){
   if(!SHEET_URL)return;
   try{
@@ -114,8 +114,8 @@ async function dbAddOrder(d,isUpsell){
   return{orderId:oid};
 }
 async function dbDeleteOrder(oid){await sbFetch("orders?order_id=eq."+encodeURIComponent(oid),{method:"DELETE"});await sbFetch("upsell?order_id=eq."+encodeURIComponent(oid),{method:"DELETE"});
-  // ลบจาก Sheet — ใช้ GET + img tag (เสถียรที่สุด ไม่มี CORS)
-  if(SHEET_URL){try{var img=new Image();img.src=SHEET_URL+"?action=deleteOrder&orderId="+encodeURIComponent(oid);setTimeout(function(){img=null;},10000);}catch(e){}}
+  // ลบจาก Sheet
+  syncToSheet("deleteOrder",{OrderID:oid});
 }
 async function dbUploadSlip(orderId,base64){
   var parts=base64.split(",");var mime=parts[0].match(/:(.*?);/)[1];var raw=atob(parts[1]);var arr=new Uint8Array(raw.length);for(var i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
