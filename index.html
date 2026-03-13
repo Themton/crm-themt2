@@ -33,12 +33,18 @@ var SUPABASE_KEY = localStorage.getItem("sb_key") || "eyJhbGciOiJIUzI1NiIsInR5cC
 var sbReady = !!(SUPABASE_URL && SUPABASE_KEY);
 
 // Google Sheet Sync (ใส่ URL Apps Script ที่นี่)
-var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbxSFlP7ISBMun_30OgUtt9yqj_kA8PlUP0GHxhroI_a2tthM3R6dre9UlKZAqIvaEU-Gg/exec";
+var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbzpNnDiT76hT6xB8PjoE-Gu63tC5lQ5KtthyUFr4Up0Z5ADSTGePvJulTjU7b1ODa9N/exec";
 async function syncToSheet(action,data){
   if(!SHEET_URL)return;
   try{
     var u=new URL(SHEET_URL);u.searchParams.set("action",action);
-    await fetch(u.toString(),{method:"POST",body:JSON.stringify(data),redirect:"follow"});
+    // ส่งแบบ text/plain เพื่อหลีก CORS preflight + no-cors เพราะ Apps Script redirect
+    fetch(u.toString(),{
+      method:"POST",
+      headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify(data),
+      mode:"no-cors"
+    }).catch(function(e){console.warn("Sheet:",e);});
   }catch(e){console.warn("Sheet sync:",e);}
 }
 
