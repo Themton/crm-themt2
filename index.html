@@ -485,15 +485,54 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
 }
 
 
-function TeamPage({accounts,onAdd,onToggle,onSaveUpsellBatch,onDel,onResetPw,onEditAcc}){var[show,setShow]=useState(false);var[nf,setNf]=useState({username:"",displayName:"",password:"",role:"user"});var[resetId,setResetId]=useState(null);var[newPw,setNewPw]=useState("");var[editAcc,setEditAcc]=useState(null);var[editSaving,setEditSaving]=useState(false);var[upsellEdit,setUpsellEdit]=useState(null);var[saving,setSaving]=useState(false);var[showPw,setShowPw]=useState(false);
+function TeamPage({accounts,onAdd,onToggle,onSaveUpsellBatch,onDel,onResetPw,onEditAcc}){var[show,setShow]=useState(false);var[nf,setNf]=useState({username:"",displayName:"",password:"",role:"user"});var[resetId,setResetId]=useState(null);var[newPw,setNewPw]=useState("");var[editAcc,setEditAcc]=useState(null);var[editSaving,setEditSaving]=useState(false);var[upsellEdit,setUpsellEdit]=useState(null);var[saving,setSaving]=useState(false);var[showPw,setShowPw]=useState(false);var[bulkMode,setBulkMode]=useState(false);var[bulkText,setBulkText]=useState("");var[bulkAdding,setBulkAdding]=useState(false);
   function handleAdd(){if(!nf.username||!nf.displayName||!nf.password){alert("กรอกให้ครบ");return;}onAdd({...nf,active:true}).then(function(ok){if(ok){setNf({username:"",displayName:"",password:"",role:"user"});setShow(false);}});}
+  async function handleBulkAdd(){
+    var lines=bulkText.split("\n").map(function(l){return l.trim();}).filter(Boolean);
+    if(lines.length===0){alert("ไม่มีข้อมูล");return;}
+    if(lines.length>50){alert("สูงสุด 50 คนต่อครั้ง (มี "+lines.length+" บรรทัด)");return;}
+    var users=[];var errors=[];
+    for(var i=0;i<lines.length;i++){
+      var parts=lines[i].split(/[,\t|]+/).map(function(p){return p.trim();});
+      if(parts.length<3){errors.push("บรรทัด "+(i+1)+": ข้อมูลไม่ครบ (ต้องมี email, ชื่อ, password)");continue;}
+      users.push({username:parts[0],displayName:parts[1],password:parts[2],role:parts[3]||"user",active:true});
+    }
+    if(errors.length>0&&users.length===0){alert("พบปัญหา:\n"+errors.join("\n"));return;}
+    if(errors.length>0&&!confirm("พบปัญหา "+errors.length+" บรรทัด:\n"+errors.slice(0,5).join("\n")+(errors.length>5?"\n...":"")+ "\n\nเพิ่ม "+users.length+" คนที่ถูกต้อง?"))return;
+    if(errors.length===0&&!confirm("เพิ่ม "+users.length+" คน?"))return;
+    setBulkAdding(true);
+    var ok=0,fail=0,failNames=[];
+    for(var j=0;j<users.length;j++){
+      try{var res=await onAdd(users[j]);if(res)ok++;else{fail++;failNames.push(users[j].displayName);}}catch(e){fail++;failNames.push(users[j].displayName);}
+    }
+    setBulkAdding(false);
+    var msg="✅ เพิ่มสำเร็จ "+ok+" คน";
+    if(fail>0)msg+="\n❌ ผิดพลาด "+fail+" คน: "+failNames.join(", ");
+    alert(msg);
+    if(ok>0){setBulkText("");setBulkMode(false);}
+  }
   function startUE(){var c=[];accounts.forEach(function(a){if(a.canUpsell)c.push(a.username);});setUpsellEdit(c);}
   function toggleUE(u){setUpsellEdit(function(p){return p.indexOf(u)>=0?p.filter(function(x){return x!==u;}):p.concat([u]);});}
   function saveUE(){setSaving(true);onSaveUpsellBatch(upsellEdit).then(function(){setSaving(false);setUpsellEdit(null);});}
   return<div><div style={S.pageHeader}><h1 style={S.pageTitle}>👥 พนักงาน</h1></div>
     {resetId&&<div style={S.modalOverlay} onClick={function(){setResetId(null);}}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:380}} onClick={function(e){e.stopPropagation();}}><h3 style={{margin:"0 0 14px",fontWeight:700,fontSize:15}}>🔑 รีเซ็ต Password</h3><div style={{position:"relative",marginBottom:14}}><input type={showPw?"text":"password"} value={newPw} onChange={function(e){setNewPw(e.target.value);}} placeholder="Password ใหม่" style={{...S.pInput,paddingRight:40}}/><button onClick={function(){setShowPw(!showPw);}} type="button" style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#94a3b8",padding:4}}>{showPw?"🙈":"👁"}</button></div><div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><button style={S.cancelBtn} onClick={function(){setResetId(null);}}>ยกเลิก</button><button style={S.submitBtn} onClick={function(){if(newPw.length<4){alert("4+ ตัว");return;}onResetPw(resetId,newPw);setResetId(null);setNewPw("");}}>บันทึก</button></div></div></div>}
     {editAcc&&<div style={S.modalOverlay} onClick={function(){setEditAcc(null);}}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:400}} onClick={function(e){e.stopPropagation();}}><h3 style={{margin:"0 0 16px",fontWeight:700,fontSize:15}}>✏️ แก้ไขบัญชี</h3><div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}><div><label style={S.fLabel}>Email</label><input value={editAcc.username} onChange={function(e){setEditAcc({...editAcc,username:e.target.value});}} style={S.pInput}/></div><div><label style={S.fLabel}>ชื่อ</label><input value={editAcc.displayName} onChange={function(e){setEditAcc({...editAcc,displayName:e.target.value});}} style={S.pInput}/></div><div><label style={S.fLabel}>บทบาท</label><select value={editAcc.role} onChange={function(e){setEditAcc({...editAcc,role:e.target.value});}} style={S.pInput}><option value="user">พนักงาน</option><option value="admin">แอดมิน</option></select></div></div><div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><button style={S.cancelBtn} onClick={function(){setEditAcc(null);}}>ยกเลิก</button><button style={S.submitBtn} disabled={editSaving} onClick={async function(){setEditSaving(true);var ok=await onEditAcc(editAcc.oldUsername,editAcc);setEditSaving(false);if(ok)setEditAcc(null);}}>บันทึก</button></div></div></div>}
-    <div style={{background:"#fff",borderRadius:10,padding:20,marginBottom:16,border:"1px solid #e2e8f0"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{margin:0,fontSize:14,fontWeight:700}}>บัญชี {accounts.length} คน</h3><button onClick={function(){setShow(!show);}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:show?"#fef2f2":"#f8fafc",color:show?"#ef4444":"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>{show?"✕":"＋ เพิ่ม"}</button></div>
+    <div style={{background:"#fff",borderRadius:10,padding:20,marginBottom:16,border:"1px solid #e2e8f0"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{margin:0,fontSize:14,fontWeight:700}}>บัญชี {accounts.length} คน</h3><div style={{display:"flex",gap:6}}><button onClick={function(){setBulkMode(!bulkMode);setShow(false);}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:bulkMode?"#fef3c7":"#f8fafc",color:bulkMode?"#92400e":"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>{bulkMode?"✕":"📋 เพิ่มหลายคน"}</button><button onClick={function(){setShow(!show);setBulkMode(false);}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:show?"#fef2f2":"#f8fafc",color:show?"#ef4444":"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>{show?"✕":"＋ เพิ่ม"}</button></div></div>
+      {bulkMode&&<div style={{padding:14,marginBottom:12,borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a"}}>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"#92400e"}}>📋 เพิ่มหลายคน (สูงสุด 50 คน)</div>
+        <div style={{fontSize:11,color:"#94a3b8",marginBottom:8}}>วางข้อมูลแต่ละบรรทัด รูปแบบ: <b>email, ชื่อ, password, role</b> (role ไม่ใส่ = user)</div>
+        <div style={{fontSize:11,color:"#64748b",marginBottom:8,background:"#fff",padding:8,borderRadius:6,fontFamily:"'JetBrains Mono',monospace",lineHeight:1.6}}>
+          ตัวอย่าง:<br/>
+          kung@themt.com, กุ้ง, 1234<br/>
+          poo@themt.com, ปู, 1234<br/>
+          muay@themt.com, หมวย, 1234, admin
+        </div>
+        <textarea value={bulkText} onChange={function(e){setBulkText(e.target.value);}} placeholder={"email, ชื่อ, password\nemail, ชื่อ, password\n..."} rows={8} style={{width:"100%",padding:10,borderRadius:8,border:"1.5px solid #fde68a",fontSize:12,lineHeight:1.8,fontFamily:"'JetBrains Mono','Noto Sans Thai',monospace",resize:"vertical",outline:"none",boxSizing:"border-box",background:"#fff"}}/>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}}>
+          <span style={{fontSize:11,color:"#94a3b8"}}>{bulkText.split("\n").filter(function(l){return l.trim();}).length} บรรทัด</span>
+          <button onClick={handleBulkAdd} disabled={bulkAdding} style={{padding:"9px 20px",borderRadius:8,border:"none",background:bulkAdding?"#94a3b8":"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontSize:13,fontWeight:700,cursor:bulkAdding?"not-allowed":"pointer"}}>{bulkAdding?"⏳ กำลังเพิ่ม...":"✅ เพิ่มทั้งหมด"}</button>
+        </div>
+      </div>}
       {show&&<div style={{padding:12,marginBottom:12,borderRadius:8,background:"#f8fafc",border:"1px solid #e2e8f0"}}><div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,alignItems:"end"}}><div><label style={S.fLabel}>Email</label><input value={nf.username} onChange={function(e){setNf({...nf,username:e.target.value});}} type="email" style={S.pInput}/></div><div><label style={S.fLabel}>ชื่อ</label><input value={nf.displayName} onChange={function(e){setNf({...nf,displayName:e.target.value});}} style={S.pInput}/></div><div><label style={S.fLabel}>Password</label><div style={{position:"relative"}}><input type={showPw?"text":"password"} value={nf.password} onChange={function(e){setNf({...nf,password:e.target.value});}} style={{...S.pInput,paddingRight:40}}/><button onClick={function(){setShowPw(!showPw);}} type="button" style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#94a3b8",padding:4}}>{showPw?"🙈":"👁"}</button></div></div><button onClick={handleAdd} style={{padding:"9px 14px",borderRadius:8,border:"none",background:"#d97706",color:"#fff",fontSize:12,fontWeight:600,cursor:"pointer"}}>เพิ่ม</button></div></div>}
       <div style={{borderTop:"1px solid #e2e8f0"}}>{accounts.map(function(a){var isAdm=a.role==="admin";return<div key={a.username} style={{display:"flex",alignItems:"center",padding:"10px 12px",borderBottom:"1px solid #f1f5f9",gap:8,opacity:a.active?1:.5}}><div style={{flex:1}}><span style={{fontWeight:600,fontSize:13}}>{a.displayName}</span> <span style={{fontSize:10,color:isAdm?"#92400e":"#64748b",background:isAdm?"#fef3c7":"#f1f5f9",padding:"1px 5px",borderRadius:3}}>{isAdm?"แอดมิน":"พนักงาน"}</span><div style={{fontSize:11,color:"#94a3b8"}}>{a.username}</div></div>
         <button onClick={function(){setEditAcc({oldUsername:a.username,username:a.username,displayName:a.displayName||"",role:a.role});}} style={{...S.sm,background:"#f8fafc",color:"#64748b",border:"1px solid #e2e8f0"}}>แก้ไข</button><button onClick={function(){setResetId(a.username);}} style={{...S.sm,background:"#f8fafc",color:"#64748b",border:"1px solid #e2e8f0"}}>🔑</button>
