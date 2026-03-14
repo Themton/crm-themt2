@@ -432,6 +432,49 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       {[{l:tab==="upsell"?"Upsell":"ออเดอร์",v:tO,c:tab==="upsell"?"#ea580c":"#475569"},{l:"ยอดขาย",v:"฿"+tS.toLocaleString(),c:"#475569"},{l:"COD",v:"฿"+tC.toLocaleString(),c:"#ef4444"},{l:"โอนเงิน",v:"฿"+tT.toLocaleString(),c:"#10b981"}].map(function(s,i){return<div key={i} style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"3px solid "+s.c}}><div style={{fontSize:18,fontWeight:800}}>{s.v}</div><div style={{fontSize:11,color:"#94a3b8"}}>{s.l}</div></div>;})}
     </div>
 
+    {/* กราฟแท่งยอดขายรายวัน */}
+    {days.length>1&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>📊 ยอดขายรายวัน</div>
+      <div style={{display:"flex",alignItems:"flex-end",gap:4,height:160,padding:"0 4px"}}>
+        {(function(){var maxS=Math.max.apply(null,days.map(function(d){return d.sales;}))||1;return days.slice().sort(function(a,b){return a.date>b.date?1:-1;}).map(function(d){var h=Math.max(d.sales/maxS*140,4);return<div key={d.date} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0}}>
+          <span style={{fontSize:9,fontWeight:700,color:"#d97706"}}>฿{d.sales>=1000?(Math.round(d.sales/1000)+"k"):d.sales}</span>
+          <div style={{width:"100%",maxWidth:40,borderRadius:"4px 4px 0 0",background:d.sales===maxS?"linear-gradient(180deg,#f59e0b,#d97706)":"linear-gradient(180deg,#fde68a,#fbbf24)",height:h,transition:"height .3s"}}/>
+          <span style={{fontSize:8,color:"#94a3b8",whiteSpace:"nowrap"}}>{d.date.substring(5)}</span>
+          <span style={{fontSize:8,color:"#64748b",fontWeight:600}}>{d.orders.length}</span>
+        </div>;});})()}
+      </div>
+      <div style={{textAlign:"center",fontSize:10,color:"#94a3b8",marginTop:6}}>วันที่ / จำนวนออเดอร์</div>
+    </div>}
+
+    {/* 🏆 TOP SALE */}
+    {selPerson==="ALL"&&personList.length>0&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>🏆 TOP SALE {tab==="upsell"?"(Upsell)":""}</div>
+      {personList.map(function(p,i){
+        var maxSales=personList[0].sales||1;
+        var barW=Math.max(p.sales/maxSales*100,5);
+        var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
+        var bg=i===0?"linear-gradient(90deg,#fef3c7,#fde68a)":i===1?"linear-gradient(90deg,#f1f5f9,#e2e8f0)":i===2?"linear-gradient(90deg,#fff7ed,#fed7aa)":"#f8fafc";
+        return<div key={p.name} style={{marginBottom:8,borderRadius:8,overflow:"hidden",border:i===0?"2px solid #fbbf24":"1px solid #e2e8f0"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:bg}}>
+            <span style={{fontSize:18,width:28,textAlign:"center"}}>{medal||(i+1)}</span>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                <span style={{fontWeight:700,fontSize:14}}>{p.name}</span>
+                <span style={{fontWeight:800,fontSize:16,color:"#d97706"}}>฿{p.sales.toLocaleString()}</span>
+              </div>
+              <div style={{display:"flex",gap:12,fontSize:11,color:"#64748b",marginBottom:4}}>
+                <span>{p.count} ออเดอร์</span>
+                <span>เฉลี่ย ฿{p.count>0?Math.round(p.sales/p.count).toLocaleString():0}</span>
+              </div>
+              <div style={{height:6,background:"#e2e8f0",borderRadius:3,overflow:"hidden"}}>
+                <div style={{height:"100%",width:barW+"%",background:i===0?"linear-gradient(90deg,#f59e0b,#d97706)":i===1?"#94a3b8":"#fb923c",borderRadius:3,transition:"width .5s"}}/>
+              </div>
+            </div>
+          </div>
+        </div>;
+      })}
+    </div>}
+
     {/* สรุปรายคน */}
     {selPerson==="ALL"&&personList.length>1&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
       <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>👤 สรุปรายคน {tab==="upsell"?"(Upsell)":""}</div>
