@@ -37,23 +37,20 @@ var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/
 async function syncToSheet(action,data){
   if(!SHEET_URL)return;
   try{
-    var frameId="sf_"+Date.now();
-    var iframe=document.createElement("iframe");
-    iframe.name=frameId;iframe.style.display="none";
-    document.body.appendChild(iframe);
-    var form=document.createElement("form");
-    form.method="POST";form.action=SHEET_URL+"?action="+action;form.target=frameId;
-    // ส่งแต่ละ field แยก — ไม่ใช้ JSON (ป้องกัน payload หายตอน redirect)
+    // สร้าง URL params — ส่งแต่ละ field แยก (GET เสถียรที่สุดกับ Apps Script)
+    var params="action="+encodeURIComponent(action);
     var keys=Object.keys(data||{});
     for(var i=0;i<keys.length;i++){
-      var input=document.createElement("input");
-      input.type="hidden";input.name=keys[i];input.value=String(data[keys[i]]||"");
-      form.appendChild(input);
+      params+="&"+encodeURIComponent(keys[i])+"="+encodeURIComponent(data[keys[i]]||"");
     }
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-    setTimeout(function(){try{document.body.removeChild(iframe);}catch(e){}},15000);
+    var url=SHEET_URL+"?"+params;
+    // ถ้า URL ยาวเกิน 2000 → ใช้ fetch POST แทน
+    if(url.length>2000){
+      fetch(SHEET_URL+"?action="+action,{method:"POST",mode:"no-cors",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)}).catch(function(){});
+    }else{
+      var img=new Image();img.src=url;
+      setTimeout(function(){img=null;},15000);
+    }
   }catch(e){console.warn("Sheet sync:",e);}
 }
 
