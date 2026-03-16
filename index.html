@@ -3,7 +3,21 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
 <title>SYSTEM TELESALE THE MT</title>
+<script>
+// Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
+var APP_VERSION = "20260316v3";
+var lastVer = localStorage.getItem("app_ver");
+if(lastVer && lastVer !== APP_VERSION){
+  localStorage.setItem("app_ver", APP_VERSION);
+  location.reload(true);
+}else{
+  localStorage.setItem("app_ver", APP_VERSION);
+}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
