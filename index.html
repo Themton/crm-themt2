@@ -33,7 +33,7 @@ var SUPABASE_KEY = localStorage.getItem("sb_key") || "eyJhbGciOiJIUzI1NiIsInR5cC
 var sbReady = !!(SUPABASE_URL && SUPABASE_KEY);
 
 // Google Sheet Sync (ใส่ URL Apps Script ที่นี่)
-var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbwFrXZ4wwt00WMzxsCHraXhTolGs9uz5K1UgP5jnrJxUgbk-c1V2Xn_lW5VIOhPzGwMiA/exec";
+var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbyNVDpnSYLimyqHtlXlWBfLeKxy2-cEMaMv0b1VDEsN-hr7iJJ8_OSwQtn5sD2r5ImhJA/exec";
 async function syncToSheet(action,data){
   if(!SHEET_URL)return;
   try{
