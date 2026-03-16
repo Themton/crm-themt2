@@ -33,20 +33,23 @@ var SUPABASE_KEY = localStorage.getItem("sb_key") || "eyJhbGciOiJIUzI1NiIsInR5cC
 var sbReady = !!(SUPABASE_URL && SUPABASE_KEY);
 
 // Google Sheet Sync (ใส่ URL Apps Script ที่นี่)
-var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbxgckv2t3B4iDnu6WqIcZYvYTcuD_YWpp8C8e6iFkQAJIWST-QQlfG8CZcb5QB3r80tdw/exec";
+var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbxJT4ebxrE19a7-ODGXLG2EYzD7pgUEflwmweMQKohROaunyRiPNV-u7OgeiRWUdDHhaQ/exec";
 async function syncToSheet(action,data){
   if(!SHEET_URL)return;
   try{
-    // ใช้ hidden form + iframe — วิธีเดียวที่ทำงานกับ Apps Script redirect ได้ 100%
     var frameId="sf_"+Date.now();
     var iframe=document.createElement("iframe");
     iframe.name=frameId;iframe.style.display="none";
     document.body.appendChild(iframe);
     var form=document.createElement("form");
     form.method="POST";form.action=SHEET_URL+"?action="+action;form.target=frameId;
-    var input=document.createElement("input");
-    input.type="hidden";input.name="payload";input.value=JSON.stringify(data);
-    form.appendChild(input);
+    // ส่งแต่ละ field แยก — ไม่ใช้ JSON (ป้องกัน payload หายตอน redirect)
+    var keys=Object.keys(data||{});
+    for(var i=0;i<keys.length;i++){
+      var input=document.createElement("input");
+      input.type="hidden";input.name=keys[i];input.value=String(data[keys[i]]||"");
+      form.appendChild(input);
+    }
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
