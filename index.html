@@ -81,8 +81,8 @@ async function sbUpload(bucket,path,blob,contentType){
 
 /* ===== HELPERS ===== */
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
-function getTime(ts){if(!ts)return"";var s=String(ts);var m=s.match(/T(\d{2}:\d{2}:\d{2})/);if(m)return m[1];var sp=s.split(" ");return sp[1]||"";}
-function getDate(ts){return String(ts||"").substring(0,10);}
+function getTime(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime())){var s=String(ts);var m=s.match(/T(\d{2}:\d{2}:\d{2})/);return m?m[1]:s.split(" ")[1]||"";}return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}
+function getDate(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime()))return String(ts||"").substring(0,10);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function lookupZIP(sub,dist){if(typeof TH==="undefined")return"";if(sub&&dist){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub&&TH[i][1]===dist)return String(TH[i][3]);}}if(sub){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub&&(!dist||TH[i][1].indexOf(dist)>=0||dist.indexOf(TH[i][1])>=0))return String(TH[i][3]);}for(var i=0;i<TH.length;i++){if(TH[i][0]===sub)return String(TH[i][3]);}}if(dist){for(var i=0;i<TH.length;i++){if(TH[i][1]===dist)return String(TH[i][3]);}}return"";}
 function lookupProvince(sub,dist){if(typeof TH==="undefined")return"";if(sub&&dist){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub&&TH[i][1]===dist)return TH[i][2];}}if(sub){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub)return TH[i][2];}}if(dist){for(var i=0;i<TH.length;i++){if(TH[i][1]===dist)return TH[i][2];}}return"";}
 // ค้นหาตำบล+อำเภอ จาก TH database — แม้ไม่มี ต./อ. prefix
