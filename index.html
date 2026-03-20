@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260318v4";
+var APP_VERSION = "20260318v5";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -247,7 +247,7 @@ function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setSh
   useEffect(function(){setPg(1);},[search,dateFrom,dateTo]);
   var totalPages=Math.max(1,Math.ceil(filtered.length/perPage));var pageOrders=filtered.slice((pg-1)*perPage,(pg-1)*perPage+perPage);
   var personMap={};orders.forEach(function(o){var p=o.SalesPerson||"?";if(!personMap[p])personMap[p]={name:p,count:0,sales:0,cod:0,transfer:0,first:"99:99",last:"00:00"};personMap[p].count++;personMap[p].sales+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)personMap[p].cod+=c;else personMap[p].transfer+=Number(o.SalePrice)||0;var tm=getTime(o.Timestamp);if(tm&&tm<personMap[p].first)personMap[p].first=tm;if(tm&&tm>personMap[p].last)personMap[p].last=tm;});
-  var persons=Object.values(personMap).sort(function(a,b){return b.count-a.count;});
+  var persons=Object.values(personMap).sort(function(a,b){return b.sales-a.sales;});
   var tS=0,tC=0,tT=0;orders.forEach(function(o){tS+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)tC+=c;else tT+=Number(o.SalePrice)||0;});
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><h1 style={{fontSize:22,fontWeight:800,margin:0}}>📋 ออเดอร์</h1><input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/><span style={{fontSize:12,color:"#94a3b8"}}>ถึง</span><input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/><button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:dateFrom===dateTo&&dateFrom===todayStr()?"2px solid #d97706":"1px solid #e2e8f0",background:dateFrom===dateTo&&dateFrom===todayStr()?"#fef3c7":"#fff",color:dateFrom===dateTo&&dateFrom===todayStr()?"#92400e":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>วันนี้</button><button onClick={function(){var d=new Date();d.setDate(d.getDate()-7);setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>7 วัน</button><button onClick={function(){var d=new Date();setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01");setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>เดือนนี้</button></div><button style={S.addBtn} onClick={function(){setShowForm(!showForm);}}>{showForm?"✕ ปิด":"＋ สร้าง"}</button></div>
@@ -274,7 +274,7 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,user,o
   var tS=0,tC=0,tT=0;dayOrders.forEach(function(o){tS+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)tC+=c;else tT+=Number(o.SalePrice)||0;});
 
   var personMap={};dayOrders.forEach(function(o){var p=o.SalesPerson||"?";if(!personMap[p])personMap[p]={name:p,count:0,sales:0};personMap[p].count++;personMap[p].sales+=Number(o.SalePrice)||0;});
-  var persons=Object.values(personMap).sort(function(a,b){return b.count-a.count;});
+  var persons=Object.values(personMap).sort(function(a,b){return b.sales-a.sales;});
 
   return<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
