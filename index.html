@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260318v3";
+var APP_VERSION = "20260318v4";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -453,7 +453,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
     if(!personSummary[p])personSummary[p]={name:p,count:0,sales:0};
     personSummary[p].count++;personSummary[p].sales+=Number(o.SalePrice)||0;
   });
-  var personList=Object.values(personSummary).sort(function(a,b){return b.count-a.count;});
+  var personList=Object.values(personSummary).sort(function(a,b){return b.sales-a.sales;});
 
   // รายชื่อพนักงานทั้งหมด (จาก accounts)
   var staffNames=[];
