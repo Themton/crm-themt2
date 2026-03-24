@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260324v5";
+var APP_VERSION = "20260324v6";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -738,16 +738,21 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         </div>
         {isOpen&&<div style={{borderTop:"1px solid #e2e8f0"}}>
           <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
-            <thead><tr style={{background:"#f8fafc"}}>{["#","เวลา","ลูกค้า","เบอร์","ประเภท","ยอด","พนักงาน","หมายเหตุ"].map(function(h,i){return<th key={i} style={{padding:"8px 12px",textAlign:"left",fontWeight:600,color:"#64748b",fontSize:11,borderBottom:"1px solid #e2e8f0"}}>{h}</th>;})}</tr></thead>
-            <tbody>{day.orders.sort(function(a,b){return String(a.Timestamp||"").localeCompare(String(b.Timestamp||""));}).map(function(o,idx){var isCOD=Number(o.COD||0)>0;return<tr key={o.OrderID} style={{borderBottom:"1px solid #f1f5f9",borderLeft:isCOD?"3px solid #ef4444":"3px solid #10b981",cursor:"pointer"}} onClick={function(){setViewOrder(o);}} onMouseEnter={function(e){e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>
+            <thead><tr style={{background:"#f8fafc"}}>{(tab!=="orders"?["#","เวลา","ลูกค้า","เบอร์","ราคาก่อน","ยอด","ส่วนต่าง","ประเภท","พนักงาน","หมายเหตุ"]:["#","เวลา","ลูกค้า","เบอร์","ประเภท","ยอด","พนักงาน","หมายเหตุ"]).map(function(h,i){return<th key={i} style={{padding:"8px 12px",textAlign:"left",fontWeight:600,color:"#64748b",fontSize:11,borderBottom:"1px solid #e2e8f0",background:h==="ราคาก่อน"||h==="ส่วนต่าง"?"#eff6ff":""}}>{h}</th>;})}</tr></thead>
+            <tbody>{day.orders.sort(function(a,b){return String(a.Timestamp||"").localeCompare(String(b.Timestamp||""));}).map(function(o,idx){var isCOD=Number(o.COD||0)>0;
+              var rm=String(o.Remark||"");var prevMatch=rm.match(/\[PREV:(\d+)\]\s*/);var prevPrice=prevMatch?Number(prevMatch[1]):0;var cleanRemark=prevMatch?rm.replace(prevMatch[0],""):rm;var curPrice=Number(o.SalePrice||0);var diff=prevPrice>0?curPrice-prevPrice:0;
+              return<tr key={o.OrderID} style={{borderBottom:"1px solid #f1f5f9",borderLeft:isCOD?"3px solid #ef4444":"3px solid #10b981",cursor:"pointer"}} onClick={function(){setViewOrder(o);}} onMouseEnter={function(e){e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>
               <td style={{padding:"8px 12px",fontWeight:700,color:"#d97706",fontSize:11,textAlign:"center",minWidth:28}}>{idx+1}</td>
               <td style={{padding:"8px 12px",fontSize:11}}>{getTime(o.Timestamp)}</td>
               <td style={{padding:"8px 12px",fontWeight:600}}>{o.Name}</td>
               <td style={{padding:"8px 12px"}}>{o.MobileNo}</td>
-              <td style={{padding:"8px 12px"}}><span style={{padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span></td>
-              <td style={{padding:"8px 12px",fontWeight:700}}>฿{Number(o.SalePrice||o.COD||0).toLocaleString()}</td>
+              {tab!=="orders"&&<td style={{padding:"8px 12px",fontWeight:700,color:"#6366f1",background:"#eff6ff"}}>{prevPrice>0?"฿"+prevPrice.toLocaleString():"—"}</td>}
+              {tab==="orders"&&<td style={{padding:"8px 12px"}}><span style={{padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span></td>}
+              <td style={{padding:"8px 12px",fontWeight:700}}>฿{curPrice.toLocaleString()}</td>
+              {tab!=="orders"&&<td style={{padding:"8px 12px",fontWeight:700,background:"#eff6ff",color:diff>0?"#10b981":diff<0?"#ef4444":"#94a3b8"}}>{prevPrice>0?(diff>0?"+฿":"฿")+diff.toLocaleString():"—"}</td>}
+              {tab!=="orders"&&<td style={{padding:"8px 12px"}}><span style={{padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span></td>}
               <td style={{padding:"8px 12px",fontSize:11}}>{o.SalesPerson}</td>
-              <td style={{padding:"8px 12px",color:"#64748b",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.Remark}</td>
+              <td style={{padding:"8px 12px",color:"#64748b",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{cleanRemark}</td>
             </tr>;})}</tbody>
           </table>
         </div>}
