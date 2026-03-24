@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260324v4";
+var APP_VERSION = "20260324v5";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -499,10 +499,11 @@ function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders}){
 
 function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin}){var o=order;var fileRef=useRef(null);var[viewSlip,setViewSlip]=useState(false);
   var[editing,setEditing]=useState(false);
-  var[ef,setEf]=useState({MobileNo:o.MobileNo||"",Name:o.Name||"",Address:o.Address||"",SubDistrict:o.SubDistrict||"",District:o.District||"",Province:o.Province||"",ZIP:o.ZIP||"",SalePrice:String(o.SalePrice||""),COD:String(o.COD||""),Remark:o.Remark||""});
+  var rmInit=String(o.Remark||"");var prevInit=rmInit.match(/\[PREV:(\d+)\]\s*/);
+  var[ef,setEf]=useState({MobileNo:o.MobileNo||"",Name:o.Name||"",Address:o.Address||"",SubDistrict:o.SubDistrict||"",District:o.District||"",Province:o.Province||"",ZIP:o.ZIP||"",SalePrice:String(o.SalePrice||""),COD:String(o.COD||""),Remark:prevInit?rmInit.replace(prevInit[0],""):rmInit,PrevPromo:prevInit?prevInit[1]:""});
   var[editSaving,setEditSaving]=useState(false);
   function handleFile(e){var file=e.target.files&&e.target.files[0];if(!file)return;if(file.size>5*1024*1024){alert("ไฟล์ใหญ่เกิน 5MB");return;}var reader=new FileReader();reader.onload=function(ev){onUploadSlip(o.OrderID,ev.target.result);};reader.readAsDataURL(file);}
-  async function saveEdit(){if(!ef.MobileNo||!ef.Name){alert("กรอกเบอร์และชื่อ");return;}setEditSaving(true);if(onEdit)await onEdit(o.OrderID,{...ef,SalesPerson:o.SalesPerson||""});setEditSaving(false);setEditing(false);}
+  async function saveEdit(){if(!ef.MobileNo||!ef.Name){alert("กรอกเบอร์และชื่อ");return;}setEditSaving(true);var finalRemark=(ef.PrevPromo?"[PREV:"+ef.PrevPromo+"] ":"")+ef.Remark;if(onEdit)await onEdit(o.OrderID,{...ef,Remark:finalRemark,SalesPerson:o.SalesPerson||""});setEditSaving(false);setEditing(false);}
   if(viewSlip)return<div style={S.modalOverlay} onClick={function(){setViewSlip(false);}}>
     <div style={{position:"relative",maxWidth:"90vw",maxHeight:"90vh"}} onClick={function(e){e.stopPropagation();}}>
       <button onClick={function(){setViewSlip(false);}} style={{position:"absolute",top:-16,right:-16,width:40,height:40,borderRadius:"50%",border:"none",background:"#fff",color:"#1e293b",fontSize:18,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,.2)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>✕</button>
@@ -511,6 +512,8 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin}){var o=or
     </div>
   </div>;
   var editInput=function(label,key,ph){return<div style={{marginBottom:8}}><label style={{fontSize:11,color:"#64748b",fontWeight:600}}>{label}</label><input value={ef[key]||""} onChange={function(e){var n={};for(var k in ef)n[k]=ef[k];n[key]=e.target.value;setEf(n);}} placeholder={ph||""} style={{...S.pInput,fontSize:12}}/></div>;};
+  // parse [PREV:xxx] จาก Remark
+  var rmRaw=String(o.Remark||"");var prevM=rmRaw.match(/\[PREV:(\d+)\]\s*/);var prevPr=prevM?Number(prevM[1]):0;var cleanRm=prevM?rmRaw.replace(prevM[0],""):rmRaw;var curPr=Number(o.SalePrice||0);var diffPr=prevPr>0?curPr-prevPr:0;
   return<div style={S.modalOverlay} onClick={onClose}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
   <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div><div style={{fontSize:11,fontFamily:"'JetBrains Mono'",color:"#d97706",fontWeight:600}}>{o.OrderID}</div><div style={{fontSize:12,color:"#94a3b8"}}>{o.Timestamp} • {o.SalesPerson}</div></div><button onClick={onClose} style={S.closeBtn}>✕</button></div>
   {editing?<div>
@@ -519,6 +522,7 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin}){var o=or
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{editInput("ตำบล","SubDistrict")}{editInput("อำเภอ","District")}</div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{editInput("จังหวัด","Province")}{editInput("รหัส ปณ.","ZIP")}</div>
     {editInput("หมายเหตุ/สินค้า","Remark")}
+    <div style={{marginBottom:8}}><label style={{fontSize:11,color:"#6366f1",fontWeight:700}}>📦 ยอดโปรก่อนหน้า</label><input value={ef.PrevPromo||""} onChange={function(e){var n={};for(var k in ef)n[k]=ef[k];n.PrevPromo=e.target.value.replace(/[^0-9]/g,"");setEf(n);}} placeholder="ยอดเดิม เช่น 399" type="tel" style={{...S.pInput,fontSize:12,borderColor:"#c7d2fe",background:"#eff6ff",width:160,fontWeight:700,textAlign:"center",color:"#6366f1"}}/></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{editInput("ราคาขาย","SalePrice")}{editInput("COD","COD")}</div>
     <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:12}}>
       <button onClick={function(){setEditing(false);}} style={S.cancelBtn}>ยกเลิก</button>
@@ -526,7 +530,7 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin}){var o=or
     </div>
   </div>
   :<div>
-  <div style={{display:"grid",gap:6,fontSize:13}}><div><span style={{color:"#94a3b8"}}>ชื่อ: </span><b>{o.Name}</b></div><div><span style={{color:"#94a3b8"}}>เบอร์: </span>{o.MobileNo}</div><div><span style={{color:"#94a3b8"}}>ที่อยู่: </span>{[o.Address,o.SubDistrict,o.District,o.Province,o.ZIP].filter(Boolean).join(" ")}</div>{o.CustomerFBLine&&<div><span style={{color:"#94a3b8"}}>FB/Line: </span>{o.CustomerFBLine}</div>}<div><span style={{color:"#94a3b8"}}>ราคา: </span><b style={{color:"#d97706"}}>฿{Number(o.SalePrice||0).toLocaleString()}</b></div><div><span style={{color:"#94a3b8"}}>ประเภท: </span>{Number(o.COD||0)>0?<span style={{color:"#ef4444"}}>🔴 COD ฿{Number(o.COD).toLocaleString()}</span>:<span style={{color:"#10b981"}}>🟢 โอนเงิน</span>}</div>{o.Remark&&<div><span style={{color:"#94a3b8"}}>หมายเหตุ: </span>{o.Remark}</div>}</div>
+  <div style={{display:"grid",gap:6,fontSize:13}}><div><span style={{color:"#94a3b8"}}>ชื่อ: </span><b>{o.Name}</b></div><div><span style={{color:"#94a3b8"}}>เบอร์: </span>{o.MobileNo}</div><div><span style={{color:"#94a3b8"}}>ที่อยู่: </span>{[o.Address,o.SubDistrict,o.District,o.Province,o.ZIP].filter(Boolean).join(" ")}</div>{o.CustomerFBLine&&<div><span style={{color:"#94a3b8"}}>FB/Line: </span>{o.CustomerFBLine}</div>}<div><span style={{color:"#94a3b8"}}>ราคา: </span><b style={{color:"#d97706"}}>฿{curPr.toLocaleString()}</b></div>{prevPr>0&&<div style={{padding:8,borderRadius:8,background:"#eff6ff",border:"1px solid #c7d2fe",display:"flex",gap:16,alignItems:"center"}}><div><span style={{color:"#94a3b8",fontSize:11}}>ราคาก่อน: </span><b style={{color:"#6366f1"}}>฿{prevPr.toLocaleString()}</b></div><div><span style={{color:"#94a3b8",fontSize:11}}>ส่วนต่าง: </span><b style={{color:diffPr>0?"#10b981":diffPr<0?"#ef4444":"#94a3b8"}}>{diffPr>0?"+฿":"฿"}{diffPr.toLocaleString()}</b></div></div>}<div><span style={{color:"#94a3b8"}}>ประเภท: </span>{Number(o.COD||0)>0?<span style={{color:"#ef4444"}}>🔴 COD ฿{Number(o.COD).toLocaleString()}</span>:<span style={{color:"#10b981"}}>🟢 โอนเงิน</span>}</div>{cleanRm&&<div><span style={{color:"#94a3b8"}}>หมายเหตุ: </span>{cleanRm}</div>}</div>
   {Number(o.COD||0)===0&&<div style={{marginTop:14}}><input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>{o.SlipURL?<div style={{textAlign:"center"}}><img src={o.SlipURL} alt="slip" onClick={function(){setViewSlip(true);}} style={{maxWidth:"100%",maxHeight:200,borderRadius:10,cursor:"pointer",border:"2px solid #e2e8f0"}}/><div style={{fontSize:10,color:"#94a3b8",marginTop:4}}>กดที่รูปเพื่อขยาย</div><div style={{marginTop:8}}><button onClick={function(){fileRef.current.click();}} style={{...S.sm,background:"#f0fdf4",color:"#059669"}}>🔄 เปลี่ยน</button></div></div>:<button onClick={function(){fileRef.current.click();}} style={{padding:"8px 16px",borderRadius:8,border:"1px dashed #bbf7d0",background:"#f0fdf4",color:"#059669",fontSize:12,fontWeight:600,cursor:"pointer"}}>📎 อัพโหลดสลิป</button>}</div>}
   {isAdmin&&<div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between"}}><button onClick={function(){setEditing(true);}} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #dbeafe",background:"#eff6ff",color:"#2563eb",fontSize:12,fontWeight:600,cursor:"pointer"}}>✏️ แก้ไข</button><button onClick={function(){if(confirm("ลบออเดอร์นี้?"))onDel(o.OrderID);}} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:12,cursor:"pointer"}}>🗑 ลบ</button></div>}
   </div>}
