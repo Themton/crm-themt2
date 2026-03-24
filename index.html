@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260318v9";
+var APP_VERSION = "20260324v3";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -440,7 +440,7 @@ function ProductRank({orders,title}){
     </div>
   </div>;
 }
-function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders}){var[raw,setRaw]=useState("");var[f,setF]=useState({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:""});var[isTransfer,setIsTransfer]=useState(false);var[saving,setSaving]=useState(false);var slipRef=useRef(null);var[slipPreview,setSlipPreview]=useState(null);
+function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders}){var[raw,setRaw]=useState("");var[f,setF]=useState({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});var[isTransfer,setIsTransfer]=useState(false);var[saving,setSaving]=useState(false);var slipRef=useRef(null);var[slipPreview,setSlipPreview]=useState(null);
   // ตรวจเบอร์ซ้ำ 7 วัน
   var[dupWarning,setDupWarning]=useState(null);
   function checkDup(phone){
@@ -461,7 +461,7 @@ function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders}){
   function setAddr(sub,dist,prov,zip){setF(function(p){var n={};for(var x in p)n[x]=p[x];if(sub)n.SubDistrict=sub;if(dist)n.District=dist;if(prov)n.Province=prov;if(zip)n.ZIP=String(zip);return n;});}
   function handleText(t){setRaw(t);if(t.trim().length>8){var r=smartParse(t);if(r){if(!r.ZIP&&(r.SubDistrict||r.District)){var z=lookupZIP(r.SubDistrict,r.District);if(z)r.ZIP=z;}if((r.SubDistrict||r.District)&&!r.Province){var pv=lookupProvince(r.SubDistrict,r.District);if(pv)r.Province=pv;}setF(function(p){var n={};for(var k in p)n[k]=r[k]||p[k];return n;});if(r.COD==="0")setIsTransfer(true);if(r.MobileNo)checkDup(r.MobileNo);}}}
   function submit(){setTried(true);if(dupWarning){alert("🚫 ห้ามลงออเดอร์ซ้ำ!\n\nเบอร์ "+f.MobileNo+" ลงแล้ว "+dupWarning.count+" ครั้ง ภายใน 7 วัน\n\nลูกค้า: "+dupWarning.name+"\nวันที่: "+dupWarning.date+"\nพนักงาน: "+dupWarning.person);return;}var missing=[];if(!f.MobileNo)missing.push("เบอร์โทร");else if(f.MobileNo.length!==10)missing.push("เบอร์ต้อง 10 หลัก");if(!f.Name)missing.push("ชื่อลูกค้า");if(!f.Address)missing.push("ที่อยู่");if(!f.SubDistrict)missing.push("ตำบล");if(!f.District)missing.push("อำเภอ");if(!f.Province)missing.push("จังหวัด");if(!f.ZIP)missing.push("รหัส ปณ.");else if(f.ZIP.length!==5)missing.push("ปณ. ต้อง 5 หลัก");if(!f.Remark)missing.push("หมายเหตุ/สินค้า");if(isTransfer){if(!f.SalePrice||Number(f.SalePrice)<=0)missing.push("ยอดโอน (ต้องมากกว่า 0)");if(!slipPreview)missing.push("สลิปโอนเงิน (บังคับ)");}else{if(!f.COD||Number(f.COD)<=0)missing.push("ยอด COD (ต้องมากกว่า 0)");}if(missing.length>0){alert("กรุณากรอก:\n• "+missing.join("\n• "));return;}setSaving(true);var finalCOD=isTransfer?"0":f.COD;var finalPrice=isTransfer?f.SalePrice:(f.SalePrice||f.COD||"0");var addr=f.Address;if(f.Province&&addr.indexOf(f.Province)<0)addr=(addr?addr+" ":"")+f.Province;onSubmit({...f,Address:addr,SalePrice:finalPrice,COD:finalCOD,upsell:!!forceUpsell,slipData:slipPreview||""});}
-  function clear(){setRaw("");setF({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:""});setIsTransfer(false);setSlipPreview(null);setTried(false);}
+  function clear(){setRaw("");setF({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});setIsTransfer(false);setSlipPreview(null);setTried(false);setDupWarning(null);}
   // ช่อง input พร้อมปุ่ม x ล้าง
   function ClearInput({value,onChange,style:st,placeholder,maxLength,disabled}){return<div style={{position:"relative"}}><input value={value||""} onChange={onChange} placeholder={placeholder} maxLength={maxLength} disabled={disabled} style={{...st,paddingRight:value?28:12}}/>{value&&!disabled&&<button onClick={function(){onChange({target:{value:""}});}} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",width:20,height:20,borderRadius:"50%",border:"none",background:"#f1f5f9",color:"#94a3b8",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>}</div>;}
   var[tried,setTried]=useState(false);
@@ -479,6 +479,7 @@ function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders}){
       {dupWarning&&<div style={{margin:"8px 0",padding:12,borderRadius:8,background:"#fef2f2",border:"2px solid #fca5a5",animation:"shake .3s"}}><div style={{fontSize:13,fontWeight:700,color:"#dc2626",marginBottom:4}}>🚫 เบอร์นี้ลงออเดอร์แล้ว {dupWarning.count} ครั้ง (ภายใน 7 วัน)</div><div style={{fontSize:12,color:"#92400e"}}>👤 {dupWarning.name} — 📅 {dupWarning.date} — 🧑 {dupWarning.person}</div>{dupWarning.remark&&<div style={{fontSize:11,color:"#b45309",marginTop:2}}>📝 {dupWarning.remark}</div>}</div>}
       <div>{reqLabel("ชื่อลูกค้า",f.Name)}<ClearInput value={f.Name||""} onChange={function(e){set("Name",e.target.value);}} style={reqStyle(f.Name)}/></div>
     </div>
+    {forceUpsell&&<div style={{marginBottom:10}}><label style={{...S.fLabel,color:"#6366f1",fontWeight:700}}>📦 ยอดโปรก่อนหน้า</label><input value={f.PrevPromo||""} onChange={function(e){var v=e.target.value.replace(/[^0-9]/g,"");set("PrevPromo",v);}} placeholder="ยอดเดิม เช่น 399" type="tel" style={{...S.pInput,borderColor:"#c7d2fe",background:"#eff6ff",fontWeight:700,fontSize:16,textAlign:"center",color:"#6366f1",width:160}}/></div>}
     <div style={{marginBottom:10}}>{reqLabel("ที่อยู่",f.Address)}<ClearInput value={f.Address||""} onChange={function(e){set("Address",e.target.value);}} placeholder="บ้านเลขที่ ซอย ถนน" style={reqStyle(f.Address)}/></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
       <AddrAC label="ตำบล *" value={f.SubDistrict} field="s" onSelect={function(it){setAddr(it[0],it[1],it[2],it[3]);}} onChange={function(v){set("SubDistrict",v);}}/>
