@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260318v6";
+var APP_VERSION = "20260318v7";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -532,17 +532,17 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
 
   var sourceOrders=tab==="upsell"?(upsellOrders||[]):(allOrders||[]);
 
-  // กรองตามคนและวันที่
-  var filtered=sourceOrders.filter(function(o){
-    var d=getDate(o.Timestamp);
-    if(d<dateFrom||d>dateTo)return false;
-    if(selPerson!=="ALL"&&o.SalesPerson!==selPerson)return false;
-    return true;
-  });
+  // กรองตามคนและวันที่ — แยก Orders / Upsell / รวม
+  function filterByDate(list){return(list||[]).filter(function(o){
+    var d=getDate(o.Timestamp);if(d<dateFrom||d>dateTo)return false;
+    if(selPerson!=="ALL"&&o.SalesPerson!==selPerson)return false;return true;
+  });}
+  var fOrders=filterByDate(allOrders);
+  var fUpsell=filterByDate(upsellOrders);
+  var filtered=tab==="upsell"?fUpsell:tab==="orders"?fOrders:fOrders.concat(fUpsell);
 
-  // สรุปรวม
-  var tO=filtered.length,tS=0,tC=0,tT=0;
-  filtered.forEach(function(o){tS+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)tC+=c;else tT+=Number(o.SalePrice)||0;});
+  function calcStats(list){var o=list.length,s=0,c=0,t=0;list.forEach(function(r){s+=Number(r.SalePrice)||0;var cv=Number(r.COD)||0;if(cv>0)c+=cv;else t+=Number(r.SalePrice)||0;});return{orders:o,sales:s,cod:c,transfer:t};}
+  var stO=calcStats(fOrders),stU=calcStats(fUpsell),stAll=calcStats(fOrders.concat(fUpsell));
 
   // จัดกลุ่มตามวัน
   var dayMap={};
@@ -572,6 +572,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       <div style={{display:"flex",gap:4,padding:3,borderRadius:10,background:"#f1f5f9"}}>
         <button onClick={function(){setTab("orders");setExpandDate(null);}} style={{padding:"8px 18px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:tab==="orders"?"#fff":"transparent",color:tab==="orders"?"#d97706":"#94a3b8",boxShadow:tab==="orders"?"0 1px 3px rgba(0,0,0,.1)":"none"}}>📋 ออเดอร์</button>
         <button onClick={function(){setTab("upsell");setExpandDate(null);}} style={{padding:"8px 18px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:tab==="upsell"?"#fff":"transparent",color:tab==="upsell"?"#ea580c":"#94a3b8",boxShadow:tab==="upsell"?"0 1px 3px rgba(0,0,0,.1)":"none"}}>🔥 Upsell</button>
+        <button onClick={function(){setTab("all");setExpandDate(null);}} style={{padding:"8px 18px",borderRadius:8,border:"none",fontSize:13,fontWeight:700,cursor:"pointer",background:tab==="all"?"#fff":"transparent",color:tab==="all"?"#2563eb":"#94a3b8",boxShadow:tab==="all"?"0 1px 3px rgba(0,0,0,.1)":"none"}}>📊 ทั้งหมด</button>
       </div>
     </div>
 
@@ -594,9 +595,16 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       </div>}
     </div>
 
-    {/* สรุปรวม */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
-      {[{l:tab==="upsell"?"Upsell":"ออเดอร์",v:tO,c:tab==="upsell"?"#ea580c":"#475569"},{l:"ยอดขาย",v:"฿"+tS.toLocaleString(),c:"#475569"},{l:"COD",v:"฿"+tC.toLocaleString(),c:"#ef4444"},{l:"โอนเงิน",v:"฿"+tT.toLocaleString(),c:"#10b981"}].map(function(s,i){return<div key={i} style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"3px solid "+s.c}}><div style={{fontSize:18,fontWeight:800}}>{s.v}</div><div style={{fontSize:11,color:"#94a3b8"}}>{s.l}</div></div>;})}
+    {/* สรุปรวม — แจกแจง Orders / Upsell / รวม */}
+    <div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+      <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+        <thead><tr style={{background:"#f8fafc"}}>{["","ออเดอร์","ยอดขาย","COD","โอนเงิน"].map(function(h,i){return<th key={i} style={{padding:"10px 12px",textAlign:i===0?"left":"right",fontSize:12,fontWeight:700,color:"#64748b",borderBottom:"2px solid #e2e8f0"}}>{h}</th>;})}</tr></thead>
+        <tbody>
+          <tr style={{borderBottom:"1px solid #f1f5f9"}}><td style={{padding:"10px 12px",fontWeight:700,color:"#d97706"}}>📋 ออเดอร์</td><td style={{padding:"10px 12px",textAlign:"right",fontWeight:700}}>{stO.orders}</td><td style={{padding:"10px 12px",textAlign:"right"}}>฿{stO.sales.toLocaleString()}</td><td style={{padding:"10px 12px",textAlign:"right",color:"#ef4444"}}>฿{stO.cod.toLocaleString()}</td><td style={{padding:"10px 12px",textAlign:"right",color:"#10b981"}}>฿{stO.transfer.toLocaleString()}</td></tr>
+          <tr style={{borderBottom:"1px solid #f1f5f9"}}><td style={{padding:"10px 12px",fontWeight:700,color:"#ea580c"}}>🔥 Upsell</td><td style={{padding:"10px 12px",textAlign:"right",fontWeight:700}}>{stU.orders}</td><td style={{padding:"10px 12px",textAlign:"right"}}>฿{stU.sales.toLocaleString()}</td><td style={{padding:"10px 12px",textAlign:"right",color:"#ef4444"}}>฿{stU.cod.toLocaleString()}</td><td style={{padding:"10px 12px",textAlign:"right",color:"#10b981"}}>฿{stU.transfer.toLocaleString()}</td></tr>
+          <tr style={{background:"#fffbeb"}}><td style={{padding:"10px 12px",fontWeight:800,color:"#1e293b",fontSize:14}}>📊 รวม</td><td style={{padding:"10px 12px",textAlign:"right",fontWeight:800,fontSize:16}}>{stAll.orders}</td><td style={{padding:"10px 12px",textAlign:"right",fontWeight:800,fontSize:16,color:"#d97706"}}>฿{stAll.sales.toLocaleString()}</td><td style={{padding:"10px 12px",textAlign:"right",fontWeight:800,color:"#ef4444"}}>฿{stAll.cod.toLocaleString()}</td><td style={{padding:"10px 12px",textAlign:"right",fontWeight:800,color:"#10b981"}}>฿{stAll.transfer.toLocaleString()}</td></tr>
+        </tbody>
+      </table>
     </div>
 
     {/* กราฟแท่งยอดขายรายวัน */}
