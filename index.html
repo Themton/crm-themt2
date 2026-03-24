@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260318v7";
+var APP_VERSION = "20260318v9";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -373,14 +373,24 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,user,o
     {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(oid){setViewOrder(null);onDel(oid);setTimeout(onRefresh,2000);}} onEdit={function(oid,data){onEdit(oid,data);setTimeout(onRefresh,2000);}} onUploadSlip={onUploadSlip||function(){}} isAdmin={isAdmin}/>}
 
     <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"auto"}}>
-      <table style={S.table}><thead><tr>{["#","เวลา","ลูกค้า","เบอร์","ราคา","ประเภท","พนักงาน","หมายเหตุ"].map(function(h,i){return<th key={i} style={S.th}>{h}</th>;})}</tr></thead>
-        <tbody>{dayOrders.length===0?<tr><td colSpan={8} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่มี Upsell วันนี้</td></tr>
-        :dayOrders.map(function(o,idx){var isCOD=Number(o.COD||0)>0;return<tr key={o.OrderID||idx} style={{cursor:"pointer",borderLeft:"3px solid #ea580c"}} onClick={function(){setViewOrder(o);}} onMouseEnter={function(e){e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>
+      <table style={S.table}><thead><tr>{["#","เวลา","ลูกค้า","เบอร์","โปรก่อนหน้า","ราคาก่อน","ราคา Upsell","ส่วนต่าง","ประเภท","พนักงาน","หมายเหตุ"].map(function(h,i){return<th key={i} style={{...S.th,background:h==="โปรก่อนหน้า"||h==="ราคาก่อน"||h==="ส่วนต่าง"?"#eff6ff":""}}>{h}</th>;})}</tr></thead>
+        <tbody>{dayOrders.length===0?<tr><td colSpan={11} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่มี Upsell</td></tr>
+        :dayOrders.map(function(o,idx){var isCOD=Number(o.COD||0)>0;
+          // หา โปรก่อนหน้า จาก Orders ที่เบอร์เดียวกัน
+          var prevOrder=(allOrders||[]).filter(function(a){return String(a.MobileNo||"").replace(/\D/g,"")===String(o.MobileNo||"").replace(/\D/g,"");}).sort(function(a,b){return String(b.Timestamp||"").localeCompare(String(a.Timestamp||""));});
+          var prevRemark=prevOrder.length>0?(prevOrder[0].Remark||"—"):"—";
+          var prevPrice=prevOrder.length>0?Number(prevOrder[0].SalePrice||0):0;
+          var curPrice=Number(o.SalePrice||0);
+          var diff=curPrice-prevPrice;
+          return<tr key={o.OrderID||idx} style={{cursor:"pointer",borderLeft:"3px solid #ea580c"}} onClick={function(){setViewOrder(o);}} onMouseEnter={function(e){e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>
           <td style={{...S.td,fontWeight:700,color:"#ea580c",fontSize:12,textAlign:"center",minWidth:28}}>{idx+1}</td>
           <td style={S.td}><span style={{fontSize:12,fontWeight:600}}>{getTime(o.Timestamp)}</span></td>
           <td style={{...S.td,fontWeight:600}}>{o.Name}</td>
           <td style={{...S.td,fontSize:12}}>{o.MobileNo}</td>
-          <td style={{...S.td,fontWeight:700}}>฿{Number(o.SalePrice||0).toLocaleString()}</td>
+          <td style={{...S.td,fontSize:11,color:"#6366f1",background:"#eff6ff",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={prevRemark}>{prevRemark}</td>
+          <td style={{...S.td,fontSize:12,background:"#eff6ff",textAlign:"right"}}>{prevPrice>0?"฿"+prevPrice.toLocaleString():"—"}</td>
+          <td style={{...S.td,fontWeight:700,textAlign:"right"}}>฿{curPrice.toLocaleString()}</td>
+          <td style={{...S.td,fontWeight:700,textAlign:"right",background:"#eff6ff",color:diff>0?"#10b981":diff<0?"#ef4444":"#94a3b8"}}>{prevPrice>0?(diff>0?"+":"")+diff.toLocaleString():"—"}</td>
           <td style={S.td}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span></td>
           <td style={{...S.td,fontSize:12}}>{o.SalesPerson}</td>
           <td style={{...S.td,fontSize:11,color:"#64748b",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.Remark}</td>
