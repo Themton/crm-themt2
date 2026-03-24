@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260318v5";
+var APP_VERSION = "20260318v6";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -86,6 +86,68 @@ async function sbUpload(bucket,path,blob,contentType){
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function getTime(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime())){var s=String(ts);var m=s.match(/T(\d{2}:\d{2}:\d{2})/);return m?m[1]:s.split(" ")[1]||"";}return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}
 function getDate(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime()))return String(ts||"").substring(0,10);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+// สรุปสินค้าจาก Remark
+function parseProducts(orders){
+  var products={};
+  var patterns=[
+    {re:/R(?:ong)?\s*(?:NINE|9)\s*(\d+)/gi,name:"R NINE"},
+    {re:/Rong\s*(\d+)/gi,name:"Rong"},
+    {re:/Kiso\s*(\d+)/gi,name:"Kiso"},
+    {re:/เซรั่ม\s*(\d+)/gi,name:"เซรั่ม"},
+    {re:/สบู่\s*(\d+)/gi,name:"สบู่"},
+    {re:/เอสเซน[ส์]*\s*(\d+)/gi,name:"เอสเซนส์"},
+    {re:/ครีม\s*(\d+)/gi,name:"ครีม"},
+    {re:/กันแดด\s*(\d+)/gi,name:"กันแดด"},
+    {re:/โทนเนอร์\s*(\d+)/gi,name:"โทนเนอร์"},
+    {re:/คลีน(?:ซิ่ง|ซิง)\s*(\d+)/gi,name:"คลีนซิ่ง"},
+    {re:/แป้ง\s*(\d+)/gi,name:"แป้ง"},
+    {re:/มาส์ก\s*(\d+)/gi,name:"มาส์ก"}
+  ];
+  (orders||[]).forEach(function(o){
+    var rm=String(o.Remark||"");if(!rm)return;
+    // ลอง pattern ทั้งหมด
+    for(var p=0;p<patterns.length;p++){
+      var re=new RegExp(patterns[p].re.source,"gi");
+      var m;while((m=re.exec(rm))!==null){
+        var name=patterns[p].name;
+        var qty=parseInt(m[1])||1;
+        if(!products[name])products[name]={name:name,qty:0,orders:0};
+        products[name].qty+=qty;products[name].orders++;
+      }
+    }
+    // จับ @ProductName (เช่น @Rong2)
+    var atMatch=rm.match(/@(\w+)/g);
+    if(atMatch){atMatch.forEach(function(a){
+      var nm=a.substring(1).replace(/\d+$/,"");
+      var qt=parseInt(a.match(/\d+$/)||"1")||1;
+      if(nm&&nm.length>1){
+        var key=nm.charAt(0).toUpperCase()+nm.slice(1).toLowerCase();
+        if(!products[key])products[key]={name:key,qty:0,orders:0};
+        products[key].qty+=qt;products[key].orders++;
+      }
+    });}
+  });
+  return Object.values(products).sort(function(a,b){return b.qty-a.qty;});
+}
+function ProductSummary({orders,title}){
+  var prods=parseProducts(orders);
+  if(prods.length===0)return null;
+  var maxQty=prods[0].qty||1;
+  return<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+    <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>📦 {title||"สินค้าขายดี"}</div>
+    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+      {prods.map(function(p,i){return<div key={p.name} style={{padding:"8px 14px",borderRadius:8,background:i===0?"#fef3c7":i===1?"#f1f5f9":i===2?"#fff7ed":"#f8fafc",border:"1px solid "+(i===0?"#fbbf24":i===1?"#cbd5e1":i===2?"#fed7aa":"#e2e8f0"),minWidth:100}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:14}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":"📦"}</span>
+          <span style={{fontWeight:700,fontSize:13}}>{p.name}</span>
+        </div>
+        <div style={{fontSize:18,fontWeight:800,color:"#d97706"}}>{p.qty} <span style={{fontSize:11,fontWeight:400,color:"#94a3b8"}}>ชิ้น</span></div>
+        <div style={{fontSize:10,color:"#64748b"}}>{p.orders} ออเดอร์</div>
+        <div style={{height:4,background:"#e2e8f0",borderRadius:2,marginTop:4,overflow:"hidden"}}><div style={{height:"100%",width:Math.max(p.qty/maxQty*100,5)+"%",background:i===0?"#f59e0b":i===1?"#94a3b8":"#fb923c",borderRadius:2}}/></div>
+      </div>;})}
+    </div>
+  </div>;
+}
 function lookupZIP(sub,dist){if(typeof TH==="undefined")return"";if(sub&&dist){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub&&TH[i][1]===dist)return String(TH[i][3]);}}if(sub){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub&&(!dist||TH[i][1].indexOf(dist)>=0||dist.indexOf(TH[i][1])>=0))return String(TH[i][3]);}for(var i=0;i<TH.length;i++){if(TH[i][0]===sub)return String(TH[i][3]);}}if(dist){for(var i=0;i<TH.length;i++){if(TH[i][1]===dist)return String(TH[i][3]);}}return"";}
 function lookupProvince(sub,dist){if(typeof TH==="undefined")return"";if(sub&&dist){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub&&TH[i][1]===dist)return TH[i][2];}}if(sub){for(var i=0;i<TH.length;i++){if(TH[i][0]===sub)return TH[i][2];}}if(dist){for(var i=0;i<TH.length;i++){if(TH[i][1]===dist)return TH[i][2];}}return"";}
 // ค้นหาตำบล+อำเภอ จาก TH database — แม้ไม่มี ต./อ. prefix
@@ -252,6 +314,8 @@ function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setSh
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><h1 style={{fontSize:22,fontWeight:800,margin:0}}>📋 ออเดอร์</h1><input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/><span style={{fontSize:12,color:"#94a3b8"}}>ถึง</span><input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/><button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:dateFrom===dateTo&&dateFrom===todayStr()?"2px solid #d97706":"1px solid #e2e8f0",background:dateFrom===dateTo&&dateFrom===todayStr()?"#fef3c7":"#fff",color:dateFrom===dateTo&&dateFrom===todayStr()?"#92400e":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>วันนี้</button><button onClick={function(){var d=new Date();d.setDate(d.getDate()-7);setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>7 วัน</button><button onClick={function(){var d=new Date();setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01");setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>เดือนนี้</button></div><button style={S.addBtn} onClick={function(){setShowForm(!showForm);}}>{showForm?"✕ ปิด":"＋ สร้าง"}</button></div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>{[{l:"ออเดอร์",v:orders.length,c:"#475569"},{l:"ยอดขาย",v:"฿"+tS.toLocaleString(),c:"#475569"},{l:"COD",v:"฿"+tC.toLocaleString(),c:"#ef4444"},{l:"โอนเงิน",v:"฿"+tT.toLocaleString(),c:"#10b981"}].map(function(s,i){return<div key={i} style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"3px solid "+s.c}}><div style={{fontSize:18,fontWeight:800}}>{s.v}</div><div style={{fontSize:11,color:"#94a3b8"}}>{s.l}</div></div>;})}</div>
+    <ProductRank orders={orders} title={"📦 โปรขายดี — "+(dateFrom===dateTo?dateFrom:dateFrom+" ถึง "+dateTo)}/>
+    <ProductSummary orders={orders} title="สินค้าขายดี"/>
     {persons.length>0&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}><div style={{fontSize:13,fontWeight:700,marginBottom:10}}>👤 สรุปรายคน — {dateFrom===dateTo?dateFrom:dateFrom+" ถึง "+dateTo}</div><table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}><thead><tr style={{background:"#f8fafc"}}>{["พนักงาน","ออเดอร์","ยอดขาย","COD","โอนเงิน","เริ่ม","ล่าสุด"].map(function(h,i){return<th key={i} style={{padding:"8px 10px",textAlign:"left",fontSize:11,fontWeight:600,color:"#64748b",borderBottom:"1px solid #e2e8f0"}}>{h}</th>;})}</tr></thead><tbody>{persons.map(function(p,i){return<tr key={p.name} style={{borderBottom:"1px solid #f1f5f9"}}><td style={{padding:"8px 10px",fontWeight:600}}>{i===0?"🥇 ":i===1?"🥈 ":i===2?"🥉 ":""}{p.name}</td><td style={{padding:"8px 10px",fontWeight:700}}>{p.count}</td><td style={{padding:"8px 10px"}}>฿{p.sales.toLocaleString()}</td><td style={{padding:"8px 10px",color:"#ef4444"}}>฿{p.cod.toLocaleString()}</td><td style={{padding:"8px 10px",color:"#10b981"}}>฿{p.transfer.toLocaleString()}</td><td style={{padding:"8px 10px",color:"#10b981",fontSize:11}}>{p.first==="99:99"?"—":p.first}</td><td style={{padding:"8px 10px",color:"#64748b",fontSize:11}}>{p.last==="00:00"?"—":p.last}</td></tr>;})}</tbody></table></div>}
     {showForm&&<OrderForm onSubmit={onAdd} onCancel={function(){setShowForm(false);}} user={user} allOrders={allOrders} upsellOrders={upsellOrders}/>}
     <div style={{display:"flex",gap:10,marginBottom:14}}><div style={S.searchBox}><span>🔍</span><input placeholder="ค้นหา..." value={search} onChange={function(e){setSearch(e.target.value);}} style={S.searchInput}/></div><span style={{fontSize:12,color:"#94a3b8",alignSelf:"center"}}>{filtered.length}</span></div>
@@ -295,7 +359,9 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,user,o
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
       {[{l:"Upsell",v:dayOrders.length,c:"#ea580c"},{l:"ยอดขาย",v:"฿"+tS.toLocaleString(),c:"#475569"},{l:"COD",v:"฿"+tC.toLocaleString(),c:"#ef4444"},{l:"โอนเงิน",v:"฿"+tT.toLocaleString(),c:"#10b981"}].map(function(s,i){return<div key={i} style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"3px solid "+s.c}}><div style={{fontSize:18,fontWeight:800}}>{s.v}</div><div style={{fontSize:11,color:"#94a3b8"}}>{s.l}</div></div>;})}
     </div>
+    <ProductRank orders={dayOrders} title={"📦 Upsell ขายดี — "+(dateFrom===dateTo?dateFrom:dateFrom+" ถึง "+dateTo)}/>
 
+    <ProductSummary orders={dayOrders} title="สินค้า Upsell ขายดี"/>
     {persons.length>1&&<div style={{background:"#fff",borderRadius:10,padding:14,marginBottom:16,border:"1px solid #e2e8f0",display:"flex",gap:12,flexWrap:"wrap"}}>
       {persons.map(function(p,i){return<div key={p.name} style={{padding:"8px 14px",borderRadius:8,background:i===0?"#fff7ed":"#f8fafc",border:"1px solid "+(i===0?"#fed7aa":"#e2e8f0")}}>
         <span style={{fontWeight:700,fontSize:13}}>{i===0?"🥇 ":""}{p.name}</span>
@@ -319,6 +385,48 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,user,o
           <td style={{...S.td,fontSize:12}}>{o.SalesPerson}</td>
           <td style={{...S.td,fontSize:11,color:"#64748b",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.Remark}</td>
         </tr>;})}</tbody></table>
+    </div>
+  </div>;
+}
+// สรุปโปรขายดี — จากมากไปน้อย
+function ProductRank({orders,title}){
+  if(!orders||orders.length===0)return null;
+  // แยกสินค้าจาก Remark
+  var prodMap={};
+  orders.forEach(function(o){
+    var rm=String(o.Remark||"").trim();if(!rm)return;
+    // ลบราคา/ปลายทาง/โอนเงิน ออกเพื่อจัดกลุ่ม
+    var clean=rm.replace(/ปลายทาง\s*\d+/gi,"").replace(/โอนเงิน\s*\d*/gi,"").replace(/\d+\s*บาท/gi,"").replace(/\s+/g," ").trim();
+    if(!clean)clean=rm;
+    var key=clean.toLowerCase();
+    if(!prodMap[key])prodMap[key]={name:clean,count:0,sales:0};
+    prodMap[key].count++;
+    prodMap[key].sales+=Number(o.SalePrice)||0;
+  });
+  var prods=Object.values(prodMap).sort(function(a,b){return b.sales-a.sales;});
+  if(prods.length===0)return null;
+  var maxS=prods[0].sales||1;
+  return<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+    <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>{title||"📦 โปรขายดี"}</div>
+    <div style={{maxHeight:300,overflowY:"auto"}}>
+    {prods.slice(0,20).map(function(p,i){
+      var barW=Math.max(p.sales/maxS*100,5);
+      return<div key={p.name+i} style={{marginBottom:6,padding:"8px 12px",borderRadius:8,background:i===0?"#fef3c7":i<3?"#fffbeb":"#f8fafc",border:i===0?"2px solid #fbbf24":"1px solid #e2e8f0"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:14,width:24,textAlign:"center"}}>{i===0?"🥇":i===1?"🥈":i===2?"🥉":(i+1)}</span>
+            <span style={{fontWeight:600,fontSize:12}}>{p.name}</span>
+          </div>
+          <span style={{fontWeight:800,fontSize:14,color:"#d97706"}}>฿{p.sales.toLocaleString()}</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{flex:1,height:5,background:"#e2e8f0",borderRadius:3,overflow:"hidden"}}>
+            <div style={{height:"100%",width:barW+"%",background:i===0?"linear-gradient(90deg,#f59e0b,#d97706)":i<3?"#fbbf24":"#94a3b8",borderRadius:3}}/>
+          </div>
+          <span style={{fontSize:10,color:"#64748b",whiteSpace:"nowrap"}}>{p.count} ออเดอร์</span>
+        </div>
+      </div>;
+    })}
     </div>
   </div>;
 }
@@ -533,6 +641,8 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         </div>;
       })}
     </div>}
+
+    <ProductSummary orders={filtered} title={"📦 สินค้าขายดี "+(tab==="upsell"?"(Upsell)":"")}/>
 
     {/* สรุปรายคน */}
     {selPerson==="ALL"&&personList.length>1&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
