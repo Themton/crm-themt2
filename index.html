@@ -620,8 +620,8 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       </div>}
     </div>
 
-    {/* สรุปรวม — แจกแจง Orders / Upsell / รวม */}
-    <div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+    {/* สรุปรวม */}
+    {tab==="all"?<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
       <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
         <thead><tr style={{background:"#f8fafc"}}>{["","ออเดอร์","ยอดขาย","COD","โอนเงิน"].map(function(h,i){return<th key={i} style={{padding:"10px 12px",textAlign:i===0?"left":"right",fontSize:12,fontWeight:700,color:"#64748b",borderBottom:"2px solid #e2e8f0"}}>{h}</th>;})}</tr></thead>
         <tbody>
@@ -631,6 +631,9 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         </tbody>
       </table>
     </div>
+    :<div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+      {(function(){var st=tab==="upsell"?stU:stO;return[{l:tab==="upsell"?"Upsell":"ออเดอร์",v:st.orders,c:tab==="upsell"?"#ea580c":"#475569"},{l:"ยอดขาย",v:"฿"+st.sales.toLocaleString(),c:"#d97706"},{l:"COD",v:"฿"+st.cod.toLocaleString(),c:"#ef4444"},{l:"โอนเงิน",v:"฿"+st.transfer.toLocaleString(),c:"#10b981"}].map(function(s,i){return<div key={i} style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"3px solid "+s.c}}><div style={{fontSize:18,fontWeight:800}}>{s.v}</div><div style={{fontSize:11,color:"#94a3b8"}}>{s.l}</div></div>;});})()}
+    </div>}
 
     {/* กราฟแท่งยอดขายรายวัน */}
     {days.length>1&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
