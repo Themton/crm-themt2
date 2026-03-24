@@ -578,6 +578,16 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   });
   var personList=Object.values(personSummary).sort(function(a,b){return b.sales-a.sales;});
 
+  // แยก TOP SALE สำหรับ Orders / Upsell (ใช้ในหน้ารวม)
+  function buildPersonList(list){var m={};list.forEach(function(o){var p=o.SalesPerson||"?";if(!m[p])m[p]={name:p,count:0,sales:0};m[p].count++;m[p].sales+=Number(o.SalePrice)||0;});return Object.values(m).sort(function(a,b){return b.sales-a.sales;});}
+  var plOrders=buildPersonList(fOrders);
+  var plUpsell=buildPersonList(fUpsell);
+
+  // แยก TOP SALE สำหรับ Orders / Upsell
+  function buildPersonList(list){var m={};(list||[]).forEach(function(o){var p=o.SalesPerson||"?";if(!m[p])m[p]={name:p,count:0,sales:0};m[p].count++;m[p].sales+=Number(o.SalePrice)||0;});return Object.values(m).sort(function(a,b){return b.sales-a.sales;});}
+  var plOrders=buildPersonList(fOrders);
+  var plUpsell=buildPersonList(fUpsell);
+
   // รายชื่อพนักงานทั้งหมด (จาก accounts)
   var staffNames=[];
   if(isAdmin)(accounts||[]).filter(function(a){return a.active;}).forEach(function(a){if(staffNames.indexOf(a.displayName)<0)staffNames.push(a.displayName);});
@@ -637,8 +647,8 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
     </div>}
 
     {/* 🏆 TOP SALE */}
-    {selPerson==="ALL"&&personList.length>0&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
-      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>🏆 TOP SALE {tab==="upsell"?"(Upsell)":""}</div>
+    {selPerson==="ALL"&&tab!=="all"&&personList.length>0&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>🏆 TOP SALE {tab==="upsell"?"(Upsell)":"(ออเดอร์)"}</div>
       {personList.map(function(p,i){
         var maxSales=personList[0].sales||1;
         var barW=Math.max(p.sales/maxSales*100,5);
@@ -663,6 +673,32 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
           </div>
         </div>;
       })}
+    </div>}
+
+    {/* 🏆 TOP SALE ตีคู่ — ออเดอร์ vs Upsell */}
+    {selPerson==="ALL"&&tab==="all"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+      {[{title:"📋 ออเดอร์",list:plOrders,color:"#d97706",border:"#fbbf24"},{title:"🔥 Upsell",list:plUpsell,color:"#ea580c",border:"#f97316"}].map(function(sec){return<div key={sec.title} style={{background:"#fff",borderRadius:10,padding:16,border:"1px solid #e2e8f0"}}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>🏆 TOP SALE {sec.title}</div>
+        {sec.list.length===0?<div style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:12}}>ไม่มีข้อมูล</div>
+        :sec.list.map(function(p,i){
+          var maxS=sec.list[0].sales||1;
+          var barW=Math.max(p.sales/maxS*100,5);
+          var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
+          return<div key={p.name} style={{marginBottom:6,borderRadius:8,overflow:"hidden",border:i===0?"2px solid "+sec.border:"1px solid #e2e8f0"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:i===0?"#fffbeb":"#f8fafc"}}>
+              <span style={{fontSize:14,width:22,textAlign:"center"}}>{medal||(i+1)}</span>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                  <span style={{fontWeight:700,fontSize:13}}>{p.name}</span>
+                  <span style={{fontWeight:800,fontSize:14,color:sec.color}}>฿{p.sales.toLocaleString()}</span>
+                </div>
+                <div style={{fontSize:10,color:"#94a3b8"}}>{p.count} ออเดอร์ • เฉลี่ย ฿{p.count>0?Math.round(p.sales/p.count).toLocaleString():0}</div>
+                <div style={{height:4,background:"#e2e8f0",borderRadius:2,marginTop:3,overflow:"hidden"}}><div style={{height:"100%",width:barW+"%",background:sec.color,borderRadius:2}}/></div>
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>;})}
     </div>}
 
     <ProductSummary orders={filtered} title={"📦 สินค้าขายดี "+(tab==="upsell"?"(Upsell)":"")}/>
