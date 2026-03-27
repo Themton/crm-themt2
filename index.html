@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260327v1";
+var APP_VERSION = "20260327v2";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -84,6 +84,7 @@ async function sbUpload(bucket,path,blob,contentType){
 
 /* ===== HELPERS ===== */
 function todayStr(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function nowThai(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0")+"+07:00";}
 function getTime(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime())){var s=String(ts);var m=s.match(/T(\d{2}:\d{2}:\d{2})/);return m?m[1]:s.split(" ")[1]||"";}return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}
 function getDate(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime()))return String(ts||"").substring(0,10);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 // สรุปสินค้าจาก Remark
@@ -218,10 +219,11 @@ async function dbAddOrder(d,isUpsell){
   var table=isUpsell?"upsell":"orders";
   var oid;
   try{oid=await sbRpc("generate_order_id");}catch(e){oid="ORD-"+todayStr().replace(/-/g,"")+"-"+String(Date.now()).slice(-4);}
-  var row={order_id:oid,mobile_no:d.MobileNo,name:d.Name,address:d.Address,sub_district:d.SubDistrict,district:d.District,province:d.Province||"",zip:d.ZIP,customer_fb_line:d.CustomerFBLine||"",sales_channel:"CRM",sales_person:d.SalesPerson,sale_price:Number(d.SalePrice)||0,cod:Number(d.COD)||0,remark:d.Remark||"",slip_url:""};
+  var thaiTS=nowThai();
+  var row={order_id:oid,timestamp:thaiTS,mobile_no:d.MobileNo,name:d.Name,address:d.Address,sub_district:d.SubDistrict,district:d.District,province:d.Province||"",zip:d.ZIP,customer_fb_line:d.CustomerFBLine||"",sales_channel:"CRM",sales_person:d.SalesPerson,sale_price:Number(d.SalePrice)||0,cod:Number(d.COD)||0,remark:d.Remark||"",slip_url:""};
   await sbFetch(table,{method:"POST",body:row,prefer:"return=representation"});
   // Sync to Google Sheet
-  syncToSheet(isUpsell?"addUpsell":"addOrder",{OrderID:oid,MobileNo:d.MobileNo,Name:d.Name,Address:d.Address,SubDistrict:d.SubDistrict,District:d.District,ZIP:d.ZIP,CustomerFBLine:d.CustomerFBLine||"",SalesChannel:"CRM",SalesPerson:d.SalesPerson,SalePrice:Number(d.SalePrice)||0,COD:Number(d.COD)||0,Remark:d.Remark||"",Province:d.Province||""});
+  syncToSheet(isUpsell?"addUpsell":"addOrder",{OrderID:oid,Timestamp:nowThai(),MobileNo:d.MobileNo,Name:d.Name,Address:d.Address,SubDistrict:d.SubDistrict,District:d.District,ZIP:d.ZIP,CustomerFBLine:d.CustomerFBLine||"",SalesChannel:"CRM",SalesPerson:d.SalesPerson,SalePrice:Number(d.SalePrice)||0,COD:Number(d.COD)||0,Remark:d.Remark||"",Province:d.Province||""});
   return{orderId:oid};
 }
 async function dbEditOrder(oid,data){
