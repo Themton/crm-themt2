@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260327v8";
+var APP_VERSION = "20260327v9";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -144,7 +144,7 @@ function parseProducts(orders){
   });
   return Object.values(products).sort(function(a,b){return b.qty-a.qty;});
 }
-function StatusBadge({status}){var s=status||"รอส่ง";var bg="#fef3c7",co="#92400e",icon="📦";if(s==="Export แล้ว"){bg="#dbeafe";co="#1d4ed8";icon="📤";}else if(s==="ส่งแล้ว"){bg="#dcfce7";co="#166534";icon="✅";}return<span style={{padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:bg,color:co}}>{icon} {s}</span>;}
+function StatusBadge({status}){var s=status||"รอส่ง";var bg="#fef3c7",co="#92400e",icon="📦";if(s==="ปริ้นแล้ว"){bg="#dcfce7";co="#166534";icon="🖨️";}return<span style={{padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:bg,color:co}}>{icon} {s}</span>;}
 function ProductSummary({orders,title}){
   var prods=parseProducts(orders);
   if(prods.length===0)return null;
@@ -337,8 +337,8 @@ function App(){var _s=useState;
     // เปลี่ยนสถานะเป็น "Export แล้ว"
     var ids=orders.filter(function(o){return o.Status==="รอส่ง";}).map(function(o){return o.OrderID;});
     if(ids.length>0){
-      if(confirm("เปลี่ยนสถานะ "+ids.length+" รายการ → \"Export แล้ว\"?")){
-        updateStatus(ids,"Export แล้ว",table);
+      if(confirm("เปลี่ยนสถานะ "+ids.length+" รายการ → \"ปริ้นแล้ว\"?")){
+        updateStatus(ids,"ปริ้นแล้ว",table);
       }
     }
   }
@@ -383,12 +383,11 @@ function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setSh
     {/* สถานะ + Export */}
     {isAdmin&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        {[{k:"ALL",l:"ทั้งหมด",c:"#475569"},{k:"รอส่ง",l:"📦 รอส่ง",c:"#92400e"},{k:"Export แล้ว",l:"📤 Export แล้ว",c:"#1d4ed8"},{k:"ส่งแล้ว",l:"✅ ส่งแล้ว",c:"#166534"}].map(function(s){var cnt=s.k==="ALL"?orders.length:(countByStatus[s.k]||0);return<button key={s.k} onClick={function(){setStatusFilter(s.k);}} style={{padding:"6px 14px",borderRadius:8,border:statusFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:statusFilter===s.k?"#f8fafc":"#fff",color:s.c,fontSize:11,fontWeight:700,cursor:"pointer"}}>{s.l} ({cnt})</button>;})}
+        {[{k:"ALL",l:"ทั้งหมด",c:"#475569"},{k:"รอส่ง",l:"📦 รอส่ง",c:"#92400e"},{k:"ปริ้นแล้ว",l:"🖨️ ปริ้นแล้ว",c:"#166534"}].map(function(s){var cnt=s.k==="ALL"?orders.length:(countByStatus[s.k]||0);return<button key={s.k} onClick={function(){setStatusFilter(s.k);}} style={{padding:"6px 14px",borderRadius:8,border:statusFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:statusFilter===s.k?"#f8fafc":"#fff",color:s.c,fontSize:11,fontWeight:700,cursor:"pointer"}}>{s.l} ({cnt})</button>;})}
       </div>
       <div style={{display:"flex",gap:6}}>
         <button onClick={function(){onExport(filtered,"xlsx","orders");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #10b981",background:"#f0fdf4",color:"#166534",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export Excel ({filtered.length})</button>
         <button onClick={function(){onExport(filtered,"csv","orders");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 CSV</button>
-        {statusFilter==="Export แล้ว"&&filtered.length>0&&<button onClick={function(){if(confirm("เปลี่ยน "+filtered.length+" รายการ → ส่งแล้ว?")){onUpdateStatus(filtered.map(function(o){return o.OrderID;}),"ส่งแล้ว","orders");}}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #10b981",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>✅ ส่งแล้วทั้งหมด</button>}
       </div>
     </div>}
     <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>{[{l:"ออเดอร์",v:orders.length,c:"#475569"},{l:"ยอดขาย",v:"฿"+tS.toLocaleString(),c:"#475569"},{l:"COD",v:"฿"+tC.toLocaleString(),c:"#ef4444"},{l:"โอนเงิน",v:"฿"+tT.toLocaleString(),c:"#10b981"}].map(function(s,i){return<div key={i} style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"3px solid "+s.c}}><div style={{fontSize:18,fontWeight:800}}>{s.v}</div><div style={{fontSize:11,color:"#94a3b8"}}>{s.l}</div></div>;})}</div>
@@ -402,8 +401,7 @@ function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setSh
     {/* Floating action bar */}
     {selCount>0&&<div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:"#1e293b",color:"#fff",borderRadius:14,padding:"12px 20px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 10px 40px rgba(0,0,0,.3)",zIndex:999}}>
       <span style={{fontSize:13,fontWeight:700}}>เลือก {selCount} รายการ</span>
-      <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → 📤 Export แล้ว?")){onUpdateStatus(selOrders.map(function(o){return o.OrderID;}),"Export แล้ว","orders");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#3b82f6",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📤 Export แล้ว</button>
-      <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → ✅ ส่งแล้ว?")){onUpdateStatus(selOrders.map(function(o){return o.OrderID;}),"ส่งแล้ว","orders");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>✅ ส่งแล้ว</button>
+      <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → 🖨️ ปริ้นแล้ว?")){onUpdateStatus(selOrders.map(function(o){return o.OrderID;}),"ปริ้นแล้ว","orders");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🖨️ ปริ้นแล้ว</button>
       <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → 📦 รอส่ง?")){onUpdateStatus(selOrders.map(function(o){return o.OrderID;}),"รอส่ง","orders");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📦 รอส่ง</button>
       <button onClick={function(){onExport(selOrders,"xlsx","orders");setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export</button>
       <button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#475569",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>✕ ยกเลิก</button>
@@ -449,12 +447,11 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,onUpda
     {/* สถานะ + Export */}
     {isAdmin&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        {[{k:"ALL",l:"ทั้งหมด",c:"#475569"},{k:"รอส่ง",l:"📦 รอส่ง",c:"#92400e"},{k:"Export แล้ว",l:"📤 Export แล้ว",c:"#1d4ed8"},{k:"ส่งแล้ว",l:"✅ ส่งแล้ว",c:"#166534"}].map(function(s){var cnt=s.k==="ALL"?dayOrders.length:(countByStatus[s.k]||0);return<button key={s.k} onClick={function(){setStatusFilter(s.k);}} style={{padding:"6px 14px",borderRadius:8,border:statusFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:statusFilter===s.k?"#f8fafc":"#fff",color:s.c,fontSize:11,fontWeight:700,cursor:"pointer"}}>{s.l} ({cnt})</button>;})}
+        {[{k:"ALL",l:"ทั้งหมด",c:"#475569"},{k:"รอส่ง",l:"📦 รอส่ง",c:"#92400e"},{k:"ปริ้นแล้ว",l:"🖨️ ปริ้นแล้ว",c:"#166534"}].map(function(s){var cnt=s.k==="ALL"?dayOrders.length:(countByStatus[s.k]||0);return<button key={s.k} onClick={function(){setStatusFilter(s.k);}} style={{padding:"6px 14px",borderRadius:8,border:statusFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:statusFilter===s.k?"#f8fafc":"#fff",color:s.c,fontSize:11,fontWeight:700,cursor:"pointer"}}>{s.l} ({cnt})</button>;})}
       </div>
       <div style={{display:"flex",gap:6}}>
         <button onClick={function(){onExport(filteredUpsell,"xlsx","upsell");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #ea580c",background:"#fff7ed",color:"#c2410c",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export Excel ({filteredUpsell.length})</button>
         <button onClick={function(){onExport(filteredUpsell,"csv","upsell");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 CSV</button>
-        {statusFilter==="Export แล้ว"&&filteredUpsell.length>0&&<button onClick={function(){if(confirm("เปลี่ยน "+filteredUpsell.length+" รายการ → ส่งแล้ว?")){onUpdateStatus(filteredUpsell.map(function(o){return o.OrderID;}),"ส่งแล้ว","upsell");}}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #10b981",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>✅ ส่งแล้วทั้งหมด</button>}
       </div>
     </div>}
 
@@ -504,8 +501,7 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,onUpda
     {/* Floating action bar */}
     {selCount>0&&<div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:"#1e293b",color:"#fff",borderRadius:14,padding:"12px 20px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 10px 40px rgba(0,0,0,.3)",zIndex:999}}>
       <span style={{fontSize:13,fontWeight:700}}>เลือก {selCount} รายการ</span>
-      <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → 📤 Export แล้ว?")){onUpdateStatus(filteredUpsell.filter(function(o){return selected[o.OrderID];}).map(function(o){return o.OrderID;}),"Export แล้ว","upsell");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#3b82f6",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📤 Export แล้ว</button>
-      <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → ✅ ส่งแล้ว?")){onUpdateStatus(filteredUpsell.filter(function(o){return selected[o.OrderID];}).map(function(o){return o.OrderID;}),"ส่งแล้ว","upsell");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>✅ ส่งแล้ว</button>
+      <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → 🖨️ ปริ้นแล้ว?")){onUpdateStatus(filteredUpsell.filter(function(o){return selected[o.OrderID];}).map(function(o){return o.OrderID;}),"ปริ้นแล้ว","upsell");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🖨️ ปริ้นแล้ว</button>
       <button onClick={function(){if(confirm("เปลี่ยน "+selCount+" รายการ → 📦 รอส่ง?")){onUpdateStatus(filteredUpsell.filter(function(o){return selected[o.OrderID];}).map(function(o){return o.OrderID;}),"รอส่ง","upsell");setSelected({});}}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📦 รอส่ง</button>
       <button onClick={function(){onExport(filteredUpsell.filter(function(o){return selected[o.OrderID];}),"xlsx","upsell");setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export</button>
       <button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#475569",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>✕ ยกเลิก</button>
@@ -648,7 +644,7 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin,onUpdateSt
   {Number(o.COD||0)===0&&<div style={{marginTop:14}}><input ref={fileRef} type="file" accept="image/*" onChange={handleFile} style={{display:"none"}}/>{o.SlipURL?<div style={{textAlign:"center"}}><img src={o.SlipURL} alt="slip" onClick={function(){setViewSlip(true);}} style={{maxWidth:"100%",maxHeight:200,borderRadius:10,cursor:"pointer",border:"2px solid #e2e8f0"}}/><div style={{fontSize:10,color:"#94a3b8",marginTop:4}}>กดที่รูปเพื่อขยาย</div><div style={{marginTop:8}}><button onClick={function(){fileRef.current.click();}} style={{...S.sm,background:"#f0fdf4",color:"#059669"}}>🔄 เปลี่ยน</button></div></div>:<button onClick={function(){fileRef.current.click();}} style={{padding:"8px 16px",borderRadius:8,border:"1px dashed #bbf7d0",background:"#f0fdf4",color:"#059669",fontSize:12,fontWeight:600,cursor:"pointer"}}>📎 อัพโหลดสลิป</button>}</div>}
   {isAdmin&&<div style={{marginTop:14,paddingTop:14,borderTop:"1px solid #f1f5f9"}}>
     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><span style={{fontSize:12,color:"#94a3b8"}}>สถานะ:</span><StatusBadge status={o.Status}/>
-      {onUpdateStatus&&<div style={{display:"flex",gap:4,marginLeft:"auto"}}>{["รอส่ง","Export แล้ว","ส่งแล้ว"].filter(function(s){return s!==(o.Status||"รอส่ง");}).map(function(s){var icon=s==="รอส่ง"?"📦 ":s==="Export แล้ว"?"📤 ":"✅ ";return<button key={s} onClick={function(){onUpdateStatus([o.OrderID],s);onClose();}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#f8fafc",color:"#475569",fontSize:10,fontWeight:600,cursor:"pointer"}}>{icon}{s}</button>;})}</div>}
+      {onUpdateStatus&&<div style={{display:"flex",gap:4,marginLeft:"auto"}}>{["รอส่ง","ปริ้นแล้ว"].filter(function(s){return s!==(o.Status||"รอส่ง");}).map(function(s){var icon=s==="รอส่ง"?"📦 ":"🖨️ ";return<button key={s} onClick={function(){onUpdateStatus([o.OrderID],s);onClose();}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#f8fafc",color:"#475569",fontSize:10,fontWeight:600,cursor:"pointer"}}>{icon}{s}</button>;})}</div>}
     </div>
     <div style={{display:"flex",justifyContent:"space-between"}}><button onClick={function(){setEditing(true);}} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #dbeafe",background:"#eff6ff",color:"#2563eb",fontSize:12,fontWeight:600,cursor:"pointer"}}>✏️ แก้ไข</button><button onClick={function(){if(confirm("ลบออเดอร์นี้?"))onDel(o.OrderID);}} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #fecaca",background:"#fff",color:"#ef4444",fontSize:12,cursor:"pointer"}}>🗑 ลบ</button></div>
   </div>}
