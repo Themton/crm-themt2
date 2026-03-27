@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260327v9";
+var APP_VERSION = "20260328v1";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -353,10 +353,10 @@ function App(){var _s=useState;
   async function resetPw(u,pw){try{await dbResetPassword(u,pw);notify("รีเซ็ตแล้ว");}catch(e){}}
   async function editAcc(old,data){try{await dbEditAccount(old,data);notify("แก้ไขสำเร็จ");await loadAccounts();var cur=userRef.current;if(cur&&cur.username===old){var u2={...cur,...data};userRef.current=u2;setUser(u2);localStorage.setItem("ps_user",JSON.stringify(u2));}return true;}catch(e){return false;}}
   var canUpsell=user.canUpsell||isAdmin;
-  var navItems=[{id:"orders",icon:"📋",label:"ออเดอร์"}];if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});
+  var navItems=[{id:"orders",icon:"📋",label:"ออเดอร์"}];if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});
   return(<div style={S.app}>{notif&&<div style={{...S.notif,background:notif.type==="success"?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#f59e0b,#d97706)"}}>{notif.type==="success"?"✅":"⚠️"} {notif.msg}</div>}{slipProgress!==null&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:"#fff",borderRadius:20,padding:"36px 48px",textAlign:"center",minWidth:280}}><div style={{fontSize:40,marginBottom:8}}>{slipProgress>=100?"✅":"🧾"}</div><div style={{fontSize:16,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706"}}>{slipProgress>=100?"เสร็จสิ้น!":"อัพโหลดสลิป..."}</div><div style={{fontSize:28,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706",margin:"8px 0"}}>{slipProgress}%</div><div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:slipProgress+"%",background:slipProgress>=100?"#10b981":"#d97706",borderRadius:4,transition:"width .3s"}}/></div></div></div>}
     <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:isAdmin?"#fbbf24":"#fcd34d"}}>{isAdmin?"แอดมิน":"พนักงาน"}</span></div></div><nav style={S.nav}>{navItems.map(function(item){return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
-    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
+    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
 
 /* ===== SETUP (Supabase URL+Key) ===== */
 function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useState("");var[testing,setTesting]=useState(false);var[error,setError]=useState("");
@@ -650,6 +650,102 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin,onUpdateSt
   </div>}
   </div>}
 </div></div>;}
+function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateFrom,dateTo,setDateFrom,setDateTo}){
+  var[statusFilter,setStatusFilter]=useState("รอส่ง");
+  var[selected,setSelected]=useState({});
+  var[viewOrder,setViewOrder]=useState(null);
+  var[search,setSearch]=useState("");
+
+  // รวม orders + upsell + กรองวันที่
+  var allItems=([]).concat(
+    (orders||[]).map(function(o){return{...o,_table:"orders"};}),
+    (upsellOrders||[]).map(function(o){return{...o,_table:"upsell"};})
+  ).filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});
+
+  // กรองสถานะ
+  var filtered=statusFilter==="ALL"?allItems:allItems.filter(function(o){return(o.Status||"รอส่ง")===statusFilter;});
+  // ค้นหา
+  if(search){var sl=search.toLowerCase();filtered=filtered.filter(function(o){return(o.Name||"").toLowerCase().indexOf(sl)>=0||String(o.MobileNo||"").indexOf(sl)>=0||(o.SalesPerson||"").toLowerCase().indexOf(sl)>=0;});}
+  // นับสถานะ
+  var countByStatus={};allItems.forEach(function(o){var s=o.Status||"รอส่ง";countByStatus[s]=(countByStatus[s]||0)+1;});
+
+  function toggleSelect(oid){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];if(n[oid])delete n[oid];else n[oid]=true;return n;});}
+  function selectAll(){var allSel=filtered.every(function(o){return selected[o.OrderID];});if(allSel){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){delete n[o.OrderID];});return n;});}else{setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){n[o.OrderID]=true;});return n;});}}
+  var selCount=Object.keys(selected).length;
+  var selItems=filtered.filter(function(o){return selected[o.OrderID];});
+
+  function bulkUpdateStatus(newStatus){
+    if(selItems.length===0)return;
+    if(!confirm("เปลี่ยน "+selItems.length+" รายการ → "+newStatus+"?"))return;
+    // แยก orders vs upsell
+    var orderIds=selItems.filter(function(o){return o._table==="orders";}).map(function(o){return o.OrderID;});
+    var upsellIds=selItems.filter(function(o){return o._table==="upsell";}).map(function(o){return o.OrderID;});
+    if(orderIds.length>0)onUpdateStatus(orderIds,newStatus,"orders");
+    if(upsellIds.length>0)onUpdateStatus(upsellIds,newStatus,"upsell");
+    setSelected({});
+  }
+
+  return<div>
+    <div style={S.pageHeader}><h1 style={S.pageTitle}>🚚 การจัดส่ง</h1></div>
+
+    {/* Date picker */}
+    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+      <input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/>
+      <span style={{fontSize:12,color:"#94a3b8"}}>ถึง</span>
+      <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/>
+      <button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>วันนี้</button>
+      <button onClick={function(){var d=new Date();d.setDate(d.getDate()-7);setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"));setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>7 วัน</button>
+      <button onClick={function(){var d=new Date();setDateFrom(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01");setDateTo(todayStr());}} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>เดือนนี้</button>
+    </div>
+
+    {/* Status tabs */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+        {[{k:"ALL",l:"ทั้งหมด",c:"#475569",icon:"📋"},{k:"รอส่ง",l:"รอส่ง",c:"#92400e",icon:"📦"},{k:"ปริ้นแล้ว",l:"ปริ้นแล้ว",c:"#166534",icon:"🖨️"}].map(function(s){var cnt=s.k==="ALL"?allItems.length:(countByStatus[s.k]||0);return<button key={s.k} onClick={function(){setStatusFilter(s.k);setSelected({});}} style={{padding:"8px 18px",borderRadius:8,border:statusFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:statusFilter===s.k?"#f8fafc":"#fff",color:s.c,fontSize:12,fontWeight:700,cursor:"pointer"}}>{s.icon} {s.l} <span style={{background:statusFilter===s.k?s.c:"#e2e8f0",color:statusFilter===s.k?"#fff":"#64748b",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:800,marginLeft:4}}>{cnt}</span></button>;})}
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        <button onClick={function(){onExport(filtered,"xlsx","orders");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #3b82f6",background:"#eff6ff",color:"#1d4ed8",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export Excel ({filtered.length})</button>
+        <button onClick={function(){onExport(filtered,"csv","orders");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 CSV</button>
+      </div>
+    </div>
+
+    {/* Search */}
+    <div style={{display:"flex",gap:10,marginBottom:14}}><div style={S.searchBox}><span>🔍</span><input placeholder="ค้นหาชื่อ เบอร์ พนักงาน..." value={search} onChange={function(e){setSearch(e.target.value);}} style={S.searchInput}/></div><span style={{fontSize:12,color:"#94a3b8",alignSelf:"center"}}>{filtered.length} รายการ</span></div>
+
+    {/* Table */}
+    <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"auto"}}>
+      <table style={S.table}>
+        <thead><tr>
+          <th style={{...S.th,width:32,textAlign:"center"}}><input type="checkbox" checked={filtered.length>0&&filtered.every(function(o){return selected[o.OrderID];})} onChange={selectAll}/></th>
+          {["#","วันที่","เวลา","ลูกค้า","เบอร์โทรศัพท์","ราคา","ประเภท","สถานะ","พนักงาน"].map(function(h,i){return<th key={i} style={S.th}>{h}</th>;})}
+        </tr></thead>
+        <tbody>{filtered.length===0?<tr><td colSpan={10} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่พบรายการ</td></tr>
+        :filtered.map(function(o,idx){var isCOD=Number(o.COD||0)>0;var isSel=!!selected[o.OrderID];var isUp=o._table==="upsell";
+          return<tr key={o.OrderID} style={{borderLeft:isUp?"3px solid #ea580c":isCOD?"3px solid #ef4444":"3px solid #10b981",background:isSel?"#eff6ff":""}} onMouseEnter={function(e){if(!isSel)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){if(!isSel)e.currentTarget.style.background="";}}>
+            <td style={{...S.td,textAlign:"center",width:32}} onClick={function(){toggleSelect(o.OrderID);}}><input type="checkbox" checked={isSel} readOnly/></td>
+            <td style={{...S.td,fontWeight:700,color:isUp?"#ea580c":"#d97706",fontSize:12,textAlign:"center"}}>{idx+1}</td>
+            <td style={{...S.td,fontSize:12}}>{getDate(o.Timestamp)}</td>
+            <td style={{...S.td,fontSize:12}}>{getTime(o.Timestamp)}</td>
+            <td style={{...S.td,fontWeight:600}}>{o.Name}</td>
+            <td style={{...S.td,fontSize:12}}>{o.MobileNo}</td>
+            <td style={{...S.td,fontWeight:700}}>฿{Number(o.SalePrice||0).toLocaleString()}</td>
+            <td style={S.td}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span>{isUp&&<span style={{marginLeft:4,padding:"2px 6px",borderRadius:8,fontSize:9,fontWeight:700,background:"#fff7ed",color:"#ea580c"}}>UP</span>}</td>
+            <td style={S.td}><StatusBadge status={o.Status}/></td>
+            <td style={{...S.td,fontSize:12}}>{o.SalesPerson}</td>
+          </tr>;})}</tbody>
+      </table>
+    </div>
+
+    {/* Floating action bar */}
+    {selCount>0&&<div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:"#1e293b",color:"#fff",borderRadius:14,padding:"12px 20px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 10px 40px rgba(0,0,0,.3)",zIndex:999}}>
+      <span style={{fontSize:13,fontWeight:700}}>เลือก {selCount} รายการ</span>
+      <button onClick={function(){bulkUpdateStatus("ปริ้นแล้ว");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🖨️ ปริ้นแล้ว</button>
+      <button onClick={function(){bulkUpdateStatus("รอส่ง");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📦 รอส่ง</button>
+      <button onClick={function(){var orderItems=selItems.filter(function(o){return o._table==="orders";});var upsellItems=selItems.filter(function(o){return o._table==="upsell";});if(orderItems.length>0)onExport(orderItems,"xlsx","orders");if(upsellItems.length>0)onExport(upsellItems,"xlsx","upsell");setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export</button>
+      <button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#475569",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>✕ ยกเลิก</button>
+    </div>}
+  </div>;
+}
 function ReportPage({user,accounts,allOrders,upsellOrders}){
   var isAdmin=user.role==="admin";
   var[selPerson,setSelPerson]=useState("ALL");
