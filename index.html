@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260327v7";
+var APP_VERSION = "20260327v8";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -369,13 +369,12 @@ function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setSh
   var[search,setSearch]=useState("");var[pg,setPg]=useState(1);var perPage=50;var[statusFilter,setStatusFilter]=useState("ALL");var[selected,setSelected]=useState({});
   function toggleSelect(oid){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];if(n[oid])delete n[oid];else n[oid]=true;return n;});}
   function selectAll(){var allSel=pageOrders.every(function(o){return selected[o.OrderID];});if(allSel){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];pageOrders.forEach(function(o){delete n[o.OrderID];});return n;});}else{setSelected(function(p){var n={};for(var k in p)n[k]=p[k];pageOrders.forEach(function(o){n[o.OrderID]=true;});return n;});}}
+  var filtered=orders;if(statusFilter!=="ALL")filtered=filtered.filter(function(o){return(o.Status||"รอส่ง")===statusFilter;});if(search){var sl=search.toLowerCase();filtered=filtered.filter(function(o){return(o.Name||"").toLowerCase().indexOf(sl)>=0||String(o.MobileNo||"").indexOf(sl)>=0||(o.Remark||"").toLowerCase().indexOf(sl)>=0||(o.SalesPerson||"").toLowerCase().indexOf(sl)>=0;});}
   var selCount=Object.keys(selected).length;
   var selOrders=filtered.filter(function(o){return selected[o.OrderID];});
-  var filtered=orders;if(statusFilter!=="ALL")filtered=filtered.filter(function(o){return(o.Status||"รอส่ง")===statusFilter;});if(search){var sl=search.toLowerCase();filtered=filtered.filter(function(o){return(o.Name||"").toLowerCase().indexOf(sl)>=0||String(o.MobileNo||"").indexOf(sl)>=0||(o.Remark||"").toLowerCase().indexOf(sl)>=0||(o.SalesPerson||"").toLowerCase().indexOf(sl)>=0;});}
   useEffect(function(){setPg(1);},[search,dateFrom,dateTo,statusFilter]);
   var totalPages=Math.max(1,Math.ceil(filtered.length/perPage));var pageOrders=filtered.slice((pg-1)*perPage,(pg-1)*perPage+perPage);
   var countByStatus={};orders.forEach(function(o){var s=o.Status||"รอส่ง";countByStatus[s]=(countByStatus[s]||0)+1;});
-  var totalPages=Math.max(1,Math.ceil(filtered.length/perPage));var pageOrders=filtered.slice((pg-1)*perPage,(pg-1)*perPage+perPage);
   var personMap={};orders.forEach(function(o){var p=o.SalesPerson||"?";if(!personMap[p])personMap[p]={name:p,count:0,sales:0,cod:0,transfer:0,first:"99:99",last:"00:00"};personMap[p].count++;personMap[p].sales+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)personMap[p].cod+=c;else personMap[p].transfer+=Number(o.SalePrice)||0;var tm=getTime(o.Timestamp);if(tm&&tm<personMap[p].first)personMap[p].first=tm;if(tm&&tm>personMap[p].last)personMap[p].last=tm;});
   var persons=Object.values(personMap).sort(function(a,b){return b.sales-a.sales;});
   var tS=0,tC=0,tT=0;orders.forEach(function(o){tS+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)tC+=c;else tT+=Number(o.SalePrice)||0;});
