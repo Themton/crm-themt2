@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260327v2";
+var APP_VERSION = "20260327v3";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -272,7 +272,11 @@ function App(){var _s=useState;
   async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"?"ALL":u.displayName);setAllOrders(d);}catch(e){notify("โหลดผิดพลาด","warning");}}
   async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"?"ALL":u.displayName);setUpsellOrders(d);}catch(e){}}
   useEffect(function(){if(sbOk){loadAccounts();}},[sbOk]);
-  useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();}},[sbOk]);
+  useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
+    // Auto-refresh ทุก 30 วินาที — เรียลไทม์
+    var interval=setInterval(function(){loadOrders();loadUpsell();},30000);
+    return function(){clearInterval(interval);};
+  }},[sbOk]);
   function doLogin(acc){userRef.current=acc;setUser(acc);localStorage.setItem("ps_user",JSON.stringify(acc));loadOrders();loadUpsell();}
   function doLogout(){userRef.current=null;setUser(null);setAllOrders([]);setUpsellOrders([]);localStorage.removeItem("ps_user");}
   if(!sbOk)return<SetupScreen onSave={function(url,key){localStorage.setItem("sb_url",url);localStorage.setItem("sb_key",key);SUPABASE_URL=url;SUPABASE_KEY=key;sbReady=true;setSbOk(true);}}/>;
