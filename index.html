@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260327v3";
+var APP_VERSION = "20260327v4";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -50,11 +50,25 @@ var sbReady = !!(SUPABASE_URL && SUPABASE_KEY);
 var SHEET_URL = localStorage.getItem("sheet_url") || "https://script.google.com/macros/s/AKfycbw43bTZ37wepR4HpAug8zAtjmdkM7SwzUm3hzbIujS4FUGnEgU4vIcVlZSMsCMIgH2hQA/exec";
 async function syncToSheet(action,data){
   if(!SHEET_URL)return;
+  var payload=JSON.stringify({action:action,data:data});
+  // วิธี 1: fetch POST (ลอง 3 ครั้ง)
+  for(var attempt=0;attempt<3;attempt++){
+    try{
+      await fetch(SHEET_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:payload});
+      return; // สำเร็จ
+    }catch(e){
+      console.warn("Sheet sync attempt "+(attempt+1)+" failed:",e);
+      if(attempt<2)await new Promise(function(r){setTimeout(r,2000);}); // รอ 2 วิ แล้วลองใหม่
+    }
+  }
+  // วิธี 2: backup GET (ถ้า POST fail ทั้ง 3 ครั้ง)
   try{
-    // fetch POST no-cors + text/plain → Apps Script รับ JSON ตรงๆ ไม่มี redirect ปัญหา
-    var payload=JSON.stringify({action:action,data:data});
-    fetch(SHEET_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:payload}).catch(function(e){console.warn("Sheet:",e);});
-  }catch(e){console.warn("Sheet sync:",e);}
+    var params="action="+encodeURIComponent(action);
+    var keys=Object.keys(data||{});
+    for(var i=0;i<keys.length;i++){params+="&"+encodeURIComponent(keys[i])+"="+encodeURIComponent(String(data[keys[i]]||"").substring(0,200));}
+    var img=new Image();img.src=SHEET_URL+"?"+params;
+    setTimeout(function(){img=null;},15000);
+  }catch(e){console.warn("Sheet backup sync failed:",e);}
 }
 
 // Supabase REST API helper (ไม่ต้องใช้ SDK)
