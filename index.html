@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260328v4";
+var APP_VERSION = "20260328v5";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -311,7 +311,7 @@ async function dbSaveUpsellBatch(usernames){var all=await sbFetch("accounts?sele
 function App(){var _s=useState;
   var[sbOk,setSbOk]=_s(sbReady);
   var savedUser=null;try{var raw=localStorage.getItem("ps_user");if(raw)savedUser=JSON.parse(raw);}catch(e){}
-  var[user,setUser]=_s(savedUser);var[accounts,setAccounts]=_s([]);var[allOrders,setAllOrders]=_s([]);var[upsellOrders,setUpsellOrders]=_s([]);var[page,setPage]=_s("orders");var[showForm,setShowForm]=_s(false);var[notif,setNotif]=_s(null);var[viewOrder,setViewOrder]=_s(null);var[slipProgress,setSlipProgress]=_s(null);var[dateFrom,setDateFrom]=_s(todayStr());var[dateTo,setDateTo]=_s(todayStr());var userRef=useRef(savedUser);
+  var[user,setUser]=_s(savedUser);var[accounts,setAccounts]=_s([]);var[allOrders,setAllOrders]=_s([]);var[upsellOrders,setUpsellOrders]=_s([]);var savedPage=localStorage.getItem("ps_page")||"orders";var[page,setPage0]=_s(savedPage);function setPage(p){setPage0(p);localStorage.setItem("ps_page",p);}var[showForm,setShowForm]=_s(false);var[notif,setNotif]=_s(null);var[viewOrder,setViewOrder]=_s(null);var[slipProgress,setSlipProgress]=_s(null);var[dateFrom,setDateFrom]=_s(todayStr());var[dateTo,setDateTo]=_s(todayStr());var userRef=useRef(savedUser);
   function notify(msg,type){setNotif({msg:msg,type:type||"success"});setTimeout(function(){setNotif(null);},3500);}
   async function loadAccounts(){try{var d=await dbGetAccounts();setAccounts(d);}catch(e){console.error(e);}}
   async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"?"ALL":u.displayName);setAllOrders(d);}catch(e){notify("โหลดผิดพลาด","warning");}}
