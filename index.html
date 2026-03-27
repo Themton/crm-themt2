@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260327v6";
+var APP_VERSION = "20260327v7";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -144,7 +144,7 @@ function parseProducts(orders){
   });
   return Object.values(products).sort(function(a,b){return b.qty-a.qty;});
 }
-function StatusBadge({status}){var s=status||"รอส่ง";var colors={"\u0e23\u0e2d\u0e2a\u0e48\u0e07":{bg:"#fef3c7",color:"#92400e",icon:"📦"},"Export \u0e41\u0e25\u0e49\u0e27":{bg:"#dbeafe",color:"#1d4ed8",icon:"📤"},"\u0e2a\u0e48\u0e07\u0e41\u0e25\u0e49\u0e27":{bg:"#dcfce7",color:"#166534",icon:"✅"}};var c=colors[s]||colors["\u0e23\u0e2d\u0e2a\u0e48\u0e07"];return<span style={{padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:c.bg,color:c.color}}>{c.icon} {s}</span>;}
+function StatusBadge({status}){var s=status||"รอส่ง";var bg="#fef3c7",co="#92400e",icon="📦";if(s==="Export แล้ว"){bg="#dbeafe";co="#1d4ed8";icon="📤";}else if(s==="ส่งแล้ว"){bg="#dcfce7";co="#166534";icon="✅";}return<span style={{padding:"2px 8px",borderRadius:12,fontSize:10,fontWeight:700,background:bg,color:co}}>{icon} {s}</span>;}
 function ProductSummary({orders,title}){
   var prods=parseProducts(orders);
   if(prods.length===0)return null;
