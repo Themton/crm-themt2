@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260329v6";
+var APP_VERSION = "20260329v7";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -719,6 +719,7 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin,onUpdateSt
 </div></div>;}
 function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateFrom,dateTo,setDateFrom,setDateTo}){
   var[statusFilter,setStatusFilter]=useState("รอส่ง");
+  var[sourceFilter,setSourceFilter]=useState("ALL");
   var[selected,setSelected]=useState({});
   var[viewOrder,setViewOrder]=useState(null);
   var[search,setSearch]=useState("");
@@ -729,12 +730,17 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
     (upsellOrders||[]).map(function(o){return{...o,_table:"upsell"};})
   ).filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});
 
+  // กรองที่มา
+  var sourceFiltered=sourceFilter==="ALL"?allItems:allItems.filter(function(o){return o._table===sourceFilter;});
   // กรองสถานะ
-  var filtered=statusFilter==="ALL"?allItems:allItems.filter(function(o){return(o.Status||"รอส่ง")===statusFilter;});
+  var filtered=statusFilter==="ALL"?sourceFiltered:sourceFiltered.filter(function(o){return(o.Status||"รอส่ง")===statusFilter;});
   // ค้นหา
   if(search){var sl=search.toLowerCase();filtered=filtered.filter(function(o){return(o.Name||"").toLowerCase().indexOf(sl)>=0||String(o.MobileNo||"").indexOf(sl)>=0||(o.SalesPerson||"").toLowerCase().indexOf(sl)>=0;});}
   // นับสถานะ
-  var countByStatus={};allItems.forEach(function(o){var s=o.Status||"รอส่ง";countByStatus[s]=(countByStatus[s]||0)+1;});
+  var countByStatus={};sourceFiltered.forEach(function(o){var s=o.Status||"รอส่ง";countByStatus[s]=(countByStatus[s]||0)+1;});
+  // นับที่มา
+  var countOrders=allItems.filter(function(o){return o._table==="orders";}).length;
+  var countUpsell=allItems.filter(function(o){return o._table==="upsell";}).length;
 
   function toggleSelect(oid){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];if(n[oid])delete n[oid];else n[oid]=true;return n;});}
   function selectAll(){var allSel=filtered.every(function(o){return selected[o.OrderID];});if(allSel){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){delete n[o.OrderID];});return n;});}else{setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){n[o.OrderID]=true;});return n;});}}
@@ -776,8 +782,14 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
       </div>
     </div>
 
-    {/* Search */}
-    <div style={{display:"flex",gap:10,marginBottom:14}}><div style={S.searchBox}><span>🔍</span><input placeholder="ค้นหาชื่อ เบอร์ พนักงาน..." value={search} onChange={function(e){setSearch(e.target.value);}} style={S.searchInput}/></div><span style={{fontSize:12,color:"#94a3b8",alignSelf:"center"}}>{filtered.length} รายการ</span></div>
+    {/* Search + Source filter */}
+    <div style={{display:"flex",gap:10,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
+      <div style={S.searchBox}><span>🔍</span><input placeholder="ค้นหาชื่อ เบอร์ พนักงาน..." value={search} onChange={function(e){setSearch(e.target.value);}} style={S.searchInput}/></div>
+      <div style={{display:"flex",gap:4}}>
+        {[{k:"ALL",l:"ทั้งหมด",c:"#475569",cnt:allItems.length},{k:"orders",l:"📋 Order",c:"#2563eb",cnt:countOrders},{k:"upsell",l:"🔥 Upsell",c:"#ea580c",cnt:countUpsell}].map(function(s){return<button key={s.k} onClick={function(){setSourceFilter(s.k);setSelected({});}} style={{padding:"5px 12px",borderRadius:6,border:sourceFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:sourceFilter===s.k?(s.k==="orders"?"#eff6ff":s.k==="upsell"?"#fff7ed":"#f8fafc"):"#fff",color:s.c,fontSize:11,fontWeight:700,cursor:"pointer"}}>{s.l} ({s.cnt})</button>;})}
+      </div>
+      <span style={{fontSize:12,color:"#94a3b8"}}>{filtered.length} รายการ</span>
+    </div>
 
     {/* Table */}
     <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"auto"}}>
