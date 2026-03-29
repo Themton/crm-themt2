@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260329v5";
+var APP_VERSION = "20260329v6";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -784,19 +784,20 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
       <table style={S.table}>
         <thead><tr>
           <th style={{...S.th,width:32,textAlign:"center"}}><input type="checkbox" checked={filtered.length>0&&filtered.every(function(o){return selected[o.OrderID];})} onChange={selectAll}/></th>
-          {["#","วันที่","เวลา","ลูกค้า","เบอร์โทรศัพท์","ราคา","ประเภท","สถานะ","พนักงาน"].map(function(h,i){return<th key={i} style={S.th}>{h}</th>;})}
+          {["#","ที่มา","วันที่","เวลา","ลูกค้า","เบอร์โทรศัพท์","ราคา","ประเภท","สถานะ","พนักงาน"].map(function(h,i){return<th key={i} style={S.th}>{h}</th>;})}
         </tr></thead>
-        <tbody>{filtered.length===0?<tr><td colSpan={10} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่พบรายการ</td></tr>
+        <tbody>{filtered.length===0?<tr><td colSpan={11} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่พบรายการ</td></tr>
         :filtered.map(function(o,idx){var isCOD=Number(o.COD||0)>0;var isSel=!!selected[o.OrderID];var isUp=o._table==="upsell";
           return<tr key={o.OrderID} style={{borderLeft:isUp?"3px solid #ea580c":isCOD?"3px solid #ef4444":"3px solid #10b981",background:isSel?"#eff6ff":""}} onMouseEnter={function(e){if(!isSel)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){if(!isSel)e.currentTarget.style.background="";}}>
             <td style={{...S.td,textAlign:"center",width:32}} onClick={function(){toggleSelect(o.OrderID);}}><input type="checkbox" checked={isSel} readOnly/></td>
             <td style={{...S.td,fontWeight:700,color:isUp?"#ea580c":"#d97706",fontSize:12,textAlign:"center"}}>{idx+1}</td>
+            <td style={S.td}><span style={{padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:700,background:isUp?"#fff7ed":"#eff6ff",color:isUp?"#ea580c":"#2563eb"}}>{isUp?"🔥 Upsell":"📋 Order"}</span></td>
             <td style={{...S.td,fontSize:12}}>{getDate(o.Timestamp)}</td>
             <td style={{...S.td,fontSize:12}}>{getTime(o.Timestamp)}</td>
             <td style={{...S.td,fontWeight:600}}>{o.Name}</td>
             <td style={{...S.td,fontSize:12}}>{o.MobileNo}</td>
             <td style={{...S.td,fontWeight:700}}>฿{Number(o.SalePrice||0).toLocaleString()}</td>
-            <td style={S.td}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span>{isUp&&<span style={{marginLeft:4,padding:"2px 6px",borderRadius:8,fontSize:9,fontWeight:700,background:"#fff7ed",color:"#ea580c"}}>UP</span>}</td>
+            <td style={S.td}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,background:isCOD?"#fef2f2":"#f0fdf4",color:isCOD?"#ef4444":"#10b981"}}>{isCOD?"COD":"โอน"}</span></td>
             <td style={S.td}><StatusBadge status={o.Status}/></td>
             <td style={{...S.td,fontSize:12}}>{o.SalesPerson}</td>
           </tr>;})}</tbody>
