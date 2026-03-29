@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260329v2";
+var APP_VERSION = "20260329v3";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -371,7 +371,7 @@ function App(){var _s=useState;
     return function(){clearInterval(interval);};
   }},[sbOk]);
   function doLogin(acc){userRef.current=acc;setUser(acc);localStorage.setItem("ps_user",JSON.stringify(acc));loadOrders();loadUpsell();}
-  function doLogout(){userRef.current=null;setUser(null);setAllOrders([]);setUpsellOrders([]);localStorage.removeItem("ps_user");}
+  function doLogout(){userRef.current=null;setUser(null);setAllOrders([]);setUpsellOrders([]);localStorage.removeItem("ps_user");localStorage.removeItem("ps_page");loadAccounts();}
   if(!sbOk)return<SetupScreen onSave={function(url,key){localStorage.setItem("sb_url",url);localStorage.setItem("sb_key",key);SUPABASE_URL=url;SUPABASE_KEY=key;sbReady=true;setSbOk(true);}}/>;
   if(!user)return<LoginScreen accounts={accounts} onLogin={doLogin} onReload={loadAccounts} onSetup={function(){setSbOk(false);}}/>;
   var isAdmin=user.role==="admin";
