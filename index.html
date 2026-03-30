@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v4";
+var APP_VERSION = "20260330v5";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -804,6 +804,14 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
         {[{k:"ALL",l:"ทั้งหมด",c:"#475569",cnt:allItems.length},{k:"orders",l:"📋 Order",c:"#2563eb",cnt:countOrders},{k:"upsell",l:"🔥 Upsell",c:"#ea580c",cnt:countUpsell}].map(function(s){return<button key={s.k} onClick={function(){setSourceFilter(s.k);setSelected({});}} style={{padding:"5px 12px",borderRadius:6,border:sourceFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:sourceFilter===s.k?(s.k==="orders"?"#eff6ff":s.k==="upsell"?"#fff7ed":"#f8fafc"):"#fff",color:s.c,fontSize:11,fontWeight:700,cursor:"pointer"}}>{s.l} ({s.cnt})</button>;})}
       </div>
       <span style={{fontSize:12,color:"#94a3b8"}}>{filtered.length} รายการ</span>
+    </div>
+
+    {/* Select buttons */}
+    <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
+      <button onClick={selectAll} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #d97706",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#fef3c7":"#fff",color:"#92400e",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกหน้านี้ ({pageItems.length})</button>
+      <button onClick={function(){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){n[o.OrderID]=true;});return n;});}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #3b82f6",background:"#fff",color:"#1d4ed8",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด ({filtered.length})</button>
+      {selCount>0&&<button onClick={function(){setSelected({});}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #ef4444",background:"#fff",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ ยกเลิก ({selCount})</button>}
+      {selCount>0&&<span style={{fontSize:12,fontWeight:700,color:"#d97706"}}>เลือกแล้ว {selCount} รายการ</span>}
     </div>
 
     {/* Table */}
