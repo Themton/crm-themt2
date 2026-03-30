@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v14";
+var APP_VERSION = "20260330v15";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -890,7 +890,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
 
       {/* 4 Actions */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-        <button disabled={flashLoading||selCount===0} onClick={async function(){setFlashLoading(true);setFlashResult(null);var results=[];for(var i=0;i<selItems.length;i++){try{var r=await flashCreateOrder(selItems[i]);results.push({name:selItems[i].Name,ok:r.code===1,pno:r.data&&r.data.pno?r.data.pno:"",msg:r.message||r.msg||""});}catch(e){results.push({name:selItems[i].Name,ok:false,msg:String(e.message||e)});}}setFlashResult({type:"create",results:results});setFlashLoading(false);}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:selCount>0?"linear-gradient(135deg,#d97706,#b45309)":"#d1d5db",color:"#fff",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>📦 สร้างรายการ{selCount>0?" ("+selCount+")":""}</button>
+        <button disabled={flashLoading||selCount===0} onClick={async function(){setFlashLoading(true);setFlashResult(null);var results=[];for(var i=0;i<selItems.length;i++){try{var r=await flashCreateOrder(selItems[i]);console.log("Flash create response:",JSON.stringify(r));results.push({name:selItems[i].Name,ok:r.code===1,pno:r.data&&r.data.pno?r.data.pno:"",msg:r.message||r.msg||JSON.stringify(r)});}catch(e){console.error("Flash create error:",e);results.push({name:selItems[i].Name,ok:false,msg:String(e.message||e)});}}setFlashResult({type:"create",results:results});setFlashLoading(false);}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:selCount>0?"linear-gradient(135deg,#d97706,#b45309)":"#d1d5db",color:"#fff",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>📦 สร้างรายการ{selCount>0?" ("+selCount+")":""}</button>
 
         <button disabled={flashLoading} onClick={async function(){var pno=prompt("ใส่เลข Tracking (PNO):");if(!pno)return;setFlashLoading(true);try{var res=await flashPrintLabel(pno);if(res.ok||res.type){var blob=await res.blob();var url=URL.createObjectURL(blob);window.open(url);}else{var j=await res.json().catch(function(){return{};});alert("ผิดพลาด: "+(j.message||j.msg||"ไม่สำเร็จ"));}}catch(e){alert("Error: "+e.message);}setFlashLoading(false);}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#3b82f6,#2563eb)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🖨️ ปริ้นใบปะหน้า</button>
 
