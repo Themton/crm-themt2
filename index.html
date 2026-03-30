@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v70";
+var APP_VERSION = "20260330v71";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -116,7 +116,9 @@ function printCustomLabels(orders,pnos){
     var p=pnos[i]||"";
     html+='try{JsBarcode("#bc'+i+'","'+p+'",{format:"CODE128",width:2.2,height:45,displayValue:false,margin:0});}catch(e){}';
   }
-  html+='setTimeout(function(){window.print();},800);}renderAll();';
+  html+='waitImages();}';
+  html+='function waitImages(){var imgs=document.querySelectorAll("img");var total=imgs.length;if(total===0){window.print();return;}var loaded=0;imgs.forEach(function(img){if(img.complete){loaded++;}else{img.onload=function(){loaded++;if(loaded>=total)window.print();};img.onerror=function(){loaded++;if(loaded>=total)window.print();};}});if(loaded>=total)window.print();}';
+  html+='renderAll();';
   html+='<\/script></body></html>';
   var w=window.open("","_blank");
   w.document.write(html);w.document.close();
