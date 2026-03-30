@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v32";
+var APP_VERSION = "20260330v33";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -891,16 +891,53 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
   var exportHistory=[];try{exportHistory=JSON.parse(localStorage.getItem("export_history")||"[]");}catch(e){}
 
   return<div>
-    <div style={S.pageHeader}><h1 style={S.pageTitle}>🚚 การจัดส่ง</h1><div style={{display:"flex",gap:6}}><button onClick={function(){setFlashPanel(!flashPanel);}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #f59e0b",background:flashPanel?"#fef3c7":"#fff",color:"#92400e",fontSize:11,fontWeight:700,cursor:"pointer"}}>⚡ Flash Express</button><button onClick={function(){setShowHistory(true);}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📜 ประวัติ ({exportHistory.length})</button></div></div>
+    {/* ===== Toolbar — เหมือน Flash ProShip ===== */}
+    <div style={{background:"#fff",borderRadius:10,padding:"10px 14px",marginBottom:10,border:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+      <button onClick={selectAll} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#e0f2fe":"#fff",color:"#0284c7",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด</button>
+      <button onClick={function(){setStatusFilter("รอส่ง");setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📋 รายการยังไม่พิมพ์</button>
+      <button disabled={selCount===0} onClick={async function(){var pnos=selItems.map(function(o){return o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}
+        var allParams=[];for(var i=0;i<pnos.length;i++){var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);allParams.push({pno:pnos[i],params:params});}
+        var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flash Labels ('+pnos.length+')</title><style>@page{size:100mm 75mm;margin:0}body{margin:0;padding:0}iframe{width:100mm;height:75mm;border:none;page-break-after:always;display:block}@media print{.no-print{display:none!important}}</style></head><body>';
+        html+='<div class="no-print" style="padding:10px;background:#fef3c7;text-align:center;font-family:Arial"><b>⚡ Flash Labels: '+pnos.length+' ใบ</b> — กด Ctrl+P เพื่อปริ้น</div>';
+        allParams.forEach(function(ap,idx){html+='<iframe name="lf'+idx+'" style="width:100mm;height:75mm;border:none;page-break-after:always;display:block"></iframe>';});
+        html+='<script>';allParams.forEach(function(ap,idx){html+='(function(){var f=document.createElement("form");f.method="POST";f.action="'+FLASH_BASE+'/open/v1/orders/'+ap.pno+'/small/pre_print";f.target="lf'+idx+'";';Object.keys(ap.params).forEach(function(k){html+='var i=document.createElement("input");i.type="hidden";i.name="'+k+'";i.value="'+ap.params[k]+'";f.appendChild(i);';});html+='document.body.appendChild(f);f.submit();document.body.removeChild(f);})();';});
+        html+='<\/script></body></html>';var w=window.open("","_blank","width=420,height=600");w.document.write(html);w.document.close();
+      }} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>
+      <button onClick={function(){if(selCount>0){bulkUpdateStatus("ปริ้นแล้ว");}}} disabled={selCount===0} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:selCount>0?"#fff":"#f8fafc",color:selCount>0?"#64748b":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🔄 เปลี่ยนสถานะ</button>
+      {selCount>0&&<button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #ef4444",background:"#fef2f2",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ ยกเลิก</button>}
+      <div style={{flex:1}}/>
+      <select value={sourceFilter} onChange={function(e){setSourceFilter(e.target.value);setSelected({});}} style={{padding:"6px 10px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:11,fontWeight:600,color:"#64748b"}}>
+        <option value="ALL">ทั้งหมด</option>
+        <option value="orders">📋 Order</option>
+        <option value="upsell">🔥 Upsell</option>
+      </select>
+      <div style={{display:"flex",alignItems:"center",gap:4,border:"1px solid #e2e8f0",borderRadius:6,padding:"4px 8px",background:"#fff"}}>
+        <span style={{fontSize:12}}>🔍</span>
+        <input placeholder="ค้นหา..." value={search} onChange={function(e){setSearch(e.target.value);}} style={{border:"none",outline:"none",fontSize:12,width:120}}/>
+      </div>
+      <button onClick={function(){setFlashPanel(!flashPanel);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #f59e0b",background:flashPanel?"#fef3c7":"#fff",color:"#92400e",fontSize:11,fontWeight:700,cursor:"pointer"}}>⚡ สร้างการจัดส่ง</button>
+    </div>
+
+    {/* ===== Status Tabs — เหมือน Flash ProShip ===== */}
+    <div style={{display:"flex",gap:0,marginBottom:10,borderBottom:"2px solid #e2e8f0",flexWrap:"wrap"}}>
+      {[{k:"ALL",l:"ทั้งหมด",c:"#475569"},{k:"รอส่ง",l:"📦 เตรียมส่ง",c:"#d97706"},{k:"ปริ้นแล้ว",l:"✅ พร้อมส่ง",c:"#059669"}].map(function(s){var cnt=s.k==="ALL"?allItems.length:(countByStatus[s.k]||0);var active=statusFilter===s.k;return<button key={s.k} onClick={function(){setStatusFilter(s.k);setSelected({});}} style={{padding:"10px 20px",border:"none",borderBottom:active?"3px solid "+s.c:"3px solid transparent",background:"transparent",color:active?s.c:"#94a3b8",fontSize:12,fontWeight:active?800:600,cursor:"pointer"}}>{s.l} <span style={{background:active?s.c:"#e2e8f0",color:active?"#fff":"#64748b",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:800,marginLeft:4}}>{cnt}</span></button>;})}
+      <div style={{flex:1}}/>
+      <div style={{display:"flex",gap:4,alignItems:"center",padding:"4px 0"}}>
+        <button onClick={function(){onExport(filtered,"xlsx","orders");}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #3b82f6",background:"#eff6ff",color:"#1d4ed8",fontSize:10,fontWeight:700,cursor:"pointer"}}>📥 Export ({filtered.length})</button>
+        <button onClick={function(){onExport(filtered,"csv","orders");}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,fontWeight:700,cursor:"pointer"}}>CSV</button>
+        <button onClick={function(){setShowHistory(true);}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,fontWeight:700,cursor:"pointer"}}>📜 ประวัติ</button>
+      </div>
+    </div>
 
     {/* Date picker */}
-    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
-      <input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/>
-      <span style={{fontSize:12,color:"#94a3b8"}}>ถึง</span>
-      <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/>
+    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
+      <input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,fontWeight:600}}/>
+      <span style={{fontSize:11,color:"#94a3b8"}}>ถึง</span>
+      <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"5px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,fontWeight:600}}/>
       <button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===todayStr()&&dateTo===todayStr())}>วันนี้</button>
       <button onClick={function(){setDateFrom(sevenDaysAgo());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===sevenDaysAgo()&&dateTo===todayStr())}>7 วัน</button>
       <button onClick={function(){setDateFrom(monthStart());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===monthStart()&&dateTo===todayStr())}>เดือนนี้</button>
+      <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>{filtered.length} รายการ</span>
     </div>
 
     {/* ⚡ Flash Express Panel */}
@@ -946,29 +983,9 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
         }} style={{padding:"8px 20px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#d97706,#b45309)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💾 บันทึก</button>
       </div>}
 
-      {/* 4 Actions */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:12}}>
+      {/* 3 Actions */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
         <button disabled={flashLoading||selCount===0} onClick={async function(){setFlashLoading(true);setFlashResult(null);var results=[];for(var i=0;i<selItems.length;i++){try{var r=await flashCreateOrder(selItems[i]);console.log("Flash create response:",JSON.stringify(r));var pno=r.data&&r.data.pno?r.data.pno:"";if(pno)selItems[i]._flashPno=pno;results.push({name:selItems[i].Name,ok:r.code===1,pno:pno,msg:r.message||r.msg||JSON.stringify(r)});}catch(e){console.error("Flash create error:",e);results.push({name:selItems[i].Name,ok:false,msg:String(e.message||e)});}}setFlashResult({type:"create",results:results});setFlashLoading(false);}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:selCount>0?"linear-gradient(135deg,#d97706,#b45309)":"#d1d5db",color:"#fff",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>📦 สร้างรายการ{selCount>0?" ("+selCount+")":""}</button>
-
-        <button disabled={flashLoading||selCount===0} onClick={async function(){if(selCount===0)return;var pnos=selItems.map(function(o){return o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){var manual=trackPno||prompt("ใส่ PNO (คั่นด้วย , ถ้าหลายตัว):");if(!manual)return;pnos=manual.split(",").map(function(s){return s.trim();}).filter(function(s){return s;});}printCustomLabels(selItems,selItems.map(function(o){return o._flashPno||trackPno||"";}));}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:selCount>0?"linear-gradient(135deg,#3b82f6,#2563eb)":"#d1d5db",color:"#fff",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ ปริ้นใบปะหน้า{selCount>0?" ("+selCount+")":""}</button>
-
-        <button disabled={flashLoading||selCount===0} onClick={async function(){var pnos=selItems.map(function(o){return o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้องสร้างรายการก่อน เพื่อให้ได้ PNO");return;}
-          var allParams=[];for(var i=0;i<pnos.length;i++){var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);allParams.push({pno:pnos[i],params:params});}
-          var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flash Labels ('+pnos.length+')</title>';
-          html+='<style>@page{size:100mm 75mm;margin:0}body{margin:0;padding:0}iframe{width:100mm;height:75mm;border:none;page-break-after:always;display:block}@media print{.no-print{display:none!important}}</style>';
-          html+='</head><body>';
-          html+='<div class="no-print" style="padding:10px;background:#fef3c7;text-align:center;font-family:Arial"><b>⚡ Flash Labels: '+pnos.length+' ใบ</b> — กด Ctrl+P เพื่อปริ้น</div>';
-          allParams.forEach(function(ap,idx){html+='<iframe name="lf'+idx+'" style="width:100mm;height:75mm;border:none;page-break-after:always;display:block"></iframe>';});
-          html+='<script>';
-          allParams.forEach(function(ap,idx){
-            html+='(function(){var f=document.createElement("form");f.method="POST";f.action="'+FLASH_BASE+'/open/v1/orders/'+ap.pno+'/small/pre_print";f.target="lf'+idx+'";';
-            Object.keys(ap.params).forEach(function(k){html+='var i=document.createElement("input");i.type="hidden";i.name="'+k+'";i.value="'+ap.params[k]+'";f.appendChild(i);';});
-            html+='document.body.appendChild(f);f.submit();document.body.removeChild(f);})();';
-          });
-          html+='<\/script></body></html>';
-          var w=window.open("","_blank","width=420,height=600");
-          w.document.write(html);w.document.close();
-        }} style={{padding:"10px 8px",borderRadius:8,border:"none",background:selCount>0?"linear-gradient(135deg,#6366f1,#4f46e5)":"#d1d5db",color:"#fff",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ Flash Label{selCount>0?" ("+selCount+")":""}</button>
 
         <button disabled={flashLoading} onClick={async function(){setFlashLoading(true);try{var r=await flashNotifyCourier({});setFlashResult({type:"notify",results:[{ok:r.code===1,msg:r.message||r.msg||JSON.stringify(r)}]});}catch(e){setFlashResult({type:"notify",results:[{ok:false,msg:e.message}]});}setFlashLoading(false);}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🚗 เรียกรับพัสดุ</button>
 
@@ -1012,30 +1029,11 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
     </div>}
 
     {/* Status tabs */}
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        {[{k:"ALL",l:"ทั้งหมด",c:"#475569",icon:"📋"},{k:"รอส่ง",l:"รอส่ง",c:"#92400e",icon:"📦"},{k:"ปริ้นแล้ว",l:"ปริ้นแล้ว",c:"#166534",icon:"🖨️"}].map(function(s){var cnt=s.k==="ALL"?allItems.length:(countByStatus[s.k]||0);return<button key={s.k} onClick={function(){setStatusFilter(s.k);setSelected({});}} style={{padding:"8px 18px",borderRadius:8,border:statusFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:statusFilter===s.k?"#f8fafc":"#fff",color:s.c,fontSize:12,fontWeight:700,cursor:"pointer"}}>{s.icon} {s.l} <span style={{background:statusFilter===s.k?s.c:"#e2e8f0",color:statusFilter===s.k?"#fff":"#64748b",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:800,marginLeft:4}}>{cnt}</span></button>;})}
-      </div>
-      <div style={{display:"flex",gap:6}}>
-        <button onClick={function(){onExport(filtered,"xlsx","orders");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #3b82f6",background:"#eff6ff",color:"#1d4ed8",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export Excel ({filtered.length})</button>
-        <button onClick={function(){onExport(filtered,"csv","orders");}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 CSV</button>
-      </div>
-    </div>
-
-    {/* Search + Source filter */}
-    <div style={{display:"flex",gap:10,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
-      <div style={S.searchBox}><span>🔍</span><input placeholder="ค้นหาชื่อ เบอร์ พนักงาน..." value={search} onChange={function(e){setSearch(e.target.value);}} style={S.searchInput}/></div>
-      <div style={{display:"flex",gap:4}}>
-        {[{k:"ALL",l:"ทั้งหมด",c:"#475569",cnt:allItems.length},{k:"orders",l:"📋 Order",c:"#2563eb",cnt:countOrders},{k:"upsell",l:"🔥 Upsell",c:"#ea580c",cnt:countUpsell}].map(function(s){return<button key={s.k} onClick={function(){setSourceFilter(s.k);setSelected({});}} style={{padding:"5px 12px",borderRadius:6,border:sourceFilter===s.k?"2px solid "+s.c:"1px solid #e2e8f0",background:sourceFilter===s.k?(s.k==="orders"?"#eff6ff":s.k==="upsell"?"#fff7ed":"#f8fafc"):"#fff",color:s.c,fontSize:11,fontWeight:700,cursor:"pointer"}}>{s.l} ({s.cnt})</button>;})}
-      </div>
-      <span style={{fontSize:12,color:"#94a3b8"}}>{filtered.length} รายการ</span>
-    </div>
 
     {/* Select buttons */}
-    <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
+    <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
       <button onClick={selectAll} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #d97706",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#fef3c7":"#fff",color:"#92400e",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกหน้านี้ ({pageItems.length})</button>
       <button onClick={function(){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){n[o.OrderID]=true;});return n;});}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #3b82f6",background:"#fff",color:"#1d4ed8",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด ({filtered.length})</button>
-      {selCount>0&&<button onClick={function(){setSelected({});}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #ef4444",background:"#fff",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ ยกเลิก ({selCount})</button>}
       {selCount>0&&<span style={{fontSize:12,fontWeight:700,color:"#d97706"}}>เลือกแล้ว {selCount} รายการ</span>}
     </div>
 
@@ -1077,15 +1075,6 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
         <span style={{fontSize:11,color:"#94a3b8",marginLeft:4}}>หน้า {pg}/{totalPages}</span>
       </div>}
     </div>
-
-    {/* Floating action bar */}
-    {selCount>0&&<div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:"#1e293b",color:"#fff",borderRadius:14,padding:"12px 20px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 10px 40px rgba(0,0,0,.3)",zIndex:999}}>
-      <span style={{fontSize:13,fontWeight:700}}>เลือก {selCount} รายการ</span>
-      <button onClick={function(){bulkUpdateStatus("ปริ้นแล้ว");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#10b981",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🖨️ ปริ้นแล้ว</button>
-      <button onClick={function(){bulkUpdateStatus("รอส่ง");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📦 รอส่ง</button>
-      <button onClick={function(){var orderItems=selItems.filter(function(o){return o._table==="orders";});var upsellItems=selItems.filter(function(o){return o._table==="upsell";});if(orderItems.length>0)onExport(orderItems,"xlsx","orders");if(upsellItems.length>0)onExport(upsellItems,"xlsx","upsell");setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export</button>
-      <button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#475569",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>✕ ยกเลิก</button>
-    </div>}
 
     {/* Export History Modal */}
     {showHistory&&<div style={S.modalOverlay} onClick={function(){setShowHistory(false);}}>
