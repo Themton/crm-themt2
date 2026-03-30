@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v25";
+var APP_VERSION = "20260330v26";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -59,42 +59,45 @@ function printCustomLabel(order,pno){
   var srcInfo=FLASH_SRC;var now=new Date();var dateStr=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Label '+pno+'</title>';
   html+='<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>';
-  html+='<style>@page{size:100mm 75mm;margin:0}body{margin:0;padding:0;font-family:Arial,sans-serif}';
-  html+='.label{width:100mm;height:75mm;border:1px solid #000;box-sizing:border-box;position:relative;overflow:hidden}';
-  html+='.top{background:#000;color:#fff;padding:2px 6px;font-size:9px;font-weight:700}';
-  html+='.pno-area{text-align:center;padding:4px 0;border-bottom:1px solid #000}';
-  html+='.pno{font-size:14px;font-weight:900;letter-spacing:1px}';
-  html+='.info{padding:4px 6px;font-size:8px;line-height:1.4;border-bottom:1px solid #000}';
-  html+='.src{color:#333}';
-  html+='.dst{font-size:10px;font-weight:700;margin-top:3px}';
-  html+='.dst-phone{font-size:12px;font-weight:900}';
+  html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
+  html+='@media print{body{margin:0;padding:0}.no-print{display:none!important}}';
+  html+='.label{width:100mm;height:75mm;border:2px solid #000;position:relative;overflow:hidden}';
+  html+='.barcode-area{text-align:center;padding:3px 10px;border-bottom:2px solid #000}';
+  html+='.barcode-area canvas,.barcode-area svg{width:80%;height:30px}';
+  html+='.pno{font-size:13px;font-weight:900;text-align:center;letter-spacing:2px;padding:1px 0}';
+  html+='.info{padding:4px 8px;font-size:8.5px;line-height:1.5;border-bottom:1px solid #000}';
+  html+='.src{color:#333;margin-bottom:3px}';
+  html+='.dst-name{font-size:11px;font-weight:800}';
+  html+='.dst-phone{font-size:13px;font-weight:900}';
   html+='.dst-addr{font-size:9px;font-weight:700}';
-  html+='.cod-area{padding:4px 6px;font-size:16px;font-weight:900;border-bottom:1px solid #000;min-height:22px}';
-  html+='.cod-yes{background:#000;color:#fff}';
-  html+='.cod-no{color:#333;font-size:10px}';
-  html+='.note{padding:3px 6px;font-size:7px;color:#333}';
-  html+='.bottom{position:absolute;bottom:0;left:0;right:0;padding:2px 6px;font-size:7px;color:#666;display:flex;justify-content:space-between}';
-  html+='.barcode-area{text-align:center;padding:2px 0}';
-  html+='.barcode-area svg{height:30px}';
-  html+='</style></head><body>';
+  html+='.cod-area{padding:5px 8px;border-bottom:1px solid #000}';
+  html+='.cod-big{background:#000;color:#fff;font-size:16px;font-weight:900;text-align:center;padding:4px 8px}';
+  html+='.transfer{font-size:10px;color:#333;padding:4px 8px}';
+  html+='.note{padding:3px 8px;font-size:7.5px;color:#333}';
+  html+='.bottom{position:absolute;bottom:1px;left:8px;right:8px;font-size:7px;color:#888;display:flex;justify-content:space-between}';
+  html+='</style>';
+  html+='<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">';
+  html+='</head><body>';
   html+='<div class="label">';
-  html+='<div class="pno-area"><div class="barcode-area"><svg id="barcode"></svg></div><div class="pno">'+pno+'</div></div>';
+  html+='<div class="barcode-area"><svg id="bc"></svg><div class="pno">'+pno+'</div></div>';
   html+='<div class="info">';
-  html+='<div class="src">ผู้ส่ง '+(srcInfo.name||"")+" "+(srcInfo.phone||"")+"<br>"+(srcInfo.address||"")+" "+(srcInfo.district||"")+" "+(srcInfo.city||"")+"<br>"+(srcInfo.province||"")+" "+(srcInfo.zip||"")+'</div>';
-  html+='<div class="dst">ผู้รับ '+(order.Name||"")+'</div>';
+  html+='<div class="src">ผู้ส่ง '+(srcInfo.name||"")+" ("+(srcInfo.phone||"")+")<br>"+(srcInfo.address||"")+" "+(srcInfo.district||"")+" "+(srcInfo.city||"")+"<br>"+(srcInfo.province||"")+" "+(srcInfo.zip||"")+'</div>';
+  html+='<div class="dst-name">ผู้รับ '+(order.Name||"")+'</div>';
   html+='<div class="dst-phone">'+(order.MobileNo||"")+'</div>';
   html+='<div class="dst-addr">'+(order.Address||"")+"<br>"+(order.SubDistrict||"")+", "+(order.District||"")+"<br>"+(order.Province||"")+" "+(order.ZIP||"")+'</div>';
   html+='</div>';
   if(codVal>0){
-    html+='<div class="cod-area cod-yes">เก็บเงินค่าสินค้า COD '+codVal+'</div>';
+    html+='<div class="cod-area"><div class="cod-big">เก็บเงินค่าสินค้า COD '+codVal+'</div></div>';
   }else{
-    html+='<div class="cod-area cod-no">โอนแล้ว ฿'+Number(order.SalePrice||0).toLocaleString()+'</div>';
+    html+='<div class="cod-area"><div class="transfer">โอนแล้ว ฿'+Number(order.SalePrice||0).toLocaleString()+'</div></div>';
   }
   if(rm)html+='<div class="note">หมายเหตุ: '+rm+'</div>';
-  html+='<div class="bottom"><span>'+dateStr+'</span><span>THE MT</span></div>';
+  html+='<div class="bottom"><span>'+dateStr+'</span><span>THE MT CRM</span></div>';
   html+='</div>';
-  html+='<script>try{JsBarcode("#barcode","'+pno+'",{width:1.5,height:35,displayValue:false,margin:0});}catch(e){}<\/script>';
-  html+='<script>setTimeout(function(){window.print();},500);<\/script>';
+  html+='<script>';
+  html+='function renderBarcode(){if(typeof JsBarcode!=="undefined"){try{JsBarcode("#bc","'+pno+'",{width:2,height:40,displayValue:false,margin:0});setTimeout(function(){window.print();},300);}catch(e){document.getElementById("bc").remove();window.print();}}else{setTimeout(renderBarcode,200);}}';
+  html+='renderBarcode();';
+  html+='<\/script>';
   html+='</body></html>';
   var w=window.open("","_blank","width=400,height=320");
   w.document.write(html);w.document.close();
