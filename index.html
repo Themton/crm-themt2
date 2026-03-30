@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v67";
+var APP_VERSION = "20260330v68";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -96,7 +96,8 @@ function printCustomLabels(orders,pnos){
     html+='<div class="body-area">';
     html+='<div class="src-line">ผู้ส่ง '+(srcInfo.name||"")+" "+(srcInfo.phone||"")+" "+(srcInfo.address||"")+" "+(srcInfo.district||"")+" "+(srcInfo.city||"")+" "+(srcInfo.province||"")+" "+(srcInfo.zip||"")+'</div>';
     html+='<div class="dst-name">ผู้รับ '+(order.Name||"")+'</div>';
-    html+='<div class="dst-phone">'+(order.MobileNo||"")+'</div>';
+    var ph=String(order.MobileNo||"");var maskPh=ph.length>=7?ph.slice(0,3)+"****"+ph.slice(-3):ph;
+    html+='<div class="dst-phone">'+maskPh+'</div>';
     html+='<div class="dst-addr">'+(order.Address||"")+"<br>"+(order.SubDistrict||"")+", "+(order.District||"")+"<br>"+(order.Province||"")+" "+(order.ZIP||"")+'</div>';
     html+='<div class="qr-box"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(pno)+'"/></div>';
     html+='</div>';
