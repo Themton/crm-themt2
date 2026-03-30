@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v12";
+var APP_VERSION = "20260330v13";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -50,7 +50,7 @@ var FLASH_BASE = localStorage.getItem("flash_env") === "training" ? "https://api
 var FLASH_ENV = localStorage.getItem("flash_env") || "production";
 var FLASH_SRC = JSON.parse(localStorage.getItem("flash_src") || '{"name":"THE MT","phone":"0000000000","province":"","city":"","district":"","zip":"","address":""}');
 async function flashSign(params){var keys=Object.keys(params).filter(function(k){return k!=="sign"&&params[k]!==undefined&&params[k]!=="";}).sort();var str="";keys.forEach(function(k){str+=k+params[k];});var enc=new TextEncoder().encode(str+FLASH_KEY);var hash=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,"0");}).join("").toUpperCase();}
-async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.nonceStr=String(Date.now());params.sign=await flashSign(params);var body=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");var res=await fetch(FLASH_BASE+path,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","Accept":accept||"application/json"},body:body});if(accept==="application/pdf")return res;return await res.json();}
+async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.nonceStr=String(Date.now());params.sign=await flashSign(params);var body=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");var url=FLASH_BASE+path;var proxyUrl="https://corsproxy.io/?"+encodeURIComponent(url);var res=await fetch(proxyUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","Accept":accept||"application/json"},body:body});if(accept==="application/pdf")return res;return await res.json();}
 async function flashCreateOrder(order){var codVal=Number(order.COD||0);return await flashAPI("/open/v3/orders",{outTradeNo:order.OrderID||("ORD"+Date.now()),srcName:FLASH_SRC.name||"THE MT",srcPhone:FLASH_SRC.phone||"",srcProvinceName:FLASH_SRC.province||"",srcCityName:FLASH_SRC.city||"",srcDistrictName:FLASH_SRC.district||"",srcPostalCode:FLASH_SRC.zip||"",srcDetailAddress:FLASH_SRC.address||"",dstName:order.Name||"",dstPhone:order.MobileNo||"",dstProvinceName:order.Province||"",dstCityName:order.District||"",dstDistrictName:order.SubDistrict||"",dstPostalCode:order.ZIP||"",dstDetailAddress:order.Address||"",articleCategory:1,expressCategory:1,weight:1000,codEnabled:codVal>0?1:0,codAmount:codVal>0?codVal*100:0});}
 async function flashPrintLabel(pno){return await flashAPI("/open/v1/orders/"+pno+"/pre_print",{},"application/pdf");}
 async function flashNotifyCourier(params){return await flashAPI("/open/v1/notify",params||{});}
