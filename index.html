@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v54";
+var APP_VERSION = "20260330v55";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -869,31 +869,33 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
   var[autoSync,setAutoSync]=useState(localStorage.getItem("flash_autosync")||"5");
   var[lastSync,setLastSync]=useState("");
   var syncRef=useRef(null);
+  var allItemsRef=useRef([]);
+  allItemsRef.current=allItems;
 
-  async function doFlashSync(silent){
-    var withPno=allItems.filter(function(o){return o.TrackingNo&&o.FlashStatus!=="ลูกค้ารับของ"&&o.FlashStatus!=="ยกเลิก";});
+  function doFlashSync(silent){
+    var withPno=allItemsRef.current.filter(function(o){return o.TrackingNo&&o.FlashStatus!=="ลูกค้ารับของ"&&o.FlashStatus!=="ยกเลิก";});
     if(withPno.length===0){if(!silent)alert("ไม่มีรายการที่ต้องซิงค์");return;}
     if(!silent){setFlashProgress({done:0,total:withPno.length,ok:0,fail:0});setFlashLoading(true);}
-    var changed=0;
-    for(var i=0;i<withPno.length;i++){
-      try{var r=await flashTrackStatus(withPno[i].TrackingNo);if(r.code===1&&r.data){var st=r.data.state?FLASH_STATUS_MAP[String(r.data.state)]||"":"";if(st&&st!==withPno[i].FlashStatus){var tbl=withPno[i]._table||"orders";await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(withPno[i].OrderID),{method:"PATCH",body:{flash_status:st}});changed++;}}}catch(e){}
-      if(!silent)setFlashProgress({done:i+1,total:withPno.length,ok:i+1,fail:0});
+    var idx={v:0};
+    function next(){
+      if(idx.v>=withPno.length){if(!silent){setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);}setLastSync(new Date().toLocaleTimeString("th-TH"));if(onRefresh)onRefresh();return;}
+      var o=withPno[idx.v];
+      flashTrackStatus(o.TrackingNo).then(function(r){
+        if(r.code===1&&r.data){var st=r.data.state?FLASH_STATUS_MAP[String(r.data.state)]||"":"";if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});}}
+      }).catch(function(){}).then(function(){
+        idx.v++;if(!silent)setFlashProgress({done:idx.v,total:withPno.length,ok:idx.v,fail:0});next();
+      });
     }
-    if(!silent){setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);}
-    setLastSync(new Date().toLocaleTimeString("th-TH"));
-    if(onRefresh)onRefresh();
-    return changed;
+    next();
   }
 
   // Auto sync
   useEffect(function(){
     if(syncRef.current)clearInterval(syncRef.current);
     var mins=Number(autoSync);
-    if(mins>0){
-      syncRef.current=setInterval(function(){doFlashSync(true);},mins*60*1000);
-    }
+    if(mins>0){syncRef.current=setInterval(function(){doFlashSync(true);},mins*60*1000);}
     return function(){if(syncRef.current)clearInterval(syncRef.current);};
-  },[autoSync,allItems.length]);
+  },[autoSync]);
   var[flashSettings,setFlashSettings]=useState(false);
 
   // รวม orders + upsell + กรองวันที่
