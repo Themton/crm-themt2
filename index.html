@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v57";
+var APP_VERSION = "20260330v58";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -56,47 +56,55 @@ async function flashPrintLabel(pno){return await flashAPI("/open/v1/orders/"+pno
 // สร้างใบปะหน้าเอง 100x75mm — รองรับหลายใบ
 function printCustomLabels(orders,pnos){
   var srcInfo=FLASH_SRC;var now=new Date();var dateStr=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels</title>';
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels ('+orders.length+')</title>';
   html+='<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>';
   html+='<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">';
-  html+='<style>@page{size:100mm 78mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
+  html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
   html+='@media print{.no-print{display:none!important}}';
-  html+='.label{width:100mm;height:75mm;border:2px solid #000;position:relative;overflow:hidden;page-break-after:always;margin-bottom:3mm}';
-  html+='.label:last-child{page-break-after:auto;margin-bottom:0}';
-  html+='.barcode-area{text-align:center;padding:5px 12px 2px;border-bottom:2px solid #000}';
-  html+='.barcode-area svg{width:95%;height:50px}';
-  html+='.pno{font-size:13px;font-weight:900;text-align:center;letter-spacing:2px;padding:1px 0;border-bottom:2px solid #000}';
-  html+='.info{padding:4px 8px;font-size:8.5px;line-height:1.5;border-bottom:1px solid #000}';
-  html+='.src{color:#333;margin-bottom:3px}';
-  html+='.dst-name{font-size:11px;font-weight:800}';
-  html+='.dst-phone{font-size:13px;font-weight:900}';
-  html+='.dst-addr{font-size:9px;font-weight:700}';
-  html+='.cod-area{padding:5px 8px;border-bottom:1px solid #000}';
-  html+='.cod-big{background:#000;color:#fff;font-size:16px;font-weight:900;text-align:center;padding:4px 8px}';
-  html+='.transfer{font-size:10px;color:#333;padding:4px 8px}';
-  html+='.note{padding:3px 8px;font-size:7.5px;color:#333}';
-  html+='.bottom{position:absolute;bottom:1px;left:8px;right:8px;font-size:7px;color:#888;display:flex;justify-content:space-between}';
-  html+='.qr{position:absolute;right:6px;bottom:28px}';
-  html+='.qr img{width:65px;height:65px;image-rendering:pixelated;image-rendering:crisp-edges}';
+  html+='.print-bar{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;padding:10px;text-align:center;font-weight:700}';
+  html+='.print-bar button{margin:6px;padding:8px 24px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}';
+  html+='.label{width:100mm;height:75mm;border:1.5px solid #000;position:relative;overflow:hidden;page-break-after:always;margin:0 auto 3mm}';
+  html+='.label:last-child{margin-bottom:0}';
+  html+='.bc-wrap{text-align:center;padding:4px 15px 0;border-bottom:1.5px solid #000}';
+  html+='.bc-wrap svg{width:92%;height:45px}';
+  html+='.pno-row{font-size:12px;font-weight:900;text-align:center;letter-spacing:1.5px;padding:2px 0;border-bottom:1.5px solid #000;background:#f8f8f8}';
+  html+='.dst-bar{background:#333;color:#fff;padding:2px 8px;font-size:8px;font-weight:700;letter-spacing:1px}';
+  html+='.body-area{padding:4px 8px 2px;border-bottom:1px solid #000;min-height:90px;position:relative}';
+  html+='.src-line{font-size:7.5px;color:#555;line-height:1.4;margin-bottom:2px}';
+  html+='.dst-name{font-size:10px;font-weight:800;margin-top:2px}';
+  html+='.dst-phone{font-size:12px;font-weight:900;letter-spacing:0.5px}';
+  html+='.dst-addr{font-size:8.5px;font-weight:700;line-height:1.3}';
+  html+='.qr-box{position:absolute;right:4px;top:50px;text-align:center}';
+  html+='.qr-box img{width:58px;height:58px;image-rendering:pixelated}';
+  html+='.cod-row{border-bottom:1px solid #000;display:flex;align-items:stretch;min-height:24px}';
+  html+='.cod-tag{background:#000;color:#fff;font-size:11px;font-weight:900;padding:4px 8px;display:flex;align-items:center}';
+  html+='.cod-val{flex:1;font-size:15px;font-weight:900;padding:3px 8px;display:flex;align-items:center}';
+  html+='.note-row{padding:2px 8px;font-size:7px;color:#333;border-bottom:1px solid #eee}';
+  html+='.note-row b{font-weight:700}';
+  html+='.foot{font-size:6.5px;color:#999;padding:2px 8px;display:flex;justify-content:space-between}';
   html+='</style></head><body>';
+  html+='<div class="no-print print-bar">⚡ Labels: '+orders.length+' ใบ<br><button onclick="window.print()">🖨️ ปริ้นทั้งหมด ('+orders.length+' ใบ)</button></div>';
 
   for(var idx=0;idx<orders.length;idx++){
     var order=orders[idx];var pno=pnos[idx]||"";
     var codVal=Number(order.COD||0);var rm=String(order.Remark||"").replace(/\[PREV:\d+\]\s*/g,"").trim();
     html+='<div class="label">';
-    html+='<div class="barcode-area"><svg id="bc'+idx+'"></svg></div>';
-    html+='<div class="pno">'+pno+'</div>';
-    html+='<div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(pno)+'"/></div>';
-    html+='<div class="info">';
-    html+='<div class="src">ผู้ส่ง '+(srcInfo.name||"")+" ("+(srcInfo.phone||"")+")<br>"+(srcInfo.address||"")+" "+(srcInfo.district||"")+" "+(srcInfo.city||"")+"<br>"+(srcInfo.province||"")+" "+(srcInfo.zip||"")+'</div>';
+    html+='<div class="bc-wrap"><svg id="bc'+idx+'"></svg></div>';
+    html+='<div class="pno-row">'+pno+'</div>';
+    html+='<div class="dst-bar">DST &nbsp; '+(order.District||"")+" — "+(order.Province||"")+'</div>';
+    html+='<div class="body-area">';
+    html+='<div class="src-line">ผู้ส่ง '+(srcInfo.name||"")+" "+(srcInfo.phone||"")+" "+(srcInfo.address||"")+" "+(srcInfo.district||"")+" "+(srcInfo.city||"")+" "+(srcInfo.province||"")+" "+(srcInfo.zip||"")+'</div>';
     html+='<div class="dst-name">ผู้รับ '+(order.Name||"")+'</div>';
     html+='<div class="dst-phone">'+(order.MobileNo||"")+'</div>';
     html+='<div class="dst-addr">'+(order.Address||"")+"<br>"+(order.SubDistrict||"")+", "+(order.District||"")+"<br>"+(order.Province||"")+" "+(order.ZIP||"")+'</div>';
+    html+='<div class="qr-box"><img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data='+encodeURIComponent(pno)+'"/></div>';
     html+='</div>';
-    if(codVal>0){html+='<div class="cod-area"><div class="cod-big">เก็บเงินค่าสินค้า COD '+codVal+'</div></div>';}
-    else{html+='<div class="cod-area"><div class="transfer">โอนแล้ว ฿'+Number(order.SalePrice||0).toLocaleString()+'</div></div>';}
-    if(rm)html+='<div class="note">หมายเหตุ: '+rm+'</div>';
-    html+='<div class="bottom"><span>'+dateStr+'</span><span>'+(idx+1)+'/'+orders.length+'</span><span>THE MT CRM</span></div>';
+    html+='<div class="cod-row">';
+    if(codVal>0){html+='<div class="cod-tag">COD</div><div class="cod-val">เก็บเงินค่าสินค้า COD '+codVal+'</div>';}
+    else{html+='<div class="cod-val" style="font-size:10px;color:#666">โอนแล้ว ฿'+Number(order.SalePrice||0).toLocaleString()+'</div>';}
+    html+='</div>';
+    if(rm)html+='<div class="note-row"><b>Note:</b> '+rm+'</div>';
+    html+='<div class="foot"><span>Print-: '+dateStr+'</span><span>'+(idx+1)+'/'+orders.length+'</span><span>THE MT</span></div>';
     html+='</div>';
   }
 
@@ -104,11 +112,11 @@ function printCustomLabels(orders,pnos){
   html+='function renderAll(){if(typeof JsBarcode==="undefined"){setTimeout(renderAll,200);return;}';
   for(var i=0;i<orders.length;i++){
     var p=pnos[i]||"";
-    html+='try{JsBarcode("#bc'+i+'","'+p+'",{format:"CODE128",width:2.5,height:50,displayValue:false,margin:0});}catch(e){}';
+    html+='try{JsBarcode("#bc'+i+'","'+p+'",{format:"CODE128",width:2.2,height:45,displayValue:false,margin:0});}catch(e){}';
   }
-  html+='setTimeout(function(){window.print();},500);}renderAll();';
+  html+='setTimeout(function(){window.print();},800);}renderAll();';
   html+='<\/script></body></html>';
-  var w=window.open("","_blank","width=420,height=600");
+  var w=window.open("","_blank");
   w.document.write(html);w.document.close();
 }
 async function flashNotifyCourier(params){return await flashAPI("/open/v1/notify",params||{});}
@@ -947,26 +955,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     <div style={{background:"#fff",borderRadius:10,padding:"10px 14px",marginBottom:10,border:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
       {canManage&&<button onClick={selectAll} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#e0f2fe":"#fff",color:"#0284c7",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด</button>}
       <button onClick={function(){setStatusFilter("รอส่ง");setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📋 รายการยังไม่พิมพ์</button>
-      {canManage&&<button disabled={selCount===0} onClick={async function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}
-        var allParams=[];for(var i=0;i<pnos.length;i++){var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);allParams.push({pno:pnos[i],params:params});}
-        var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flash Labels ('+pnos.length+')</title>';
-        html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box;margin:0;padding:0}body{margin:0;padding:0;background:#fff}';
-        html+='@media print{.no-print{display:none!important}}';
-        html+='.header{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;padding:12px 20px;text-align:center;font-size:14px;font-weight:700}';
-        html+='.print-btn{display:inline-block;margin:8px;padding:10px 30px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}';
-        html+='iframe{width:100mm;height:75mm;border:none;display:block;margin:0 auto;page-break-after:always;overflow:hidden}';
-        html+='</style></head><body>';
-        html+='<div class="no-print header">⚡ Flash Labels: '+pnos.length+' ใบ<br><button class="print-btn" onclick="window.print()">🖨️ ปริ้นทั้งหมด ('+pnos.length+' ใบ)</button></div>';
-        allParams.forEach(function(ap,idx){html+='<iframe name="lf'+idx+'" id="lf'+idx+'"></iframe>';});
-        html+='<script>';
-        allParams.forEach(function(ap,idx){
-          html+='(function(){var f=document.createElement("form");f.method="POST";f.action="'+FLASH_BASE+'/open/v1/orders/'+ap.pno+'/small/pre_print";f.target="lf'+idx+'";';
-          Object.keys(ap.params).forEach(function(k){html+='var i=document.createElement("input");i.type="hidden";i.name="'+k+'";i.value="'+ap.params[k]+'";f.appendChild(i);';});
-          html+='document.body.appendChild(f);f.submit();document.body.removeChild(f);})();';
-        });
-        html+='<\/script></body></html>';
-        var w=window.open("","_blank");w.document.write(html);w.document.close();
-      }} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
+      {canManage&&<button disabled={selCount===0} onClick={function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";});var valid=[];var vp=[];selItems.forEach(function(o,i){if(pnos[i]){valid.push(o);vp.push(pnos[i]);}});if(valid.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}printCustomLabels(valid,vp);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
 
       {canManage&&<button onClick={function(){if(selCount>0){var s=prompt("เปลี่ยนสถานะเป็น:\n1 = 📦 รอส่ง\n2 = 🔖 สร้างเลขพัสดุแล้ว\n3 = 🖨️ ปริ้นแล้ว\n\nใส่เลข:");var map={"1":"รอส่ง","2":"สร้างเลขพัสดุแล้ว","3":"ปริ้นแล้ว"};if(s&&map[s])bulkUpdateStatus(map[s]);}}} disabled={selCount===0} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:selCount>0?"#fff":"#f8fafc",color:selCount>0?"#64748b":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🔄 เปลี่ยนสถานะ</button>}
       {canManage&&selCount>0&&<button onClick={async function(){var withPno=selItems.filter(function(o){return o.TrackingNo;});if(withPno.length===0){alert("ไม่มีรายการที่มีเลข Tracking");return;}if(!confirm("ยกเลิกเลขพัสดุ "+withPno.length+" รายการ?\n\n"+withPno.map(function(o){return o.Name+" → "+o.TrackingNo;}).join("\n")))return;setFlashLoading(true);for(var i=0;i<withPno.length;i++){var tbl=withPno[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(withPno[i].OrderID),{method:"PATCH",body:{tracking_no:""}});}catch(e){}}setFlashLoading(false);setSelected({});if(onRefresh)onRefresh();alert("✅ ยกเลิกเลขพัสดุ "+withPno.length+" รายการ");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #ef4444",background:"#fef2f2",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>🗑 ยกเลิกเลขพัสดุ</button>}
