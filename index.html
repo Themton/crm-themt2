@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v56";
+var APP_VERSION = "20260330v57";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -950,15 +950,13 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       {canManage&&<button disabled={selCount===0} onClick={async function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}
         var allParams=[];for(var i=0;i<pnos.length;i++){var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);allParams.push({pno:pnos[i],params:params});}
         var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flash Labels ('+pnos.length+')</title>';
-        html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;background:#f0f2f7;font-family:Arial,sans-serif}';
-        html+='@media print{.no-print{display:none!important}body{background:#fff}}';
+        html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box;margin:0;padding:0}body{margin:0;padding:0;background:#fff}';
+        html+='@media print{.no-print{display:none!important}}';
         html+='.header{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;padding:12px 20px;text-align:center;font-size:14px;font-weight:700}';
-        html+='.header span{font-size:11px;font-weight:400;margin-left:8px}';
-        html+='.print-btn{display:inline-block;margin:10px;padding:10px 30px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}';
-        html+='.print-btn:hover{background:#059669}';
-        html+='iframe{width:100mm;height:75mm;border:2px solid #e2e8f0;display:block;margin:8px auto;background:#fff;page-break-after:always}';
+        html+='.print-btn{display:inline-block;margin:8px;padding:10px 30px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}';
+        html+='iframe{width:100mm;height:75mm;border:none;display:block;margin:0 auto;page-break-after:always;overflow:hidden}';
         html+='</style></head><body>';
-        html+='<div class="no-print header">⚡ Flash Labels: '+pnos.length+' ใบ<span>TSC TE210</span><br><button class="print-btn" onclick="window.print()">🖨️ ปริ้นทั้งหมด ('+pnos.length+' ใบ)</button></div>';
+        html+='<div class="no-print header">⚡ Flash Labels: '+pnos.length+' ใบ<br><button class="print-btn" onclick="window.print()">🖨️ ปริ้นทั้งหมด ('+pnos.length+' ใบ)</button></div>';
         allParams.forEach(function(ap,idx){html+='<iframe name="lf'+idx+'" id="lf'+idx+'"></iframe>';});
         html+='<script>';
         allParams.forEach(function(ap,idx){
