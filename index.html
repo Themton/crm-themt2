@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v1";
+var APP_VERSION = "20260330v2";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -723,6 +723,8 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
   var[selected,setSelected]=useState({});
   var[viewOrder,setViewOrder]=useState(null);
   var[search,setSearch]=useState("");
+  var[pg,setPg]=useState(1);
+  var[perPage,setPerPage]=useState(100);
 
   // รวม orders + upsell + กรองวันที่
   var allItems=([]).concat(
@@ -741,9 +743,13 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
   // นับที่มา
   var countOrders=allItems.filter(function(o){return o._table==="orders";}).length;
   var countUpsell=allItems.filter(function(o){return o._table==="upsell";}).length;
+  // Pagination
+  var totalPages=Math.max(1,Math.ceil(filtered.length/perPage));
+  var pageItems=filtered.slice((pg-1)*perPage,(pg-1)*perPage+perPage);
+  useEffect(function(){setPg(1);},[statusFilter,sourceFilter,search,dateFrom,dateTo,perPage]);
 
   function toggleSelect(oid){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];if(n[oid])delete n[oid];else n[oid]=true;return n;});}
-  function selectAll(){var allSel=filtered.every(function(o){return selected[o.OrderID];});if(allSel){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){delete n[o.OrderID];});return n;});}else{setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filtered.forEach(function(o){n[o.OrderID]=true;});return n;});}}
+  function selectAll(){var allSel=pageItems.every(function(o){return selected[o.OrderID];});if(allSel){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];pageItems.forEach(function(o){delete n[o.OrderID];});return n;});}else{setSelected(function(p){var n={};for(var k in p)n[k]=p[k];pageItems.forEach(function(o){n[o.OrderID]=true;});return n;});}}
   var selCount=Object.keys(selected).length;
   var selItems=filtered.filter(function(o){return selected[o.OrderID];});
 
@@ -795,14 +801,14 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
     <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"auto"}}>
       <table style={S.table}>
         <thead><tr>
-          <th style={{...S.th,width:32,textAlign:"center"}}><input type="checkbox" checked={filtered.length>0&&filtered.every(function(o){return selected[o.OrderID];})} onChange={selectAll}/></th>
+          <th style={{...S.th,width:32,textAlign:"center"}}><input type="checkbox" checked={pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})} onChange={selectAll}/></th>
           {["#","ที่มา","วันที่","เวลา","ลูกค้า","เบอร์โทรศัพท์","ราคา","ประเภท","สถานะ","พนักงาน"].map(function(h,i){return<th key={i} style={S.th}>{h}</th>;})}
         </tr></thead>
-        <tbody>{filtered.length===0?<tr><td colSpan={11} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่พบรายการ</td></tr>
-        :filtered.map(function(o,idx){var isCOD=Number(o.COD||0)>0;var isSel=!!selected[o.OrderID];var isUp=o._table==="upsell";
+        <tbody>{pageItems.length===0?<tr><td colSpan={11} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่พบรายการ</td></tr>
+        :pageItems.map(function(o,idx){var isCOD=Number(o.COD||0)>0;var isSel=!!selected[o.OrderID];var isUp=o._table==="upsell";var rowNum=(pg-1)*perPage+idx+1;
           return<tr key={o.OrderID} style={{borderLeft:isUp?"3px solid #ea580c":isCOD?"3px solid #ef4444":"3px solid #10b981",background:isSel?"#eff6ff":""}} onMouseEnter={function(e){if(!isSel)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){if(!isSel)e.currentTarget.style.background="";}}>
             <td style={{...S.td,textAlign:"center",width:32}} onClick={function(){toggleSelect(o.OrderID);}}><input type="checkbox" checked={isSel} readOnly/></td>
-            <td style={{...S.td,fontWeight:700,color:isUp?"#ea580c":"#d97706",fontSize:12,textAlign:"center"}}>{idx+1}</td>
+            <td style={{...S.td,fontWeight:700,color:isUp?"#ea580c":"#d97706",fontSize:12,textAlign:"center"}}>{rowNum}</td>
             <td style={S.td}><span style={{padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:700,background:isUp?"#fff7ed":"#eff6ff",color:isUp?"#ea580c":"#2563eb"}}>{isUp?"🔥 Upsell":"📋 Order"}</span></td>
             <td style={{...S.td,fontSize:12}}>{getDate(o.Timestamp)}</td>
             <td style={{...S.td,fontSize:12}}>{getTime(o.Timestamp)}</td>
@@ -814,6 +820,21 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
             <td style={{...S.td,fontSize:12}}>{o.SalesPerson}</td>
           </tr>;})}</tbody>
       </table>
+    </div>
+
+    {/* Pagination */}
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:14,flexWrap:"wrap",gap:8}}>
+      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+        <span style={{fontSize:12,color:"#64748b"}}>แสดง:</span>
+        {[100,200,500].map(function(n){return<button key={n} onClick={function(){setPerPage(n);}} style={{padding:"4px 10px",borderRadius:6,border:perPage===n?"2px solid #d97706":"1px solid #e2e8f0",background:perPage===n?"#fef3c7":"#fff",color:perPage===n?"#92400e":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>{n}</button>;})}
+        <span style={{fontSize:11,color:"#94a3b8",marginLeft:4}}>/ {filtered.length} รายการ</span>
+      </div>
+      {totalPages>1&&<div style={{display:"flex",gap:4,alignItems:"center"}}>
+        <button onClick={function(){setPg(Math.max(1,pg-1));}} disabled={pg<=1} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:pg<=1?"#d1d5db":"#64748b",fontSize:12,fontWeight:700,cursor:pg<=1?"default":"pointer"}}>◀</button>
+        {Array.from({length:Math.min(5,totalPages)},function(_,i){var st=Math.max(1,Math.min(pg-2,totalPages-4));var p=st+i;if(p>totalPages)return null;return<button key={p} onClick={function(){setPg(p);}} style={{padding:"4px 10px",borderRadius:6,border:pg===p?"none":"1px solid #e2e8f0",background:pg===p?"#d97706":"#fff",color:pg===p?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{p}</button>;})}
+        <button onClick={function(){setPg(Math.min(totalPages,pg+1));}} disabled={pg>=totalPages} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:pg>=totalPages?"#d1d5db":"#64748b",fontSize:12,fontWeight:700,cursor:pg>=totalPages?"default":"pointer"}}>▶</button>
+        <span style={{fontSize:11,color:"#94a3b8",marginLeft:4}}>หน้า {pg}/{totalPages}</span>
+      </div>}
     </div>
 
     {/* Floating action bar */}
