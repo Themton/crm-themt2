@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v80";
+var APP_VERSION = "20260331v1";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -545,7 +545,7 @@ function App(){var _s=useState;
   // Nav items ตาม role
   var navItems=[];
   if(isShipping){navItems=[{id:"shipping",icon:"🚚",label:"การจัดส่ง"}];}
-  else{navItems.push({id:"orders",icon:"📋",label:"ออเดอร์"});if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});navItems.push({id:"crm",icon:"📞",label:"CRM โทรลูกค้า",link:"https://themton.github.io/crmtel/"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});}
+  else{navItems.push({id:"orders",icon:"📋",label:"ออเดอร์"});if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});if(isAdmin)navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});navItems.push({id:"crm",icon:"📞",label:"CRM โทรลูกค้า",link:"https://themton.github.io/crmtel/"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});}
   // Default page สำหรับ shipping role
   useEffect(function(){if(isShipping&&page!=="shipping")setPage("shipping");},[isShipping]);
   var roleLabel=isAdmin?"แอดมิน":isShipping?"จัดส่ง":"พนักงาน";
