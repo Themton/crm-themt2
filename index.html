@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v26";
+var APP_VERSION = "20260330v27";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -62,9 +62,11 @@ function printCustomLabel(order,pno){
   html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
   html+='@media print{body{margin:0;padding:0}.no-print{display:none!important}}';
   html+='.label{width:100mm;height:75mm;border:2px solid #000;position:relative;overflow:hidden}';
-  html+='.barcode-area{text-align:center;padding:3px 10px;border-bottom:2px solid #000}';
-  html+='.barcode-area canvas,.barcode-area svg{width:80%;height:30px}';
-  html+='.pno{font-size:13px;font-weight:900;text-align:center;letter-spacing:2px;padding:1px 0}';
+  html+='.barcode-area{text-align:center;padding:3px 10px;border-bottom:2px solid #000;display:flex;align-items:center;justify-content:center;gap:8px}';
+  html+='.barcode-area svg{height:35px;flex:1}';
+  html+='.qr{position:absolute;right:6px;bottom:28px}';
+  html+='.qr img{width:55px;height:55px}';
+  html+='.pno{font-size:13px;font-weight:900;text-align:center;letter-spacing:2px;padding:1px 0;border-bottom:2px solid #000}';
   html+='.info{padding:4px 8px;font-size:8.5px;line-height:1.5;border-bottom:1px solid #000}';
   html+='.src{color:#333;margin-bottom:3px}';
   html+='.dst-name{font-size:11px;font-weight:800}';
@@ -79,7 +81,9 @@ function printCustomLabel(order,pno){
   html+='<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">';
   html+='</head><body>';
   html+='<div class="label">';
-  html+='<div class="barcode-area"><svg id="bc"></svg><div class="pno">'+pno+'</div></div>';
+  html+='<div class="barcode-area"><svg id="bc"></svg></div>';
+  html+='<div class="pno">'+pno+'</div>';
+  html+='<div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data='+encodeURIComponent(pno)+'"/></div>';
   html+='<div class="info">';
   html+='<div class="src">ผู้ส่ง '+(srcInfo.name||"")+" ("+(srcInfo.phone||"")+")<br>"+(srcInfo.address||"")+" "+(srcInfo.district||"")+" "+(srcInfo.city||"")+"<br>"+(srcInfo.province||"")+" "+(srcInfo.zip||"")+'</div>';
   html+='<div class="dst-name">ผู้รับ '+(order.Name||"")+'</div>';
