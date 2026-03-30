@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v68";
+var APP_VERSION = "20260330v69";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -84,7 +84,7 @@ function printCustomLabels(orders,pnos){
   html+='.note-row b{font-weight:700}';
   html+='.foot{font-size:6.5px;color:#999;padding:2px 8px;display:flex;justify-content:space-between}';
   html+='</style></head><body>';
-  html+='<div class="no-print print-bar">⚡ Labels: '+orders.length+' ใบ<br><button onclick="window.print()">🖨️ ปริ้นทั้งหมด ('+orders.length+' ใบ)</button></div>';
+  html+='<div class="no-print print-bar">⚡ Labels: '+orders.length+' ใบ<br><button onclick="window.print()">🖨️ ปริ้นทั้งหมด ('+orders.length+' ใบ)</button> <button onclick="var a=document.createElement(\'a\');a.href=\'data:text/html;charset=utf-8,\'+encodeURIComponent(document.documentElement.outerHTML);a.download=\'labels-'+orders.length+'.html\';a.click();">⬇️ ดาวน์โหลด</button></div>';
 
   for(var idx=0;idx<orders.length;idx++){
     var order=orders[idx];var pno=pnos[idx]||"";
