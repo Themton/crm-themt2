@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v6";
+var APP_VERSION = "20260330v7";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -255,10 +255,25 @@ async function dbEditOrder(oid,data){
   syncToSheet("deleteOrder",{OrderID:oid});
   setTimeout(function(){syncToSheet("addOrder",{OrderID:oid,MobileNo:data.MobileNo,Name:data.Name,Address:data.Address,SubDistrict:data.SubDistrict,District:data.District,ZIP:data.ZIP,CustomerFBLine:data.CustomerFBLine||"",SalesChannel:"CRM",SalesPerson:data.SalesPerson||"",SalePrice:Number(data.SalePrice)||0,COD:Number(data.COD)||0,Remark:data.Remark||"",Province:data.Province||""});},2000);
 }
-async function dbUpdateStatus(orderIds,status,table){
-  for(var i=0;i<orderIds.length;i++){
-    try{await sbFetch((table||"orders")+"?order_id=eq."+encodeURIComponent(orderIds[i]),{method:"PATCH",body:{status:status}});}catch(e){}
+async function dbUpdateStatus(orderIds,status,table,onProgress){
+  var t=table||"orders";var total=orderIds.length;var done=0;var fail=0;
+  // Batch 20 ต่อครั้ง
+  var batchSize=20;
+  for(var b=0;b<total;b+=batchSize){
+    var batch=orderIds.slice(b,b+batchSize);
+    var filter=batch.map(function(id){return"order_id=eq."+encodeURIComponent(id);}).join(",");
+    try{
+      await sbFetch(t+"?or=("+filter+")",{method:"PATCH",body:{status:status}});
+      done+=batch.length;
+    }catch(e){
+      // ถ้า batch ล้มเหลว → ทำทีละตัว
+      for(var j=0;j<batch.length;j++){
+        try{await sbFetch(t+"?order_id=eq."+encodeURIComponent(batch[j]),{method:"PATCH",body:{status:status}});done++;}catch(e2){fail++;}
+      }
+    }
+    if(onProgress)onProgress(done,total,fail);
   }
+  return{done:done,fail:fail};
 }
 // Export CSV — ProShip Format
 function exportCSV(orders,filename){
@@ -362,7 +377,7 @@ async function dbSaveUpsellBatch(usernames){var all=await sbFetch("accounts?sele
 function App(){var _s=useState;
   var[sbOk,setSbOk]=_s(sbReady);
   var savedUser=null;try{var raw=localStorage.getItem("ps_user");if(raw)savedUser=JSON.parse(raw);}catch(e){}
-  var[user,setUser]=_s(savedUser);var[accounts,setAccounts]=_s([]);var[allOrders,setAllOrders]=_s([]);var[upsellOrders,setUpsellOrders]=_s([]);var savedPage=localStorage.getItem("ps_page")||"orders";var[page,setPage0]=_s(savedPage);function setPage(p){setPage0(p);localStorage.setItem("ps_page",p);}var[showForm,setShowForm]=_s(false);var[notif,setNotif]=_s(null);var[viewOrder,setViewOrder]=_s(null);var[slipProgress,setSlipProgress]=_s(null);var[dateFrom,setDateFrom]=_s(todayStr());var[dateTo,setDateTo]=_s(todayStr());var userRef=useRef(savedUser);
+  var[user,setUser]=_s(savedUser);var[accounts,setAccounts]=_s([]);var[allOrders,setAllOrders]=_s([]);var[upsellOrders,setUpsellOrders]=_s([]);var savedPage=localStorage.getItem("ps_page")||"orders";var[page,setPage0]=_s(savedPage);function setPage(p){setPage0(p);localStorage.setItem("ps_page",p);}var[showForm,setShowForm]=_s(false);var[notif,setNotif]=_s(null);var[viewOrder,setViewOrder]=_s(null);var[slipProgress,setSlipProgress]=_s(null);var[statusProgress,setStatusProgress]=_s(null);var[dateFrom,setDateFrom]=_s(todayStr());var[dateTo,setDateTo]=_s(todayStr());var userRef=useRef(savedUser);
   function notify(msg,type){setNotif({msg:msg,type:type||"success"});setTimeout(function(){setNotif(null);},3500);}
   async function loadAccounts(){try{var d=await dbGetAccounts();setAccounts(d);}catch(e){console.error(e);}}
   async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"?"ALL":u.displayName);setAllOrders(d);}catch(e){notify("โหลดผิดพลาด","warning");}}
@@ -383,7 +398,18 @@ function App(){var _s=useState;
   async function addOrder(data){try{var res=await dbAddOrder({...data,SalesPerson:user.displayName},data.upsell);setShowForm(false);notify("✅ "+res.orderId+(data.upsell?" → 🔥 Upsell":" → Orders"));if(!data.upsell)loadOrders();else loadUpsell();if(data.slipData)uploadSlip(res.orderId,data.slipData);}catch(e){setShowForm(false);notify(e.message||"ผิดพลาด","warning");}}
   async function delOrder(oid){setViewOrder(null);setAllOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});try{await dbDeleteOrder(oid);notify("ลบสำเร็จ");loadOrders();}catch(e){notify("ลบผิดพลาด","warning");loadOrders();}}
   async function editOrder(oid,data){setViewOrder(null);try{await dbEditOrder(oid,data);notify("✅ แก้ไขสำเร็จ");loadOrders();loadUpsell();}catch(e){notify("แก้ไขผิดพลาด","warning");loadOrders();}}
-  async function updateStatus(orderIds,status,table){try{await dbUpdateStatus(orderIds,status,table);notify("✅ เปลี่ยนสถานะ "+orderIds.length+" รายการ → "+status);loadOrders();loadUpsell();}catch(e){notify("ผิดพลาด","warning");}}
+  async function updateStatus(orderIds,status,table){
+    setStatusProgress({done:0,total:orderIds.length,fail:0,status:status});
+    try{
+      var result=await dbUpdateStatus(orderIds,status,table,function(done,total,fail){
+        setStatusProgress({done:done,total:total,fail:fail,status:status});
+      });
+      setStatusProgress({done:result.done,total:orderIds.length,fail:result.fail,status:status,finished:true});
+      setTimeout(function(){setStatusProgress(null);},1500);
+      notify("✅ เปลี่ยนสถานะ "+result.done+"/"+orderIds.length+" รายการ → "+status+(result.fail>0?" (❌ ล้มเหลว "+result.fail+")":""));
+      loadOrders();loadUpsell();
+    }catch(e){setStatusProgress(null);notify("ผิดพลาด","warning");}
+  }
   function handleExport(orders,format,table){
     if(orders.length===0){alert("ไม่มีออเดอร์ให้ Export");return;}
     var fname=(table==="upsell"?"Upsell":"Orders")+"_"+todayStr();
@@ -421,6 +447,15 @@ function App(){var _s=useState;
   var roleLabel=isAdmin?"แอดมิน":isShipping?"จัดส่ง":"พนักงาน";
   var roleColor=isAdmin?"#fbbf24":isShipping?"#38bdf8":"#fcd34d";
   return(<div style={S.app}>{notif&&<div style={{...S.notif,background:notif.type==="success"?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#f59e0b,#d97706)"}}>{notif.type==="success"?"✅":"⚠️"} {notif.msg}</div>}{slipProgress!==null&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:"#fff",borderRadius:20,padding:"36px 48px",textAlign:"center",minWidth:280}}><div style={{fontSize:40,marginBottom:8}}>{slipProgress>=100?"✅":"🧾"}</div><div style={{fontSize:16,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706"}}>{slipProgress>=100?"เสร็จสิ้น!":"อัพโหลดสลิป..."}</div><div style={{fontSize:28,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706",margin:"8px 0"}}>{slipProgress}%</div><div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:slipProgress+"%",background:slipProgress>=100?"#10b981":"#d97706",borderRadius:4,transition:"width .3s"}}/></div></div></div>}
+    {statusProgress&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:"#fff",borderRadius:20,padding:"36px 48px",textAlign:"center",minWidth:320}}>
+      <div style={{fontSize:40,marginBottom:8}}>{statusProgress.finished?"✅":"🔄"}</div>
+      <div style={{fontSize:16,fontWeight:800,color:statusProgress.finished?"#059669":"#d97706"}}>{statusProgress.finished?"เสร็จสิ้น!":"กำลังเปลี่ยนสถานะ..."}</div>
+      <div style={{fontSize:13,color:"#64748b",margin:"6px 0"}}>→ {statusProgress.status}</div>
+      <div style={{fontSize:28,fontWeight:800,color:statusProgress.finished?"#059669":"#d97706",margin:"8px 0"}}>{statusProgress.done}/{statusProgress.total}</div>
+      <div style={{fontSize:12,color:"#94a3b8",marginBottom:8}}>{Math.round(statusProgress.done/Math.max(statusProgress.total,1)*100)}%</div>
+      <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:Math.round(statusProgress.done/Math.max(statusProgress.total,1)*100)+"%",background:statusProgress.finished?"#10b981":"#d97706",borderRadius:4,transition:"width .3s"}}/></div>
+      {statusProgress.fail>0&&<div style={{fontSize:12,color:"#ef4444",fontWeight:700,marginTop:8}}>❌ ล้มเหลว {statusProgress.fail} รายการ</div>}
+    </div></div>}
     <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:roleColor}}>{roleLabel}</span></div></div><nav style={S.nav}>{navItems.map(function(item){if(item.link)return<a key={item.id} href={item.link} style={{...S.navItem,textDecoration:"none",fontWeight:800,color:"#93c5fd",background:"rgba(59,130,246,.1)"}}><span style={{fontSize:16}}>{item.icon}</span> {item.label} →</a>;return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
     <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
 
