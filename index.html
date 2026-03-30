@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v63";
+var APP_VERSION = "20260330v64";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -957,23 +957,28 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       <button onClick={function(){setStatusFilter("รอส่ง");setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📋 รายการยังไม่พิมพ์</button>
       {canManage&&<button disabled={selCount===0||flashLoading} onClick={async function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}
         setFlashProgress({done:0,total:pnos.length,ok:0,fail:0});setFlashLoading(true);
-        // โหลด pdf-lib
         if(!window.PDFLib){var sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";document.head.appendChild(sc);await new Promise(function(r){sc.onload=r;sc.onerror=r;setTimeout(r,5000);});}
         var merged=await window.PDFLib.PDFDocument.create();var ok=0;var fail=0;
+        var proxies=["https://api.allorigins.win/raw?url=","https://corsproxy.io/?","https://thingproxy.freeboard.io/fetch/"];
         for(var i=0;i<pnos.length;i++){
-          try{
-            var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);
-            var body=Object.keys(params).map(function(k){return k+"="+encodeURIComponent(params[k]);}).join("&");
-            var resp=await fetch("https://corsproxy.io/?"+encodeURIComponent(FLASH_BASE+"/open/v1/orders/"+pnos[i]+"/small/pre_print"),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
-            var buf=await resp.arrayBuffer();
-            var pdf=await window.PDFLib.PDFDocument.load(buf);
-            var pages=await merged.copyPages(pdf,pdf.getPageIndices());
-            pages.forEach(function(p){merged.addPage(p);});ok++;
-          }catch(e){console.error("PDF fetch error "+pnos[i]+":",e);fail++;}
+          var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);
+          var body=Object.keys(params).map(function(k){return k+"="+encodeURIComponent(params[k]);}).join("&");
+          var url=FLASH_BASE+"/open/v1/orders/"+pnos[i]+"/small/pre_print";
+          var got=false;
+          for(var px=0;px<proxies.length&&!got;px++){
+            try{
+              var resp=await fetch(proxies[px]+encodeURIComponent(url),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
+              if(!resp.ok)continue;var buf=await resp.arrayBuffer();if(buf.byteLength<500)continue;
+              var pdf=await window.PDFLib.PDFDocument.load(buf);
+              var pages=await merged.copyPages(pdf,pdf.getPageIndices());
+              pages.forEach(function(p){merged.addPage(p);});ok++;got=true;
+            }catch(e){console.log("Proxy "+px+" failed for "+pnos[i]+":",e.message);}
+          }
+          if(!got)fail++;
           setFlashProgress({done:i+1,total:pnos.length,ok:ok,fail:fail});
         }
-        if(ok>0){var bytes=await merged.save();var blob=new Blob([bytes],{type:"application/pdf"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="flash-labels-"+pnos.length+".pdf";a.click();URL.revokeObjectURL(url);}
-        else{alert("❌ ไม่สามารถดึง PDF จาก Flash ได้ — ลองใช้ ProShip โดยตรง");}
+        if(ok>0){var bytes=await merged.save();var blob=new Blob([bytes],{type:"application/pdf"});var url2=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url2;a.download="flash-labels-"+ok+".pdf";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url2);},3000);}
+        else{alert("❌ CORS proxy ทั้งหมดบล็อก PDF\n\nแนะนำ: ใช้ ProShip ปริ้นแทน\nhttps://proship.flashexpress.com");}
         setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);
       }} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
 
