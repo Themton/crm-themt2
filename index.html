@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v59";
+var APP_VERSION = "20260330v60";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -955,7 +955,13 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     <div style={{background:"#fff",borderRadius:10,padding:"10px 14px",marginBottom:10,border:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
       {canManage&&<button onClick={selectAll} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#e0f2fe":"#fff",color:"#0284c7",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด</button>}
       <button onClick={function(){setStatusFilter("รอส่ง");setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📋 รายการยังไม่พิมพ์</button>
-      {canManage&&<button disabled={selCount===0} onClick={async function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}for(var i=0;i<pnos.length;i++){var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);var form=document.createElement("form");form.method="POST";form.action=FLASH_BASE+"/open/v1/orders/"+pnos[i]+"/small/pre_print";form.target="flash_label_"+i;window.open("","flash_label_"+i,"width=420,height=320");Object.keys(params).forEach(function(k){var inp=document.createElement("input");inp.type="hidden";inp.name=k;inp.value=params[k];form.appendChild(inp);});document.body.appendChild(form);form.submit();document.body.removeChild(form);}}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
+      {canManage&&<button disabled={selCount===0} onClick={async function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}
+        var pnoList=pnos.join(",");
+        var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()),pnoList:pnoList};params.sign=await flashSign(params);
+        var form=document.createElement("form");form.method="POST";form.action=FLASH_BASE+"/open/v1/batch/small/pre_print";form.target="_blank";
+        Object.keys(params).forEach(function(k){var inp=document.createElement("input");inp.type="hidden";inp.name=k;inp.value=params[k];form.appendChild(inp);});
+        document.body.appendChild(form);form.submit();document.body.removeChild(form);
+      }} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
 
       {canManage&&<button onClick={function(){if(selCount>0){var s=prompt("เปลี่ยนสถานะเป็น:\n1 = 📦 รอส่ง\n2 = 🔖 สร้างเลขพัสดุแล้ว\n3 = 🖨️ ปริ้นแล้ว\n\nใส่เลข:");var map={"1":"รอส่ง","2":"สร้างเลขพัสดุแล้ว","3":"ปริ้นแล้ว"};if(s&&map[s])bulkUpdateStatus(map[s]);}}} disabled={selCount===0} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:selCount>0?"#fff":"#f8fafc",color:selCount>0?"#64748b":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🔄 เปลี่ยนสถานะ</button>}
       {canManage&&selCount>0&&<button onClick={async function(){var withPno=selItems.filter(function(o){return o.TrackingNo;});if(withPno.length===0){alert("ไม่มีรายการที่มีเลข Tracking");return;}if(!confirm("ยกเลิกเลขพัสดุ "+withPno.length+" รายการ?\n\n"+withPno.map(function(o){return o.Name+" → "+o.TrackingNo;}).join("\n")))return;setFlashLoading(true);for(var i=0;i<withPno.length;i++){var tbl=withPno[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(withPno[i].OrderID),{method:"PATCH",body:{tracking_no:""}});}catch(e){}}setFlashLoading(false);setSelected({});if(onRefresh)onRefresh();alert("✅ ยกเลิกเลขพัสดุ "+withPno.length+" รายการ");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #ef4444",background:"#fef2f2",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>🗑 ยกเลิกเลขพัสดุ</button>}
