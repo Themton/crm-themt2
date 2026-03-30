@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v10";
+var APP_VERSION = "20260330v11";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -43,13 +43,15 @@ var {useState,useEffect,useRef} = React;
 
 /* ===== SUPABASE CONFIG ===== */
 var SUPABASE_URL = localStorage.getItem("sb_url") || "https://sfwbzcrvesbeymvlsxsu.supabase.co";
-// Flash Express API (Training ENV)
-var FLASH_MCH_ID = "CA5610";
-var FLASH_KEY = "0bc50ae59546a42fe64dca031005fdb1528486214ec0a4c01551d4f7f762a84c";
-var FLASH_BASE = "https://api-training.flashexpress.com";
+// Flash Express API
+var FLASH_MCH_ID = localStorage.getItem("flash_mchId") || "CA5610";
+var FLASH_KEY = localStorage.getItem("flash_key") || "0bc50ae59546a42fe64dca031005fdb1528486214ec0a4c01551d4f7f762a84c";
+var FLASH_BASE = localStorage.getItem("flash_env") === "production" ? "https://api.flashexpress.com" : "https://api-training.flashexpress.com";
+var FLASH_ENV = localStorage.getItem("flash_env") || "training";
+var FLASH_SRC = JSON.parse(localStorage.getItem("flash_src") || '{"name":"THE MT","phone":"0000000000","province":"","city":"","district":"","zip":"","address":""}');
 async function flashSign(params){var keys=Object.keys(params).filter(function(k){return k!=="sign"&&params[k]!==undefined&&params[k]!=="";}).sort();var str="";keys.forEach(function(k){str+=k+params[k];});var enc=new TextEncoder().encode(str+FLASH_KEY);var hash=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,"0");}).join("").toUpperCase();}
 async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.nonceStr=String(Date.now());params.sign=await flashSign(params);var body=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");var res=await fetch(FLASH_BASE+path,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","Accept":accept||"application/json"},body:body});if(accept==="application/pdf")return res;return await res.json();}
-async function flashCreateOrder(order){var codVal=Number(order.COD||0);return await flashAPI("/open/v3/orders",{outTradeNo:order.OrderID||("ORD"+Date.now()),srcName:"THE MT",srcPhone:"0000000000",srcDetailAddress:"THE MT",dstName:order.Name||"",dstPhone:order.MobileNo||"",dstProvinceName:order.Province||"",dstCityName:order.District||"",dstDistrictName:order.SubDistrict||"",dstPostalCode:order.ZIP||"",dstDetailAddress:order.Address||"",articleCategory:1,expressCategory:1,weight:1000,codEnabled:codVal>0?1:0,codAmount:codVal>0?codVal*100:0});}
+async function flashCreateOrder(order){var codVal=Number(order.COD||0);return await flashAPI("/open/v3/orders",{outTradeNo:order.OrderID||("ORD"+Date.now()),srcName:FLASH_SRC.name||"THE MT",srcPhone:FLASH_SRC.phone||"",srcProvinceName:FLASH_SRC.province||"",srcCityName:FLASH_SRC.city||"",srcDistrictName:FLASH_SRC.district||"",srcPostalCode:FLASH_SRC.zip||"",srcDetailAddress:FLASH_SRC.address||"",dstName:order.Name||"",dstPhone:order.MobileNo||"",dstProvinceName:order.Province||"",dstCityName:order.District||"",dstDistrictName:order.SubDistrict||"",dstPostalCode:order.ZIP||"",dstDetailAddress:order.Address||"",articleCategory:1,expressCategory:1,weight:1000,codEnabled:codVal>0?1:0,codAmount:codVal>0?codVal*100:0});}
 async function flashPrintLabel(pno){return await flashAPI("/open/v1/orders/"+pno+"/pre_print",{},"application/pdf");}
 async function flashNotifyCourier(params){return await flashAPI("/open/v1/notify",params||{});}
 async function flashTrackStatus(pno){return await flashAPI("/open/v1/orders/"+pno+"/routes",{});}
@@ -786,6 +788,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
   var[flashResult,setFlashResult]=useState(null);
   var[flashLoading,setFlashLoading]=useState(false);
   var[trackPno,setTrackPno]=useState("");
+  var[flashSettings,setFlashSettings]=useState(false);
 
   // รวม orders + upsell + กรองวันที่
   var allItems=([]).concat(
@@ -845,9 +848,45 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
     {/* ⚡ Flash Express Panel */}
     {flashPanel&&<div style={{background:"linear-gradient(135deg,#fffbeb,#fef3c7)",borderRadius:12,padding:16,marginBottom:14,border:"2px solid #f59e0b"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{fontSize:14,fontWeight:800,color:"#92400e"}}>⚡ Flash Express API <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,background:"#fbbf24",color:"#fff"}}>Training</span></div>
-        <span style={{fontSize:10,color:"#92400e"}}>mchId: {FLASH_MCH_ID}</span>
+        <div style={{fontSize:14,fontWeight:800,color:"#92400e"}}>⚡ Flash Express API <span style={{fontSize:10,fontWeight:600,padding:"2px 8px",borderRadius:6,background:FLASH_ENV==="production"?"#10b981":"#fbbf24",color:"#fff"}}>{FLASH_ENV==="production"?"Production":"Training"}</span></div>
+        <button onClick={function(){setFlashSettings(!flashSettings);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:flashSettings?"#fef3c7":"#fff",color:"#92400e",fontSize:10,fontWeight:700,cursor:"pointer"}}>⚙️ ตั้งค่า</button>
       </div>
+
+      {/* Settings */}
+      {flashSettings&&<div style={{background:"#fff",borderRadius:8,padding:14,marginBottom:12,border:"1px solid #e2e8f0"}}>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:"#92400e"}}>⚙️ ตั้งค่า Flash Express</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>mchId</label><input defaultValue={FLASH_MCH_ID} id="f_mchId" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>Key</label><input defaultValue={FLASH_KEY} id="f_key" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}} type="password"/></div>
+        </div>
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>Environment</label>
+          <div style={{display:"flex",gap:6,marginTop:4}}>
+            <button onClick={function(){document.getElementById("f_env").value="training";}} id="f_env_t" style={{padding:"4px 12px",borderRadius:6,border:FLASH_ENV==="training"?"2px solid #f59e0b":"1px solid #e2e8f0",background:FLASH_ENV==="training"?"#fef3c7":"#fff",color:"#92400e",fontSize:11,fontWeight:600,cursor:"pointer"}}>Training</button>
+            <button onClick={function(){document.getElementById("f_env").value="production";}} id="f_env_p" style={{padding:"4px 12px",borderRadius:6,border:FLASH_ENV==="production"?"2px solid #10b981":"1px solid #e2e8f0",background:FLASH_ENV==="production"?"#dcfce7":"#fff",color:"#166534",fontSize:11,fontWeight:600,cursor:"pointer"}}>Production</button>
+            <input id="f_env" type="hidden" defaultValue={FLASH_ENV}/>
+          </div>
+        </div>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"#92400e"}}>📍 ที่อยู่ผู้ส่ง</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>ชื่อผู้ส่ง</label><input defaultValue={FLASH_SRC.name} id="f_srcName" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>เบอร์โทร</label><input defaultValue={FLASH_SRC.phone} id="f_srcPhone" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+          <div style={{gridColumn:"1/3"}}><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>ที่อยู่</label><input defaultValue={FLASH_SRC.address} id="f_srcAddr" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>ตำบล</label><input defaultValue={FLASH_SRC.district} id="f_srcDist" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>อำเภอ</label><input defaultValue={FLASH_SRC.city} id="f_srcCity" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>จังหวัด</label><input defaultValue={FLASH_SRC.province} id="f_srcProv" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+          <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>รหัสไปรษณีย์</label><input defaultValue={FLASH_SRC.zip} id="f_srcZip" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
+        </div>
+        <button onClick={function(){
+          FLASH_MCH_ID=document.getElementById("f_mchId").value;localStorage.setItem("flash_mchId",FLASH_MCH_ID);
+          FLASH_KEY=document.getElementById("f_key").value;localStorage.setItem("flash_key",FLASH_KEY);
+          var env=document.getElementById("f_env").value||"training";FLASH_ENV=env;localStorage.setItem("flash_env",env);
+          FLASH_BASE=env==="production"?"https://api.flashexpress.com":"https://api-training.flashexpress.com";
+          FLASH_SRC={name:document.getElementById("f_srcName").value,phone:document.getElementById("f_srcPhone").value,address:document.getElementById("f_srcAddr").value,district:document.getElementById("f_srcDist").value,city:document.getElementById("f_srcCity").value,province:document.getElementById("f_srcProv").value,zip:document.getElementById("f_srcZip").value};
+          localStorage.setItem("flash_src",JSON.stringify(FLASH_SRC));
+          alert("✅ บันทึกแล้ว! ("+(env==="production"?"Production":"Training")+")");setFlashSettings(false);
+        }} style={{padding:"8px 20px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#d97706,#b45309)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💾 บันทึก</button>
+      </div>}
 
       {/* 4 Actions */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
