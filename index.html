@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v69";
+var APP_VERSION = "20260330v70";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -474,7 +474,7 @@ function App(){var _s=useState;
   useEffect(function(){if(sbOk){loadAccounts();}},[sbOk]);
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
     // Auto-refresh ทุก 30 วินาที — เรียลไทม์
-    var interval=setInterval(function(){loadOrders();loadUpsell();},30000);
+    var interval=setInterval(function(){loadOrders();loadUpsell();},15000);
     return function(){clearInterval(interval);};
   }},[sbOk]);
   function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"orders";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
@@ -485,7 +485,7 @@ function App(){var _s=useState;
   var isShipping=user.role==="shipping";
   var dayOrders=allOrders.filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});
   async function addOrder(data){try{var res=await dbAddOrder({...data,SalesPerson:user.displayName},data.upsell);setShowForm(false);notify("✅ "+res.orderId+(data.upsell?" → 🔥 Upsell":" → Orders"));if(!data.upsell)loadOrders();else loadUpsell();if(data.slipData)uploadSlip(res.orderId,data.slipData);}catch(e){setShowForm(false);notify(e.message||"ผิดพลาด","warning");}}
-  async function delOrder(oid){setViewOrder(null);setAllOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});try{await dbDeleteOrder(oid);notify("ลบสำเร็จ");loadOrders();}catch(e){notify("ลบผิดพลาด","warning");loadOrders();}}
+  async function delOrder(oid){setViewOrder(null);setAllOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});setUpsellOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});try{await dbDeleteOrder(oid);notify("ลบสำเร็จ");loadOrders();loadUpsell();}catch(e){notify("ลบผิดพลาด","warning");loadOrders();loadUpsell();}}
   async function editOrder(oid,data){setViewOrder(null);try{await dbEditOrder(oid,data);notify("✅ แก้ไขสำเร็จ");loadOrders();loadUpsell();}catch(e){notify("แก้ไขผิดพลาด","warning");loadOrders();}}
   async function updateStatus(orderIds,status,table){
     setStatusProgress({done:0,total:orderIds.length,fail:0,status:status});
@@ -624,7 +624,7 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,onUpda
 
   function handleAdd(data){
     onAdd({...data,upsell:true});
-    setTimeout(function(){onRefresh();},3000);
+    setTimeout(function(){onRefresh();},500);
   }
 
   var dayOrders=(orders||[]).filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});
@@ -679,7 +679,7 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,onUpda
       </div>;})}
     </div>}
 
-    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(oid){setViewOrder(null);onDel(oid);setTimeout(onRefresh,2000);}} onEdit={function(oid,data){onEdit(oid,data);setTimeout(onRefresh,2000);}} onUploadSlip={onUploadSlip||function(){}} isAdmin={isAdmin} onUpdateStatus={function(ids,s){onUpdateStatus(ids,s,"upsell");setTimeout(onRefresh,2000);}}/>}
+    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(oid){setViewOrder(null);onDel(oid);setTimeout(onRefresh,500);}} onEdit={function(oid,data){onEdit(oid,data);setTimeout(onRefresh,500);}} onUploadSlip={onUploadSlip||function(){}} isAdmin={isAdmin} onUpdateStatus={function(ids,s){onUpdateStatus(ids,s,"upsell");setTimeout(onRefresh,500);}}/>}
 
     <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"auto"}}>
       <table style={S.table}><thead><tr>{isAdmin&&<th style={{...S.th,width:32,textAlign:"center"}}><input type="checkbox" checked={filteredUpsell.length>0&&filteredUpsell.every(function(o){return selected[o.OrderID];})} onChange={function(){var allSel=filteredUpsell.every(function(o){return selected[o.OrderID];});if(allSel){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filteredUpsell.forEach(function(o){delete n[o.OrderID];});return n;});}else{setSelected(function(p){var n={};for(var k in p)n[k]=p[k];filteredUpsell.forEach(function(o){n[o.OrderID]=true;});return n;});}}}/></th>}{["#","เวลา","ลูกค้า","เบอร์","ราคาก่อน","ราคา Upsell","ส่วนต่าง","ประเภท","เลขTracking","สถานะ","พนักงาน","หมายเหตุ"].map(function(h,i){return<th key={i} style={{...S.th,background:h==="ราคาก่อน"||h==="ส่วนต่าง"?"#eff6ff":""}}>{h}</th>;})}</tr></thead>
@@ -960,7 +960,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       {canManage&&<button disabled={selCount===0} onClick={function(){var valid=[];var vp=[];selItems.forEach(function(o){var pno=o.TrackingNo||o._flashPno||"";if(pno){valid.push(o);vp.push(pno);}});if(valid.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}printCustomLabels(valid,vp);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
 
       {canManage&&<button onClick={function(){if(selCount>0){var s=prompt("เปลี่ยนสถานะเป็น:\n1 = 📦 รอส่ง\n2 = 🔖 สร้างเลขพัสดุแล้ว\n3 = 🖨️ ปริ้นแล้ว\n\nใส่เลข:");var map={"1":"รอส่ง","2":"สร้างเลขพัสดุแล้ว","3":"ปริ้นแล้ว"};if(s&&map[s])bulkUpdateStatus(map[s]);}}} disabled={selCount===0} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:selCount>0?"#fff":"#f8fafc",color:selCount>0?"#64748b":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🔄 เปลี่ยนสถานะ</button>}
-      {canManage&&selCount>0&&<button onClick={async function(){var withPno=selItems.filter(function(o){return o.TrackingNo;});if(withPno.length===0){alert("ไม่มีรายการที่มีเลข Tracking");return;}if(!confirm("ยกเลิกเลขพัสดุ "+withPno.length+" รายการ?\n\n"+withPno.map(function(o){return o.Name+" → "+o.TrackingNo;}).join("\n")))return;setFlashLoading(true);for(var i=0;i<withPno.length;i++){var tbl=withPno[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(withPno[i].OrderID),{method:"PATCH",body:{tracking_no:""}});}catch(e){}}setFlashLoading(false);setSelected({});if(onRefresh)onRefresh();alert("✅ ยกเลิกเลขพัสดุ "+withPno.length+" รายการ");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #ef4444",background:"#fef2f2",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>🗑 ยกเลิกเลขพัสดุ</button>}
+      {canManage&&selCount>0&&<button onClick={async function(){var withPno=selItems.filter(function(o){return o.TrackingNo;});if(withPno.length===0){alert("ไม่มีรายการที่มีเลข Tracking");return;}if(!confirm("ยกเลิกเลขพัสดุ "+withPno.length+" รายการ?\n\n"+withPno.map(function(o){return o.Name+" → "+o.TrackingNo;}).join("\n")))return;setFlashLoading(true);for(var i=0;i<withPno.length;i++){var tbl=withPno[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(withPno[i].OrderID),{method:"PATCH",body:{tracking_no:"",status:"รอส่ง"}});}catch(e){}}setFlashLoading(false);setSelected({});if(onRefresh)onRefresh();alert("✅ ยกเลิกเลขพัสดุ "+withPno.length+" รายการ");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #ef4444",background:"#fef2f2",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>🗑 ยกเลิกเลขพัสดุ</button>}
       {canManage&&selCount>0&&<button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #94a3b8",background:"#f8fafc",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ ยกเลิก</button>}
       <button onClick={function(){doFlashSync(false);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #10b981",background:"#f0fdf4",color:"#059669",fontSize:11,fontWeight:700,cursor:"pointer"}}>🔄 ซิงค์{lastSync?" ("+lastSync+")":""}</button>
       <select value={autoSync} onChange={function(e){setAutoSync(e.target.value);localStorage.setItem("flash_autosync",e.target.value);}} style={{padding:"4px 6px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:10,fontWeight:600,color:"#64748b"}}>
