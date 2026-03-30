@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v60";
+var APP_VERSION = "20260330v61";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -956,11 +956,12 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       {canManage&&<button onClick={selectAll} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#e0f2fe":"#fff",color:"#0284c7",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด</button>}
       <button onClick={function(){setStatusFilter("รอส่ง");setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📋 รายการยังไม่พิมพ์</button>
       {canManage&&<button disabled={selCount===0} onClick={async function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}
-        var pnoList=pnos.join(",");
-        var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()),pnoList:pnoList};params.sign=await flashSign(params);
-        var form=document.createElement("form");form.method="POST";form.action=FLASH_BASE+"/open/v1/batch/small/pre_print";form.target="_blank";
-        Object.keys(params).forEach(function(k){var inp=document.createElement("input");inp.type="hidden";inp.name=k;inp.value=params[k];form.appendChild(inp);});
-        document.body.appendChild(form);form.submit();document.body.removeChild(form);
+        var allParams=[];for(var i=0;i<pnos.length;i++){var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);allParams.push({pno:pnos[i],params:params});}
+        var w=window.open("","_blank");
+        w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flash Labels ('+pnos.length+')</title><style>@page{size:100mm 75mm;margin:0}*{margin:0;padding:0}body{background:#fff}@media print{.no-print{display:none!important}}iframe{width:100mm;height:75mm;border:none;display:block;margin:0 auto;page-break-after:always;overflow:hidden}</style></head><body><div class="no-print" style="background:#f59e0b;color:#fff;padding:10px;text-align:center;font-family:Arial;font-weight:700">⚡ '+pnos.length+' ใบ &nbsp;<button onclick="window.print()" style="padding:8px 24px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">🖨️ ปริ้นทั้งหมด</button></div>');
+        for(var j=0;j<allParams.length;j++){w.document.write('<iframe name="lbl'+j+'" id="lbl'+j+'"></iframe>');}
+        w.document.write('</body></html>');w.document.close();
+        for(var k=0;k<allParams.length;k++){await new Promise(function(resolve){setTimeout(resolve,300);});var ap=allParams[k];var f=w.document.createElement("form");f.method="POST";f.action=FLASH_BASE+"/open/v1/orders/"+ap.pno+"/small/pre_print";f.target="lbl"+k;Object.keys(ap.params).forEach(function(key){var inp=w.document.createElement("input");inp.type="hidden";inp.name=key;inp.value=ap.params[key];f.appendChild(inp);});w.document.body.appendChild(f);f.submit();w.document.body.removeChild(f);}
       }} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
 
       {canManage&&<button onClick={function(){if(selCount>0){var s=prompt("เปลี่ยนสถานะเป็น:\n1 = 📦 รอส่ง\n2 = 🔖 สร้างเลขพัสดุแล้ว\n3 = 🖨️ ปริ้นแล้ว\n\nใส่เลข:");var map={"1":"รอส่ง","2":"สร้างเลขพัสดุแล้ว","3":"ปริ้นแล้ว"};if(s&&map[s])bulkUpdateStatus(map[s]);}}} disabled={selCount===0} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:selCount>0?"#fff":"#f8fafc",color:selCount>0?"#64748b":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🔄 เปลี่ยนสถานะ</button>}
