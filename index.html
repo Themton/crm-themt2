@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v5";
+var APP_VERSION = "20260330v6";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -389,6 +389,12 @@ function App(){var _s=useState;
     var fname=(table==="upsell"?"Upsell":"Orders")+"_"+todayStr();
     if(format==="csv")exportCSV(orders,fname+".csv");
     else exportXLSX(orders,fname+".xlsx");
+    // บันทึกประวัติ Export
+    try{var hist=JSON.parse(localStorage.getItem("export_history")||"[]");
+    var totalSales=0;orders.forEach(function(o){totalSales+=Number(o.SalePrice)||0;});
+    hist.unshift({time:nowThai(),count:orders.length,format:format,table:table==="upsell"?"Upsell":"Orders",user:userRef.current?userRef.current.displayName:"?",file:fname+"."+format,sales:totalSales});
+    if(hist.length>50)hist=hist.slice(0,50);
+    localStorage.setItem("export_history",JSON.stringify(hist));}catch(e){}
     var ids=orders.filter(function(o){return o.Status==="รอส่ง";}).map(function(o){return o.OrderID;});
     if(ids.length>0){
       if(confirm("เปลี่ยนสถานะ "+ids.length+" รายการ → \"ปริ้นแล้ว\"?")){
@@ -772,9 +778,11 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
     if(upsellIds.length>0)onUpdateStatus(upsellIds,newStatus,"upsell");
     setSelected({});
   }
+  var[showHistory,setShowHistory]=useState(false);
+  var exportHistory=[];try{exportHistory=JSON.parse(localStorage.getItem("export_history")||"[]");}catch(e){}
 
   return<div>
-    <div style={S.pageHeader}><h1 style={S.pageTitle}>🚚 การจัดส่ง</h1></div>
+    <div style={S.pageHeader}><h1 style={S.pageTitle}>🚚 การจัดส่ง</h1><button onClick={function(){setShowHistory(true);}} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📜 ประวัติ Export ({exportHistory.length})</button></div>
 
     {/* Date picker */}
     <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
@@ -861,6 +869,32 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
       <button onClick={function(){bulkUpdateStatus("รอส่ง");}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#f59e0b",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📦 รอส่ง</button>
       <button onClick={function(){var orderItems=selItems.filter(function(o){return o._table==="orders";});var upsellItems=selItems.filter(function(o){return o._table==="upsell";});if(orderItems.length>0)onExport(orderItems,"xlsx","orders");if(upsellItems.length>0)onExport(upsellItems,"xlsx","upsell");setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#6366f1",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>📥 Export</button>
       <button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:8,border:"none",background:"#475569",color:"#fff",fontSize:11,fontWeight:600,cursor:"pointer"}}>✕ ยกเลิก</button>
+    </div>}
+
+    {/* Export History Modal */}
+    {showHistory&&<div style={S.modalOverlay} onClick={function(){setShowHistory(false);}}>
+      <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:700,maxHeight:"80vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h3 style={{margin:0,fontSize:18,fontWeight:800}}>📜 ประวัติ Export</h3>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={function(){if(confirm("ล้างประวัติทั้งหมด?")){localStorage.removeItem("export_history");setShowHistory(false);}}} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #ef4444",background:"#fff",color:"#ef4444",fontSize:11,fontWeight:600,cursor:"pointer"}}>🗑 ล้าง</button>
+            <button onClick={function(){setShowHistory(false);}} style={S.closeBtn}>✕</button>
+          </div>
+        </div>
+        {exportHistory.length===0?<div style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ยังไม่มีประวัติ Export</div>
+        :<table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+          <thead><tr style={{background:"#f8fafc"}}>{["#","วันเวลา","ผู้ Export","ไฟล์","ประเภท","จำนวน","ยอดรวม"].map(function(h,i){return<th key={i} style={{padding:"8px 12px",textAlign:"left",fontWeight:600,fontSize:11,color:"#64748b",borderBottom:"1px solid #e2e8f0"}}>{h}</th>;})}</tr></thead>
+          <tbody>{exportHistory.map(function(h,i){return<tr key={i} style={{borderBottom:"1px solid #f1f5f9"}}>
+            <td style={{padding:"8px 12px",fontWeight:700,color:"#d97706",fontSize:11}}>{i+1}</td>
+            <td style={{padding:"8px 12px",fontSize:11}}>{h.time?h.time.replace("T"," ").substring(0,19):""}</td>
+            <td style={{padding:"8px 12px",fontWeight:600}}>{h.user}</td>
+            <td style={{padding:"8px 12px",fontSize:11,color:"#3b82f6"}}>{h.file}</td>
+            <td style={{padding:"8px 12px"}}><span style={{padding:"2px 8px",borderRadius:6,fontSize:10,fontWeight:700,background:h.table==="Upsell"?"#fff7ed":"#eff6ff",color:h.table==="Upsell"?"#ea580c":"#2563eb"}}>{h.table}</span> <span style={{padding:"2px 6px",borderRadius:4,fontSize:9,fontWeight:600,background:"#f1f5f9",color:"#64748b"}}>{h.format==="xlsx"?"Excel":"CSV"}</span></td>
+            <td style={{padding:"8px 12px",fontWeight:700}}>{h.count} รายการ</td>
+            <td style={{padding:"8px 12px",fontWeight:700,color:"#d97706"}}>฿{(h.sales||0).toLocaleString()}</td>
+          </tr>;})}</tbody>
+        </table>}
+      </div>
     </div>}
   </div>;
 }
