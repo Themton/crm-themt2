@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v64";
+var APP_VERSION = "20260330v65";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -49,6 +49,7 @@ var FLASH_KEY = localStorage.getItem("flash_key") || "976a16aac51569cb55b055c066
 var FLASH_BASE = localStorage.getItem("flash_env") === "training" ? "https://api-training.flashexpress.com" : "https://api.flashexpress.com";
 var FLASH_ENV = localStorage.getItem("flash_env") || "production";
 var FLASH_SRC = JSON.parse(localStorage.getItem("flash_src") || '{"name":"THE MT","phone":"0000000000","province":"","city":"","district":"","zip":"","address":""}');
+var FLASH_PDF_PROXY = localStorage.getItem("flash_pdf_proxy") || "";
 async function flashSign(params){var keys=Object.keys(params).filter(function(k){return k!=="sign"&&params[k]!==undefined&&params[k]!==""&&params[k]!==null;}).sort();var stringA=keys.map(function(k){return k+"="+params[k];}).join("&");var stringSignTemp=stringA+"&key="+FLASH_KEY;var enc=new TextEncoder().encode(stringSignTemp);var hash=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,"0");}).join("").toUpperCase();}
 async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.nonceStr=String(Date.now());params.sign=await flashSign(params);var body=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");var url=FLASH_BASE+path;var proxyUrl="https://corsproxy.io/?"+encodeURIComponent(url);var res=await fetch(proxyUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","Accept":accept||"application/json"},body:body});if(accept==="application/pdf")return res;return await res.json();}
 async function flashCreateOrder(order){var codVal=Number(order.COD||0);var salePrice=Number(order.SalePrice||0);var rm=String(order.Remark||"").replace(/\[PREV:\d+\]\s*/g,"").trim();var remarkParts=[];if(codVal>0)remarkParts.push("COD "+codVal+" บาท");else remarkParts.push("โอนแล้ว "+salePrice+" บาท");if(rm)remarkParts.push(rm);return await flashAPI("/open/v3/orders",{outTradeNo:order.OrderID||("ORD"+Date.now()),srcName:FLASH_SRC.name||"THE MT",srcPhone:FLASH_SRC.phone||"",srcProvinceName:FLASH_SRC.province||"",srcCityName:FLASH_SRC.city||"",srcDistrictName:FLASH_SRC.district||"",srcPostalCode:FLASH_SRC.zip||"",srcDetailAddress:FLASH_SRC.address||"",dstName:order.Name||"",dstPhone:order.MobileNo||"",dstProvinceName:order.Province||"",dstCityName:order.District||"",dstDistrictName:order.SubDistrict||"",dstPostalCode:order.ZIP||"",dstDetailAddress:order.Address||"",articleCategory:1,expressCategory:1,weight:1000,insured:0,codEnabled:codVal>0?1:0,codAmount:codVal>0?codVal*100:0,remark:remarkParts.join(" | ")});}
@@ -956,29 +957,27 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       {canManage&&<button onClick={selectAll} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#e0f2fe":"#fff",color:"#0284c7",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด</button>}
       <button onClick={function(){setStatusFilter("รอส่ง");setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📋 รายการยังไม่พิมพ์</button>
       {canManage&&<button disabled={selCount===0||flashLoading} onClick={async function(){var pnos=selItems.map(function(o){return o.TrackingNo||o._flashPno||"";}).filter(function(p){return p;});if(pnos.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}
+        var proxyUrl=localStorage.getItem("flash_label_proxy")||"";
+        if(!proxyUrl){proxyUrl=prompt("ใส่ URL Apps Script (Flash Label Proxy):\n\nดูวิธีสร้างที่ ⚙️ ตั้งค่า");if(!proxyUrl)return;localStorage.setItem("flash_label_proxy",proxyUrl);}
         setFlashProgress({done:0,total:pnos.length,ok:0,fail:0});setFlashLoading(true);
-        if(!window.PDFLib){var sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";document.head.appendChild(sc);await new Promise(function(r){sc.onload=r;sc.onerror=r;setTimeout(r,5000);});}
-        var merged=await window.PDFLib.PDFDocument.create();var ok=0;var fail=0;
-        var proxies=["https://api.allorigins.win/raw?url=","https://corsproxy.io/?","https://thingproxy.freeboard.io/fetch/"];
-        for(var i=0;i<pnos.length;i++){
-          var params={mchId:FLASH_MCH_ID,nonceStr:String(Date.now()+i)};params.sign=await flashSign(params);
-          var body=Object.keys(params).map(function(k){return k+"="+encodeURIComponent(params[k]);}).join("&");
-          var url=FLASH_BASE+"/open/v1/orders/"+pnos[i]+"/small/pre_print";
-          var got=false;
-          for(var px=0;px<proxies.length&&!got;px++){
-            try{
-              var resp=await fetch(proxies[px]+encodeURIComponent(url),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:body});
-              if(!resp.ok)continue;var buf=await resp.arrayBuffer();if(buf.byteLength<500)continue;
-              var pdf=await window.PDFLib.PDFDocument.load(buf);
+        if(!window.PDFLib){var sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js";document.head.appendChild(sc);await new Promise(function(r){sc.onload=r;setTimeout(r,5000);});}
+        try{
+          var resp=await fetch(proxyUrl,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({pnos:pnos,mchId:FLASH_MCH_ID,key:FLASH_KEY,env:FLASH_ENV})});
+          var data=await resp.json();
+          if(!data.ok||!data.pdfs){throw new Error(data.error||"ไม่ได้รับข้อมูล");}
+          var merged=await window.PDFLib.PDFDocument.create();var ok=0;
+          for(var i=0;i<data.pdfs.length;i++){
+            if(data.pdfs[i].ok&&data.pdfs[i].pdf){
+              try{var bytes=Uint8Array.from(atob(data.pdfs[i].pdf),function(c){return c.charCodeAt(0);});
+              var pdf=await window.PDFLib.PDFDocument.load(bytes);
               var pages=await merged.copyPages(pdf,pdf.getPageIndices());
-              pages.forEach(function(p){merged.addPage(p);});ok++;got=true;
-            }catch(e){console.log("Proxy "+px+" failed for "+pnos[i]+":",e.message);}
+              pages.forEach(function(p){merged.addPage(p);});ok++;}catch(e){}
+            }
+            setFlashProgress({done:i+1,total:data.pdfs.length,ok:ok,fail:i+1-ok});
           }
-          if(!got)fail++;
-          setFlashProgress({done:i+1,total:pnos.length,ok:ok,fail:fail});
-        }
-        if(ok>0){var bytes=await merged.save();var blob=new Blob([bytes],{type:"application/pdf"});var url2=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url2;a.download="flash-labels-"+ok+".pdf";document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url2);},3000);}
-        else{alert("❌ CORS proxy ทั้งหมดบล็อก PDF\n\nแนะนำ: ใช้ ProShip ปริ้นแทน\nhttps://proship.flashexpress.com");}
+          if(ok>0){var out=await merged.save();var blob=new Blob([out],{type:"application/pdf"});var url2=URL.createObjectURL(blob);window.open(url2,"_blank");var a=document.createElement("a");a.href=url2;a.download="flash-labels-"+ok+".pdf";document.body.appendChild(a);a.click();document.body.removeChild(a);}
+          else{alert("❌ ไม่สามารถสร้าง PDF ได้");}
+        }catch(e){alert("❌ "+e.message+"\n\nตรวจสอบ URL Apps Script");}
         setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);
       }} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
 
