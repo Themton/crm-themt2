@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v47";
+var APP_VERSION = "20260330v48";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -960,12 +960,13 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
       </div>
     </div>
 
-    {/* ===== Flash Status Tabs ===== */}
-    {function(){var flashCounts={};allItems.forEach(function(o){if(o.FlashStatus){flashCounts[o.FlashStatus]=(flashCounts[o.FlashStatus]||0)+1;}});var hasFlash=Object.keys(flashCounts).length>0;if(!hasFlash)return null;return<div style={{display:"flex",gap:4,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      <span style={{fontSize:11,fontWeight:700,color:"#64748b",marginRight:4}}>⚡ Flash:</span>
-      <button onClick={function(){setFlashStatusFilter("ALL");}} style={{padding:"4px 10px",borderRadius:6,border:flashStatusFilter==="ALL"?"2px solid #475569":"1px solid #e2e8f0",background:flashStatusFilter==="ALL"?"#f8fafc":"#fff",color:"#475569",fontSize:10,fontWeight:700,cursor:"pointer"}}>ทั้งหมด</button>
-      {["รับเข้าระบบ","รับพัสดุแล้ว","กำลังขนส่ง","การนำจ่าย","ลูกค้ารับของ","ติดต่อผู้รับไม่ได้","ตีกลับ","จัดส่งไม่สำเร็จ"].map(function(s){var cnt=flashCounts[s]||0;if(cnt===0)return null;var co=FLASH_STATUS_COLOR[s]||"#94a3b8";return<button key={s} onClick={function(){setFlashStatusFilter(s);}} style={{padding:"4px 10px",borderRadius:6,border:flashStatusFilter===s?"2px solid "+co:"1px solid #e2e8f0",background:flashStatusFilter===s?co+"15":"#fff",color:co,fontSize:10,fontWeight:700,cursor:"pointer"}}>{s} <span style={{fontWeight:800}}>{cnt}</span></button>;})}
-    </div>;}()}
+    {/* ===== Flash Status Tabs — เหมือน Flash ProShip ===== */}
+    <div style={{display:"flex",gap:0,marginBottom:10,flexWrap:"wrap",overflowX:"auto"}}>
+      {[{k:"ALL",l:"ทั้งหมด",icon:"📋",c:"#475569"},{k:"รับเข้าระบบ",l:"รับเข้าระบบ",icon:"📥",c:"#6366f1"},{k:"รับพัสดุแล้ว",l:"รับพัสดุแล้ว",icon:"📦",c:"#0284c7"},{k:"กำลังขนส่ง",l:"กำลังขนส่ง",icon:"🚛",c:"#d97706"},{k:"การนำจ่าย",l:"การนำจ่าย",icon:"🚚",c:"#ea580c"},{k:"ลูกค้ารับของ",l:"ลูกค้ารับของ",icon:"✅",c:"#059669"},{k:"ติดต่อผู้รับไม่ได้",l:"ติดต่อผู้รับไม่ได้",icon:"📞",c:"#dc2626"},{k:"จัดส่งไม่สำเร็จ",l:"จัดส่งไม่สำเร็จ",icon:"❌",c:"#dc2626"},{k:"ตีกลับ",l:"ตีกลับ",icon:"↩️",c:"#dc2626"}].map(function(s){
+        var cnt=s.k==="ALL"?allItems.filter(function(o){return o.TrackingNo;}).length:allItems.filter(function(o){return o.FlashStatus===s.k;}).length;
+        var active=flashStatusFilter===s.k;
+        return<button key={s.k} onClick={function(){setFlashStatusFilter(s.k);}} style={{padding:"8px 14px",border:"none",borderBottom:active?"3px solid "+s.c:"3px solid transparent",background:"transparent",color:active?s.c:cnt>0?"#475569":"#d1d5db",fontSize:11,fontWeight:active?800:600,cursor:"pointer",whiteSpace:"nowrap"}}>{s.icon} {s.l} <span style={{background:active?s.c:cnt>0?"#e2e8f0":"transparent",color:active?"#fff":cnt>0?"#64748b":"#d1d5db",padding:"1px 6px",borderRadius:8,fontSize:9,fontWeight:800,marginLeft:2}}>{cnt}</span></button>;})}
+    </div>
 
     {/* ⚡ Flash Express Panel */}
     {flashPanel&&<div style={{background:"linear-gradient(135deg,#fffbeb,#fef3c7)",borderRadius:12,padding:16,marginBottom:14,border:"2px solid #f59e0b"}}>
