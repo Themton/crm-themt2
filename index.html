@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v8";
+var APP_VERSION = "20260330v9";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -257,20 +257,19 @@ async function dbEditOrder(oid,data){
 }
 async function dbUpdateStatus(orderIds,status,table,onProgress){
   var t=table||"orders";var total=orderIds.length;var done=0;var fail=0;
-  // Batch 20 ต่อครั้ง
-  var batchSize=20;
-  for(var b=0;b<total;b+=batchSize){
-    var batch=orderIds.slice(b,b+batchSize);
-    var filter=batch.map(function(id){return"order_id=eq."+encodeURIComponent(id);}).join(",");
-    try{
-      await sbFetch(t+"?or=("+filter+")",{method:"PATCH",body:{status:status}});
-      done+=batch.length;
-    }catch(e){
-      // ถ้า batch ล้มเหลว → ทำทีละตัว
-      for(var j=0;j<batch.length;j++){
-        try{await sbFetch(t+"?order_id=eq."+encodeURIComponent(batch[j]),{method:"PATCH",body:{status:status}});done++;}catch(e2){fail++;}
-      }
-    }
+  // Batch 100 ต่อครั้ง ใช้ in() filter → เร็วมาก
+  var batchSize=100;
+  var batches=[];
+  for(var b=0;b<total;b+=batchSize){batches.push(orderIds.slice(b,b+batchSize));}
+  // รันคู่ขนาน 3 batch พร้อมกัน
+  var concurrent=3;
+  for(var i=0;i<batches.length;i+=concurrent){
+    var chunk=batches.slice(i,i+concurrent);
+    var results=await Promise.all(chunk.map(function(batch){
+      var ids=batch.join(",");
+      return sbFetch(t+"?order_id=in.("+ids+")",{method:"PATCH",body:{status:status}}).then(function(){return{ok:batch.length};}).catch(function(){return{fail:batch.length};});
+    }));
+    results.forEach(function(r){if(r.ok)done+=r.ok;else fail+=(r.fail||0);});
     if(onProgress)onProgress(done,total,fail);
   }
   return{done:done,fail:fail};
