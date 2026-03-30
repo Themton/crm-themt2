@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v48";
+var APP_VERSION = "20260330v49";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -949,8 +949,8 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
       <span style={{fontSize:11,color:"#94a3b8",marginLeft:8}}>{filtered.length} รายการ</span>
     </div>
 
-    {/* ===== Status Tabs ===== */}
-    <div style={{display:"flex",gap:0,marginBottom:10,borderBottom:"2px solid #e2e8f0",flexWrap:"wrap"}}>
+    {/* ===== Status Tabs (admin only) ===== */}
+    {isAdmin&&<div style={{display:"flex",gap:0,marginBottom:10,borderBottom:"2px solid #e2e8f0",flexWrap:"wrap"}}>
       {[{k:"ALL",l:"ทั้งหมด",c:"#475569"},{k:"รอส่ง",l:"📦 เตรียมส่ง",c:"#d97706"},{k:"สร้างเลขพัสดุแล้ว",l:"🔖 สร้างเลขแล้ว",c:"#0369a1"},{k:"ปริ้นแล้ว",l:"🖨️ ปริ้นแล้ว",c:"#059669"}].map(function(s){var cnt=s.k==="ALL"?allItems.length:(countByStatus[s.k]||0);var active=statusFilter===s.k;return<button key={s.k} onClick={function(){setStatusFilter(s.k);setSelected({});}} style={{padding:"10px 20px",border:"none",borderBottom:active?"3px solid "+s.c:"3px solid transparent",background:"transparent",color:active?s.c:"#94a3b8",fontSize:12,fontWeight:active?800:600,cursor:"pointer"}}>{s.l} <span style={{background:active?s.c:"#e2e8f0",color:active?"#fff":"#64748b",padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:800,marginLeft:4}}>{cnt}</span></button>;})}
       <div style={{flex:1}}/>
       <div style={{display:"flex",gap:4,alignItems:"center",padding:"4px 0"}}>
@@ -958,7 +958,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,onUpdateStatus,onExport,dateF
         <button onClick={function(){onExport(filtered,"csv","orders");}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,fontWeight:700,cursor:"pointer"}}>CSV</button>
         <button onClick={function(){setShowHistory(true);}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:10,fontWeight:700,cursor:"pointer"}}>📜 ประวัติ</button>
       </div>
-    </div>
+    </div>}
 
     {/* ===== Flash Status Tabs — เหมือน Flash ProShip ===== */}
     <div style={{display:"flex",gap:0,marginBottom:10,flexWrap:"wrap",overflowX:"auto"}}>
