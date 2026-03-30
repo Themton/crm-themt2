@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v36";
+var APP_VERSION = "20260330v37";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -59,10 +59,10 @@ function printCustomLabels(orders,pnos){
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels</title>';
   html+='<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>';
   html+='<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">';
-  html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
+  html+='<style>@page{size:100mm 78mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
   html+='@media print{.no-print{display:none!important}}';
-  html+='.label{width:100mm;height:75mm;border:2px solid #000;position:relative;overflow:hidden;page-break-after:always}';
-  html+='.label:last-child{page-break-after:auto}';
+  html+='.label{width:100mm;height:75mm;border:2px solid #000;position:relative;overflow:hidden;page-break-after:always;margin-bottom:3mm}';
+  html+='.label:last-child{page-break-after:auto;margin-bottom:0}';
   html+='.barcode-area{text-align:center;padding:5px 12px 2px;border-bottom:2px solid #000}';
   html+='.barcode-area svg{width:95%;height:50px}';
   html+='.pno{font-size:13px;font-weight:900;text-align:center;letter-spacing:2px;padding:1px 0;border-bottom:2px solid #000}';
