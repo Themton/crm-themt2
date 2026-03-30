@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v71";
+var APP_VERSION = "20260330v72";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -80,7 +80,7 @@ function printCustomLabels(orders,pnos){
   html+='.cod-row{border-bottom:1px solid #000;display:flex;align-items:stretch;min-height:24px}';
   html+='.cod-tag{background:#000;color:#fff;font-size:11px;font-weight:900;padding:4px 8px;display:flex;align-items:center}';
   html+='.cod-val{flex:1;font-size:15px;font-weight:900;padding:3px 8px;display:flex;align-items:center}';
-  html+='.note-row{padding:2px 8px;font-size:7px;color:#333;border-bottom:1px solid #eee}';
+  html+='.note-row{padding:3px 8px;font-size:10px;color:#000;border-bottom:1px solid #eee;font-weight:700}';
   html+='.note-row b{font-weight:700}';
   html+='.foot{font-size:6.5px;color:#999;padding:2px 8px;display:flex;justify-content:space-between}';
   html+='</style></head><body>';
