@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260330v78";
+var APP_VERSION = "20260330v79";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -1140,7 +1140,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
         </tr></thead>
         <tbody>{pageItems.length===0?<tr><td colSpan={canManage?11:10} style={{textAlign:"center",padding:40,color:"#94a3b8"}}>ไม่พบรายการ</td></tr>
         :pageItems.map(function(o,idx){var isCOD=Number(o.COD||0)>0;var isSel=!!selected[o.OrderID];var isUp=o._table==="upsell";var rowNum=(pg-1)*perPage+idx+1;
-          return<tr key={o.OrderID} style={{cursor:canManage?"pointer":"default",borderLeft:isUp?"3px solid #ea580c":isCOD?"3px solid #ef4444":"3px solid #10b981",background:isSel?"#eff6ff":""}} onClick={function(){if(canManage)setViewOrder(o);}} onMouseEnter={function(e){if(!isSel)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){if(!isSel)e.currentTarget.style.background="";}}>
+          return<tr key={o.OrderID} style={{cursor:"pointer",borderLeft:isUp?"3px solid #ea580c":isCOD?"3px solid #ef4444":"3px solid #10b981",background:isSel?"#eff6ff":""}} onClick={function(){setViewOrder(o);}} onMouseEnter={function(e){if(!isSel)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={function(e){if(!isSel)e.currentTarget.style.background="";}}>
             {canManage&&<td style={{...S.td,textAlign:"center",width:32}} onClick={function(e){shiftSelect(o.OrderID,idx,e);}}><input type="checkbox" checked={isSel} readOnly/></td>}
             <td style={S.td}><span style={{padding:"3px 8px",borderRadius:6,fontSize:10,fontWeight:700,background:isUp?"#fff7ed":"#eff6ff",color:isUp?"#ea580c":"#2563eb"}}>{isUp?"🔥 Upsell":"📋 Order"}</span></td>
             <td style={{...S.td,fontSize:12}}>{getDate(o.Timestamp)}</td>
@@ -1239,7 +1239,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
         </table>}
       </div>
     </div>}
-    {canManage&&viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onEdit={function(oid,data){if(onEdit)onEdit(oid,data);setViewOrder(null);setTimeout(function(){if(onRefresh)onRefresh();},500);}} onUploadSlip={function(){}} isAdmin={canManage} onUpdateStatus={function(ids,s){var tbl=viewOrder._table||"orders";onUpdateStatus(ids,s,tbl);setViewOrder(null);}}/>}
+    {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onEdit={canManage?function(oid,data){if(onEdit)onEdit(oid,data);setViewOrder(null);setTimeout(function(){if(onRefresh)onRefresh();},500);}:null} onUploadSlip={function(){}} isAdmin={canManage} onUpdateStatus={canManage?function(ids,s){var tbl=viewOrder._table||"orders";onUpdateStatus(ids,s,tbl);setViewOrder(null);}:null}/>}
   </div>;
 }
 function ReportPage({user,accounts,allOrders,upsellOrders}){
