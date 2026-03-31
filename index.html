@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v7";
+var APP_VERSION = "20260331v8";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -68,6 +68,8 @@ function printCustomLabels(orders,pnos){
   var srcInfo=FLASH_SRC;var now=new Date();var dateStr=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Labels ('+orders.length+')</title>';
   html+='<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>';
+  html+='<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>';
+  html+='<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/script>';
   html+='<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">';
   html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
   html+='@media print{.no-print{display:none!important}.label.hide-print{display:none!important}}';
@@ -104,7 +106,7 @@ function printCustomLabels(orders,pnos){
   // Toolbar
   html+='<div class="no-print toolbar"><div class="toolbar-top">';
   html+='<button class="btn-print" onclick="printSelected()">🖨️ ปริ้นที่เลือก</button>';
-  html+='<button class="btn-dl" onclick="var a=document.createElement(\'a\');a.href=\'data:text/html;charset=utf-8,\'+encodeURIComponent(document.documentElement.outerHTML);a.download=\'labels.html\';a.click();">⬇️ ดาวน์โหลด</button>';
+  html+='<button class="btn-dl" onclick="savePDF()">⬇️ ดาวน์โหลด PDF</button>';
   html+='<span style="font-size:12px">ทั้งหมด '+orders.length+' ใบ</span>';
   html+='</div>';
   html+='<div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">';
@@ -158,6 +160,7 @@ function printCustomLabels(orders,pnos){
   html+='function toggleAll(val){document.querySelectorAll("#pageSelect input").forEach(function(cb){cb.checked=val;updateLabel(parseInt(cb.dataset.idx),val);});}';
   html+='function applyRange(){var txt=document.getElementById("rangeInput").value;if(!txt)return;toggleAll(false);txt.split(",").forEach(function(part){part=part.trim();var m=part.match(/^(\\d+)-(\\d+)$/);if(m){for(var i=parseInt(m[1]);i<=parseInt(m[2]);i++){var cb=document.querySelector("#pageSelect input[data-idx=\'"+(i-1)+"\']");if(cb){cb.checked=true;updateLabel(i-1,true);}}}else{var n=parseInt(part);if(n>0){var cb=document.querySelector("#pageSelect input[data-idx=\'"+(n-1)+"\']");if(cb){cb.checked=true;updateLabel(n-1,true);}}}});}';
   html+='function printSelected(){window.print();}';
+  html+='async function savePDF(){var btn=document.querySelector(".btn-dl");btn.textContent="⏳ กำลังสร้าง PDF...";btn.disabled=true;try{var labels=document.querySelectorAll(".label:not(.hide-print)");if(labels.length===0){alert("ไม่มีใบที่เลือก");btn.textContent="⬇️ ดาวน์โหลด PDF";btn.disabled=false;return;}var pdf=new jspdf.jsPDF({orientation:"landscape",unit:"mm",format:[100,75]});for(var i=0;i<labels.length;i++){if(i>0)pdf.addPage([100,75],"landscape");var canvas=await html2canvas(labels[i],{scale:3,useCORS:true,backgroundColor:"#fff",width:378,height:283});var imgData=canvas.toDataURL("image/jpeg",0.95);pdf.addImage(imgData,"JPEG",0,0,100,75);}pdf.save("flash-labels-"+labels.length+".pdf");}catch(e){alert("❌ สร้าง PDF ผิดพลาด: "+e.message);}btn.textContent="⬇️ ดาวน์โหลด PDF";btn.disabled=false;}';
   html+='renderAll();';
   html+='<\/script></body></html>';
   var w=window.open("","_blank");
