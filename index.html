@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v23";
+var APP_VERSION = "20260331v24";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -51,23 +51,24 @@ var FLASH_ENV = localStorage.getItem("flash_env") || "production";
 var FLASH_SRC = JSON.parse(localStorage.getItem("flash_src") || '{"name":"THE MT","phone":"0000000000","province":"","city":"","district":"","zip":"","address":""}');
 var FLASH_PDF_PROXY = localStorage.getItem("flash_pdf_proxy") || "";
 async function flashSign(params){var keys=Object.keys(params).filter(function(k){return k!=="sign"&&params[k]!==undefined&&params[k]!==""&&params[k]!==null;}).sort();var stringA=keys.map(function(k){return k+"="+params[k];}).join("&");var stringSignTemp=stringA+"&key="+FLASH_KEY;var enc=new TextEncoder().encode(stringSignTemp);var hash=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,"0");}).join("").toUpperCase();}
-var _proxyIdx=0;
-var _proxies=["https://api.allorigins.win/raw?url=","https://thingproxy.freeboard.io/fetch/","https://corsproxy.io/?"];
+var FLASH_WORKER=localStorage.getItem("flash_worker")||"";
 async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.nonceStr=String(Date.now());params.sign=await flashSign(params);var body=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");var url=FLASH_BASE+path;
-  for(var attempt=0;attempt<_proxies.length*2;attempt++){
-    var px=_proxies[_proxyIdx%_proxies.length];
+  // ใช้ Cloudflare Worker (ถ้ามี)
+  if(FLASH_WORKER){
     try{
-      var res=await fetch(px+encodeURIComponent(url),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","Accept":accept||"application/json"},body:body});
-      if(!res.ok){var txt=await res.text();if(txt.indexOf("Rate limit")>=0||txt.indexOf("rate limit")>=0||res.status===429){console.log("⚠️ Proxy rate limited: "+px);_proxyIdx++;await new Promise(function(r){setTimeout(r,1000);});continue;}throw new Error(res.status+" "+txt.substring(0,100));}
+      var res=await fetch(FLASH_WORKER,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url,method:"POST",body:body,contentType:"application/x-www-form-urlencoded"})});
+      if(!res.ok)throw new Error("Worker error: "+res.status);
       if(accept==="application/pdf")return res;
       return await res.json();
-    }catch(e){
-      if(e.message&&e.message.indexOf("Rate limit")>=0){_proxyIdx++;continue;}
-      console.log("Proxy failed ("+px+"): "+e.message);_proxyIdx++;
-      await new Promise(function(r){setTimeout(r,800);});
-    }
+    }catch(e){console.error("Worker error:",e);throw e;}
   }
-  throw new Error("ไม่สามารถเชื่อมต่อ Flash API ได้ (proxy ถูกจำกัด)");
+  // Fallback: ใช้ proxy ฟรี
+  var proxies=["https://api.allorigins.win/raw?url=","https://thingproxy.freeboard.io/fetch/","https://corsproxy.io/?"];
+  for(var px=0;px<proxies.length;px++){
+    try{var res2=await fetch(proxies[px]+encodeURIComponent(url),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","Accept":accept||"application/json"},body:body});if(!res2.ok)continue;if(accept==="application/pdf")return res2;return await res2.json();}
+    catch(e){await new Promise(function(r){setTimeout(r,500);});}
+  }
+  throw new Error("ไม่สามารถเชื่อมต่อ Flash API ได้ — ตั้งค่า Cloudflare Worker ใน ⚙️");
 }
 async function flashCreateOrder(order){var codVal=Number(order.COD||0);var salePrice=Number(order.SalePrice||0);var rm=String(order.Remark||"").replace(/\[PREV:\d+\]\s*/g,"").trim();var remarkParts=[];if(codVal>0)remarkParts.push("COD "+codVal+" บาท");else remarkParts.push("โอนแล้ว "+salePrice+" บาท");if(rm)remarkParts.push(rm);return await flashAPI("/open/v3/orders",{outTradeNo:order.OrderID||("ORD"+Date.now()),srcName:FLASH_SRC.name||"THE MT",srcPhone:FLASH_SRC.phone||"",srcProvinceName:FLASH_SRC.province||"",srcCityName:FLASH_SRC.city||"",srcDistrictName:FLASH_SRC.district||"",srcPostalCode:FLASH_SRC.zip||"",srcDetailAddress:FLASH_SRC.address||"",dstName:order.Name||"",dstPhone:order.MobileNo||"",dstProvinceName:order.Province||"",dstCityName:order.District||"",dstDistrictName:order.SubDistrict||"",dstPostalCode:order.ZIP||"",dstDetailAddress:order.Address||"",articleCategory:1,expressCategory:1,weight:1000,insured:0,codEnabled:codVal>0?1:0,codAmount:codVal>0?codVal*100:0,remark:remarkParts.join(" | ")});}
 async function flashPrintLabel(pno){return await flashAPI("/open/v1/orders/"+pno+"/pre_print",{},"application/pdf");}
@@ -1170,6 +1171,12 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
             <input id="f_env" type="hidden" defaultValue={FLASH_ENV}/>
           </div>
         </div>
+        <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"#92400e"}}>☁️ Cloudflare Worker (แก้ Rate Limit)</div>
+        <div style={{marginBottom:10}}>
+          <label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>Worker URL</label>
+          <input defaultValue={FLASH_WORKER} id="f_worker" placeholder="https://flash-proxy.xxxxx.workers.dev" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid "+(FLASH_WORKER?"#10b981":"#e2e8f0"),fontSize:11,boxSizing:"border-box",background:FLASH_WORKER?"#f0fdf4":"#fff"}}/>
+          <div style={{fontSize:9,color:FLASH_WORKER?"#059669":"#94a3b8",marginTop:2}}>{FLASH_WORKER?"✅ ใช้ Worker — ไม่ติด Rate Limit":"⚠️ ยังไม่ตั้ง — ใช้ proxy ฟรี (อาจติด limit)"}</div>
+        </div>
         <div style={{fontSize:12,fontWeight:700,marginBottom:8,color:"#92400e"}}>📍 ที่อยู่ผู้ส่ง</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
           <div><label style={{fontSize:10,fontWeight:600,color:"#64748b"}}>ชื่อผู้ส่ง</label><input defaultValue={FLASH_SRC.name} id="f_srcName" style={{width:"100%",padding:"6px 8px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:12,boxSizing:"border-box"}}/></div>
@@ -1183,6 +1190,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
         <button onClick={function(){
           FLASH_MCH_ID=document.getElementById("f_mchId").value;localStorage.setItem("flash_mchId",FLASH_MCH_ID);
           FLASH_KEY=document.getElementById("f_key").value;localStorage.setItem("flash_key",FLASH_KEY);
+          var wk=document.getElementById("f_worker").value.trim();FLASH_WORKER=wk;localStorage.setItem("flash_worker",wk);
           var env=document.getElementById("f_env").value||"training";FLASH_ENV=env;localStorage.setItem("flash_env",env);
           FLASH_BASE=env==="production"?"https://api.flashexpress.com":"https://api-training.flashexpress.com";
           FLASH_SRC={name:document.getElementById("f_srcName").value,phone:document.getElementById("f_srcPhone").value,address:document.getElementById("f_srcAddr").value,district:document.getElementById("f_srcDist").value,city:document.getElementById("f_srcCity").value,province:document.getElementById("f_srcProv").value,zip:document.getElementById("f_srcZip").value};
