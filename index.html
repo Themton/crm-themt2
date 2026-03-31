@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v6";
+var APP_VERSION = "20260331v7";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -70,11 +70,19 @@ function printCustomLabels(orders,pnos){
   html+='<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>';
   html+='<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">';
   html+='<style>@page{size:100mm 75mm;margin:0}*{box-sizing:border-box}body{margin:0;padding:0;font-family:"Sarabun",Arial,sans-serif}';
-  html+='@media print{.no-print{display:none!important}}';
-  html+='.print-bar{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;padding:10px;text-align:center;font-weight:700}';
-  html+='.print-bar button{margin:6px;padding:8px 24px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}';
+  html+='@media print{.no-print{display:none!important}.label.hide-print{display:none!important}}';
+  html+='.toolbar{background:linear-gradient(135deg,#1e293b,#334155);color:#fff;padding:14px;position:sticky;top:0;z-index:100}';
+  html+='.toolbar-top{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}';
+  html+='.toolbar-top button{padding:8px 20px;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}';
+  html+='.btn-print{background:#10b981;color:#fff}.btn-dl{background:#3b82f6;color:#fff}';
+  html+='.page-select{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;align-items:center}';
+  html+='.page-select label{display:flex;align-items:center;gap:3px;padding:4px 8px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(255,255,255,.1);transition:all .2s}';
+  html+='.page-select label:hover{background:rgba(255,255,255,.2)}';
+  html+='.page-select input:checked+span{color:#10b981;font-weight:800}';
+  html+='.range-input{padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:11px;width:100px;outline:none}';
   html+='.label{width:100mm;height:75mm;border:1.5px solid #000;position:relative;overflow:hidden;page-break-after:always;margin:0 auto 3mm}';
   html+='.label:last-child{margin-bottom:0}';
+  html+='.label-num{position:absolute;top:2px;left:4px;background:#d97706;color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:0 0 4px 0;z-index:2}';
   html+='.bc-wrap{text-align:center;padding:4px 15px 0;border-bottom:1.5px solid #000}';
   html+='.bc-wrap svg{width:92%;height:45px}';
   html+='.pno-row{font-size:12px;font-weight:900;text-align:center;letter-spacing:1.5px;padding:2px 0;border-bottom:1.5px solid #000;background:#f8f8f8}';
@@ -90,15 +98,34 @@ function printCustomLabels(orders,pnos){
   html+='.cod-tag{background:#000;color:#fff;font-size:11px;font-weight:900;padding:4px 8px;display:flex;align-items:center}';
   html+='.cod-val{flex:1;font-size:15px;font-weight:900;padding:3px 8px;display:flex;align-items:center}';
   html+='.note-row{padding:3px 8px;font-size:10px;color:#000;border-bottom:1px solid #eee;font-weight:700}';
-  html+='.note-row b{font-weight:700}';
   html+='.foot{font-size:6.5px;color:#999;padding:2px 8px;display:flex;justify-content:space-between}';
   html+='</style></head><body>';
-  html+='<div class="no-print print-bar">⚡ Labels: '+orders.length+' ใบ<br><button onclick="window.print()">🖨️ ปริ้นทั้งหมด ('+orders.length+' ใบ)</button> <button onclick="var a=document.createElement(\'a\');a.href=\'data:text/html;charset=utf-8,\'+encodeURIComponent(document.documentElement.outerHTML);a.download=\'labels-'+orders.length+'.html\';a.click();">⬇️ ดาวน์โหลด</button></div>';
 
+  // Toolbar
+  html+='<div class="no-print toolbar"><div class="toolbar-top">';
+  html+='<button class="btn-print" onclick="printSelected()">🖨️ ปริ้นที่เลือก</button>';
+  html+='<button class="btn-dl" onclick="var a=document.createElement(\'a\');a.href=\'data:text/html;charset=utf-8,\'+encodeURIComponent(document.documentElement.outerHTML);a.download=\'labels.html\';a.click();">⬇️ ดาวน์โหลด</button>';
+  html+='<span style="font-size:12px">ทั้งหมด '+orders.length+' ใบ</span>';
+  html+='</div>';
+  html+='<div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">';
+  html+='<button onclick="toggleAll(true)" style="padding:4px 12px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:transparent;color:#10b981;font-size:11px;font-weight:700;cursor:pointer">☑ เลือกทั้งหมด</button>';
+  html+='<button onclick="toggleAll(false)" style="padding:4px 12px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:transparent;color:#ef4444;font-size:11px;font-weight:700;cursor:pointer">☐ ยกเลิกทั้งหมด</button>';
+  html+='<span style="color:#94a3b8;font-size:11px">เลือกหน้า:</span>';
+  html+='<input class="range-input" id="rangeInput" placeholder="เช่น 1-5, 8, 10-12" onkeydown="if(event.key===\'Enter\')applyRange()"/>';
+  html+='<button onclick="applyRange()" style="padding:4px 10px;border:none;border-radius:6px;background:#d97706;color:#fff;font-size:11px;font-weight:700;cursor:pointer">ใช้</button>';
+  html+='</div>';
+  html+='<div class="page-select" id="pageSelect">';
+  for(var idx=0;idx<orders.length;idx++){
+    html+='<label><input type="checkbox" checked data-idx="'+idx+'" onchange="updateLabel('+idx+',this.checked)"/><span>'+(idx+1)+'</span></label>';
+  }
+  html+='</div></div>';
+
+  // Labels
   for(var idx=0;idx<orders.length;idx++){
     var order=orders[idx];var pno=pnos[idx]||"";
     var codVal=Number(order.COD||0);var rm=String(order.Remark||"").replace(/\[PREV:\d+\]\s*/g,"").trim();
-    html+='<div class="label">';
+    html+='<div class="label" id="lbl'+idx+'">';
+    html+='<div class="label-num no-print">'+(idx+1)+'</div>';
     html+='<div class="bc-wrap"><svg id="bc'+idx+'"></svg></div>';
     html+='<div class="pno-row">'+pno+'</div>';
     html+='<div class="dst-bar">DST &nbsp; '+(order.District||"")+" — "+(order.Province||"")+'</div>';
@@ -126,7 +153,11 @@ function printCustomLabels(orders,pnos){
     html+='try{JsBarcode("#bc'+i+'","'+p+'",{format:"CODE128",width:2.2,height:45,displayValue:false,margin:0});}catch(e){}';
   }
   html+='waitImages();}';
-  html+='function waitImages(){var imgs=document.querySelectorAll("img");var total=imgs.length;if(total===0){window.print();return;}var loaded=0;imgs.forEach(function(img){if(img.complete){loaded++;}else{img.onload=function(){loaded++;if(loaded>=total)window.print();};img.onerror=function(){loaded++;if(loaded>=total)window.print();};}});if(loaded>=total)window.print();}';
+  html+='function waitImages(){var imgs=document.querySelectorAll("img");var total=imgs.length;if(total===0)return;var loaded=0;imgs.forEach(function(img){if(img.complete){loaded++;}else{img.onload=function(){loaded++;};img.onerror=function(){loaded++;};}});}';
+  html+='function updateLabel(idx,checked){var el=document.getElementById("lbl"+idx);if(el){if(checked){el.classList.remove("hide-print");el.style.opacity="1";}else{el.classList.add("hide-print");el.style.opacity="0.3";}}}';
+  html+='function toggleAll(val){document.querySelectorAll("#pageSelect input").forEach(function(cb){cb.checked=val;updateLabel(parseInt(cb.dataset.idx),val);});}';
+  html+='function applyRange(){var txt=document.getElementById("rangeInput").value;if(!txt)return;toggleAll(false);txt.split(",").forEach(function(part){part=part.trim();var m=part.match(/^(\\d+)-(\\d+)$/);if(m){for(var i=parseInt(m[1]);i<=parseInt(m[2]);i++){var cb=document.querySelector("#pageSelect input[data-idx=\'"+(i-1)+"\']");if(cb){cb.checked=true;updateLabel(i-1,true);}}}else{var n=parseInt(part);if(n>0){var cb=document.querySelector("#pageSelect input[data-idx=\'"+(n-1)+"\']");if(cb){cb.checked=true;updateLabel(n-1,true);}}}});}';
+  html+='function printSelected(){window.print();}';
   html+='renderAll();';
   html+='<\/script></body></html>';
   var w=window.open("","_blank");
