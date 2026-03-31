@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v12";
+var APP_VERSION = "20260331v13";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -169,7 +169,7 @@ function printCustomLabels(orders,pnos){
   w.document.write(html);w.document.close();
 }
 async function flashNotifyCourier(params){return await flashAPI("/open/v1/notify",params||{});}
-async function flashTrackStatus(pno){return await flashAPI("/open/v1/orders/"+pno+"/routes",{});}
+async function flashTrackStatus(pno){return await flashAPI("/open/v1/orders/"+pno+"/routes",{pno:pno});}
 var SUPABASE_KEY = localStorage.getItem("sb_key") || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmd2J6Y3J2ZXNiZXltdmxzeHN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMzNTMzNTgsImV4cCI6MjA4ODkyOTM1OH0.E4Zvq43f0M29hAZzKg78W9HRpthv0I9U37LDo_0Pyvo";
 var sbReady = !!(SUPABASE_URL && SUPABASE_KEY);
 
@@ -938,18 +938,22 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       if(idx.v>=withPno.length){if(!silent){setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);}setLastSync(new Date().toLocaleTimeString("th-TH"));if(onRefresh)onRefresh();return;}
       var o=withPno[idx.v];
       flashTrackStatus(o.TrackingNo).then(function(r){
-        console.log("Flash track "+o.TrackingNo+":",JSON.stringify(r));
+        console.log("Flash track "+o.TrackingNo+":",JSON.stringify(r).substring(0,500));
         var st="";
-        if(r.code===1&&r.data){
-          // format 1: r.data.state
-          if(r.data.state)st=FLASH_STATUS_MAP[String(r.data.state)]||"";
-          // format 2: r.data.routes array — ใช้ตัวล่าสุด
-          if(!st&&r.data.routes&&r.data.routes.length>0){var last=r.data.routes[r.data.routes.length-1];st=FLASH_STATUS_MAP[String(last.state||last.status)]||"";}
-          // format 3: r.data[0].state (array)
-          if(!st&&Array.isArray(r.data)&&r.data.length>0){var last2=r.data[r.data.length-1];st=FLASH_STATUS_MAP[String(last2.state||last2.status)]||"";}
+        if(r.code===1){
+          var d=r.data;
+          // format 1: { data: { state: 1006 } }
+          if(d&&d.state)st=FLASH_STATUS_MAP[String(d.state)]||"";
+          // format 2: { data: { routes: [{ state: 1006 }] } } — ใช้ตัวล่าสุด
+          if(!st&&d&&d.routes&&d.routes.length>0){for(var ri=d.routes.length-1;ri>=0;ri--){if(d.routes[ri].state){st=FLASH_STATUS_MAP[String(d.routes[ri].state)]||"";if(st)break;}}}
+          // format 3: { data: [{ state: 1006 }] } — array ตรง
+          if(!st&&Array.isArray(d)&&d.length>0){for(var ri2=d.length-1;ri2>=0;ri2--){if(d[ri2].state){st=FLASH_STATUS_MAP[String(d[ri2].state)]||"";if(st)break;}}}
+          // format 4: { data: { routeElements: [{ state: 1006 }] } }
+          if(!st&&d&&d.routeElements&&d.routeElements.length>0){for(var ri3=d.routeElements.length-1;ri3>=0;ri3--){if(d.routeElements[ri3].state){st=FLASH_STATUS_MAP[String(d.routeElements[ri3].state)]||"";if(st)break;}}}
         }
-        if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});console.log("Updated "+o.TrackingNo+" → "+st);}
-      }).catch(function(e){console.log("Track error "+o.TrackingNo+":",e.message);}).then(function(){
+        console.log("Parsed status for "+o.TrackingNo+": "+(st||"(ไม่พบ)"));
+        if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});console.log("✅ Updated "+o.TrackingNo+" → "+st);}
+      }).catch(function(e){console.log("❌ Track error "+o.TrackingNo+":",e.message);}).then(function(){
         idx.v++;if(!silent)setFlashProgress({done:idx.v,total:withPno.length,ok:idx.v,fail:0});next();
       });
     }
@@ -1014,7 +1018,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     {/* ===== Toolbar — เหมือน Flash ProShip ===== */}
     <div style={{background:"#fff",borderRadius:10,padding:"10px 14px",marginBottom:10,border:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
       {canManage&&<button onClick={selectAll} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:pageItems.length>0&&pageItems.every(function(o){return selected[o.OrderID];})?"#e0f2fe":"#fff",color:"#0284c7",fontSize:11,fontWeight:700,cursor:"pointer"}}>☑ เลือกทั้งหมด</button>}
-      {canManage&&<button disabled={selCount===0||flashLoading} onClick={async function(){if(selCount===0)return;var noTrack=selItems.filter(function(o){return!o.TrackingNo;});if(noTrack.length===0){alert("ทุกรายการมีเลข Tracking แล้ว");return;}if(!confirm("สร้างเลขพัสดุ "+noTrack.length+" รายการ?"))return;setFlashLoading(true);setFlashResult(null);var results=[];var total=noTrack.length;setFlashProgress({done:0,total:total,ok:0,fail:0});for(var i=0;i<total;i++){try{var r=await flashCreateOrder(noTrack[i]);var pno=r.data&&r.data.pno?r.data.pno:"";var sc=r.data&&r.data.sortCode?r.data.sortCode:"";if(pno){noTrack[i]._flashPno=pno;noTrack[i].TrackingNo=pno;noTrack[i].SortCode=sc;var tbl=noTrack[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(noTrack[i].OrderID),{method:"PATCH",body:{tracking_no:pno,sort_code:sc,status:"สร้างเลขพัสดุแล้ว"}});dbLogStatus([{order_id:noTrack[i].OrderID,table_name:tbl,old_status:noTrack[i].Status||"รอส่ง",new_status:"สร้างเลขพัสดุแล้ว",changed_by:"Flash API (PNO:"+pno+")"}]);}catch(e2){}}results.push({name:noTrack[i].Name,ok:r.code===1,pno:pno,msg:r.message||""});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}catch(e){results.push({name:noTrack[i].Name,ok:false,msg:String(e.message||e)});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}}setFlashResult({type:"create",results:results});setFlashLoading(false);if(onRefresh)onRefresh();}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#d97706":"#e2e8f0"),background:selCount>0?"#fffbeb":"#f8fafc",color:selCount>0?"#92400e":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>📦 สร้างเลขพัสดุ ({selCount})</button>}
+      {canManage&&<button disabled={selCount===0||flashLoading} onClick={async function(){if(selCount===0)return;var noTrack=selItems.filter(function(o){return!o.TrackingNo;});if(noTrack.length===0){alert("ทุกรายการมีเลข Tracking แล้ว");return;}if(!confirm("สร้างเลขพัสดุ "+noTrack.length+" รายการ?"))return;setFlashLoading(true);setFlashResult(null);var results=[];var total=noTrack.length;setFlashProgress({done:0,total:total,ok:0,fail:0});for(var i=0;i<total;i++){try{var r=await flashCreateOrder(noTrack[i]);var pno=r.data&&r.data.pno?r.data.pno:"";var sc=r.data&&r.data.sortCode?r.data.sortCode:"";if(pno){noTrack[i]._flashPno=pno;noTrack[i].TrackingNo=pno;noTrack[i].SortCode=sc;var tbl=noTrack[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(noTrack[i].OrderID),{method:"PATCH",body:{tracking_no:pno,sort_code:sc,status:"สร้างเลขพัสดุแล้ว",flash_status:"สร้างรายการ"}});dbLogStatus([{order_id:noTrack[i].OrderID,table_name:tbl,old_status:noTrack[i].Status||"รอส่ง",new_status:"สร้างเลขพัสดุแล้ว",changed_by:"Flash API (PNO:"+pno+")"}]);}catch(e2){}}results.push({name:noTrack[i].Name,ok:r.code===1,pno:pno,msg:r.message||""});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}catch(e){results.push({name:noTrack[i].Name,ok:false,msg:String(e.message||e)});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}}setFlashResult({type:"create",results:results});setFlashLoading(false);if(onRefresh)onRefresh();}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#d97706":"#e2e8f0"),background:selCount>0?"#fffbeb":"#f8fafc",color:selCount>0?"#92400e":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>📦 สร้างเลขพัสดุ ({selCount})</button>}
       <button onClick={function(){setStatusFilter("รอส่ง");setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>📋 รายการยังไม่พิมพ์</button>
       {canManage&&<button disabled={selCount===0} onClick={function(){var valid=[];var vp=[];selItems.forEach(function(o){var pno=o.TrackingNo||o._flashPno||"";if(pno){valid.push(o);vp.push(pno);}});if(valid.length===0){alert("ต้อง 📦 สร้างรายการ ก่อน");return;}printCustomLabels(valid,vp);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid "+((selCount>0)?"#0284c7":"#e2e8f0"),background:selCount>0?"#e0f2fe":"#f8fafc",color:selCount>0?"#0284c7":"#94a3b8",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>🖨️ พิมพ์ใบปะหน้า ({selCount})</button>}
 
@@ -1131,7 +1135,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
 
       {/* 3 Actions */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}}>
-        <button disabled={flashLoading||selCount===0} onClick={async function(){setFlashLoading(true);setFlashResult(null);var results=[];var total=selItems.length;setFlashProgress({done:0,total:total,ok:0,fail:0});for(var i=0;i<total;i++){try{var r=await flashCreateOrder(selItems[i]);console.log("Flash create response:",JSON.stringify(r));var pno=r.data&&r.data.pno?r.data.pno:"";var sc=r.data&&r.data.sortCode?r.data.sortCode:"";if(pno){selItems[i]._flashPno=pno;selItems[i].TrackingNo=pno;selItems[i].SortCode=sc;var tbl=selItems[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(selItems[i].OrderID),{method:"PATCH",body:{tracking_no:pno,sort_code:sc,status:"สร้างเลขพัสดุแล้ว"}});dbLogStatus([{order_id:selItems[i].OrderID,table_name:tbl,old_status:selItems[i].Status||"รอส่ง",new_status:"สร้างเลขพัสดุแล้ว",changed_by:"Flash API (PNO:"+pno+")"}]);}catch(e2){}}results.push({name:selItems[i].Name,ok:r.code===1,pno:pno,msg:r.message||r.msg||JSON.stringify(r)});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}catch(e){console.error("Flash create error:",e);results.push({name:selItems[i].Name,ok:false,msg:String(e.message||e)});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}}setFlashResult({type:"create",results:results});setFlashLoading(false);if(onRefresh)onRefresh();}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:selCount>0?"linear-gradient(135deg,#d97706,#b45309)":"#d1d5db",color:"#fff",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>📦 สร้างรายการ{selCount>0?" ("+selCount+")":""}</button>
+        <button disabled={flashLoading||selCount===0} onClick={async function(){setFlashLoading(true);setFlashResult(null);var results=[];var total=selItems.length;setFlashProgress({done:0,total:total,ok:0,fail:0});for(var i=0;i<total;i++){try{var r=await flashCreateOrder(selItems[i]);console.log("Flash create response:",JSON.stringify(r));var pno=r.data&&r.data.pno?r.data.pno:"";var sc=r.data&&r.data.sortCode?r.data.sortCode:"";if(pno){selItems[i]._flashPno=pno;selItems[i].TrackingNo=pno;selItems[i].SortCode=sc;var tbl=selItems[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(selItems[i].OrderID),{method:"PATCH",body:{tracking_no:pno,sort_code:sc,status:"สร้างเลขพัสดุแล้ว",flash_status:"สร้างรายการ"}});dbLogStatus([{order_id:selItems[i].OrderID,table_name:tbl,old_status:selItems[i].Status||"รอส่ง",new_status:"สร้างเลขพัสดุแล้ว",changed_by:"Flash API (PNO:"+pno+")"}]);}catch(e2){}}results.push({name:selItems[i].Name,ok:r.code===1,pno:pno,msg:r.message||r.msg||JSON.stringify(r)});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}catch(e){console.error("Flash create error:",e);results.push({name:selItems[i].Name,ok:false,msg:String(e.message||e)});setFlashProgress({done:i+1,total:total,ok:results.filter(function(x){return x.ok;}).length,fail:results.filter(function(x){return!x.ok;}).length});}}setFlashResult({type:"create",results:results});setFlashLoading(false);if(onRefresh)onRefresh();}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:selCount>0?"linear-gradient(135deg,#d97706,#b45309)":"#d1d5db",color:"#fff",fontSize:11,fontWeight:700,cursor:selCount>0?"pointer":"default"}}>📦 สร้างรายการ{selCount>0?" ("+selCount+")":""}</button>
 
         <button disabled={flashLoading} onClick={async function(){setFlashLoading(true);try{var r=await flashNotifyCourier({});setFlashResult({type:"notify",results:[{ok:r.code===1,msg:r.message||r.msg||JSON.stringify(r)}]});}catch(e){setFlashResult({type:"notify",results:[{ok:false,msg:e.message}]});}setFlashLoading(false);}} style={{padding:"10px 8px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>🚗 เรียกรับพัสดุ</button>
 
