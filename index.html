@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v24";
+var APP_VERSION = "20260331v25";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -51,7 +51,7 @@ var FLASH_ENV = localStorage.getItem("flash_env") || "production";
 var FLASH_SRC = JSON.parse(localStorage.getItem("flash_src") || '{"name":"THE MT","phone":"0000000000","province":"","city":"","district":"","zip":"","address":""}');
 var FLASH_PDF_PROXY = localStorage.getItem("flash_pdf_proxy") || "";
 async function flashSign(params){var keys=Object.keys(params).filter(function(k){return k!=="sign"&&params[k]!==undefined&&params[k]!==""&&params[k]!==null;}).sort();var stringA=keys.map(function(k){return k+"="+params[k];}).join("&");var stringSignTemp=stringA+"&key="+FLASH_KEY;var enc=new TextEncoder().encode(stringSignTemp);var hash=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,"0");}).join("").toUpperCase();}
-var FLASH_WORKER=localStorage.getItem("flash_worker")||"";
+var FLASH_WORKER=localStorage.getItem("flash_worker")||"https://flash-proxy.themtja.workers.dev";
 async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.nonceStr=String(Date.now());params.sign=await flashSign(params);var body=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");var url=FLASH_BASE+path;
   // ใช้ Cloudflare Worker (ถ้ามี)
   if(FLASH_WORKER){
