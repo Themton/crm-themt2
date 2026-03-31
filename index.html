@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v11";
+var APP_VERSION = "20260331v12";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -928,7 +928,6 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
   var[lastSync,setLastSync]=useState("");
   var syncRef=useRef(null);
   var allItemsRef=useRef([]);
-  allItemsRef.current=allItems;
 
   function doFlashSync(silent){
     var withPno=allItemsRef.current.filter(function(o){return o.TrackingNo&&o.FlashStatus!=="ลูกค้ารับของ"&&o.FlashStatus!=="ยกเลิก";});
@@ -971,6 +970,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     (orders||[]).map(function(o){return{...o,_table:"orders"};}),
     (upsellOrders||[]).map(function(o){return{...o,_table:"upsell"};})
   );
+  allItemsRef.current=allItems;
 
   // กรองที่มา
   var sourceFiltered=sourceFilter==="ALL"?allItems:allItems.filter(function(o){return o._table===sourceFilter;});
