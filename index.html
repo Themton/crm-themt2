@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v19";
+var APP_VERSION = "20260331v20";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -360,7 +360,9 @@ function AddrAC({label,value,field,onSelect,onChange}){var[show,setShow]=useStat
 
 /* ===== SUPABASE DATA LAYER ===== */
 function mapRow(r){return{OrderID:r.order_id,Timestamp:r.timestamp,MobileNo:r.mobile_no,Name:r.name,Address:r.address,SubDistrict:r.sub_district,District:r.district,Province:r.province,ZIP:r.zip,CustomerFBLine:r.customer_fb_line,SalesChannel:r.sales_channel,SalesPerson:r.sales_person,SalePrice:r.sale_price,COD:r.cod,Remark:r.remark,SlipURL:r.slip_url,Status:r.status||"รอส่ง",TrackingNo:r.tracking_no||"",FlashStatus:r.flash_status||"",SortCode:r.sort_code||""};}
-var FLASH_STATUS_MAP={"1001":"สร้างรายการ","1002":"รับเข้าระบบ","1003":"พิคกิ้งเสร็จ","1004":"แพ็คแล้ว","1005":"รับพัสดุแล้ว","1006":"กำลังขนส่ง","1007":"การนำจ่าย","1008":"ระงับ","1009":"ลูกค้ารับของ","1010":"ติดต่อผู้รับไม่ได้","1011":"ตีกลับ","1012":"จัดส่งไม่สำเร็จ","1013":"ยกเลิก"};
+var FLASH_STATUS_MAP={"1001":"สร้างรายการ","1002":"รับเข้าระบบ","1003":"พิคกิ้งเสร็จ","1004":"แพ็คแล้ว","1005":"รับพัสดุแล้ว","1006":"กำลังขนส่ง","1007":"การนำจ่าย","1008":"ระงับ","1009":"ลูกค้ารับของ","1010":"ติดต่อผู้รับไม่ได้","1011":"ตีกลับ","1012":"จัดส่งไม่สำเร็จ","1013":"ยกเลิก",
+  "1":"รับพัสดุแล้ว","2":"กำลังขนส่ง","3":"การนำจ่าย","4":"ลูกค้ารับของ","5":"ติดต่อผู้รับไม่ได้","6":"ตีกลับ","7":"จัดส่งไม่สำเร็จ","8":"ยกเลิก","9":"ระงับ"};
+var FLASH_ACTION_MAP={"RECEIVE_WAREHOUSE_SCAN":"รับเข้าระบบ","PICK_UP":"รับพัสดุแล้ว","SHIPPING":"กำลังขนส่ง","IN_TRANSIT":"กำลังขนส่ง","OUT_FOR_DELIVERY":"การนำจ่าย","DELIVERY":"การนำจ่าย","DELIVERED":"ลูกค้ารับของ","FAILED_DELIVERY":"จัดส่งไม่สำเร็จ","RETURN":"ตีกลับ","RETURNED":"ตีกลับ","CANCELLED":"ยกเลิก"};
 var FLASH_STATUS_COLOR={"สร้างรายการ":"#94a3b8","รับเข้าระบบ":"#6366f1","รับพัสดุแล้ว":"#0284c7","กำลังขนส่ง":"#d97706","การนำจ่าย":"#ea580c","ลูกค้ารับของ":"#059669","ติดต่อผู้รับไม่ได้":"#dc2626","ตีกลับ":"#dc2626","จัดส่งไม่สำเร็จ":"#dc2626","ยกเลิก":"#64748b"};
 function FlashStatusBadge({status}){if(!status)return null;var co=FLASH_STATUS_COLOR[status]||"#94a3b8";var icon=status==="ลูกค้ารับของ"?"✅":status==="การนำจ่าย"?"🚚":status==="กำลังขนส่ง"?"📦":status==="รับเข้าระบบ"?"📥":status==="ตีกลับ"||status==="จัดส่งไม่สำเร็จ"?"❌":status==="ติดต่อผู้รับไม่ได้"?"📞":"📋";return<span style={{padding:"2px 6px",borderRadius:10,fontSize:9,fontWeight:700,background:co+"20",color:co}}>{icon} {status}</span>;}
 async function dbGetAccounts(){try{var data=await sbFetch("accounts?select=*");return(data||[]).map(function(a){return{username:a.email,password:String(a.password),displayName:a.display_name,role:a.role,active:a.active,canUpsell:a.can_upsell};});}catch(e){console.error("dbGetAccounts:",e);return[];}}
@@ -533,8 +535,9 @@ function App(){var _s=useState;
           var st="";
           if(r.code===1){var d=r.data;
             if(d&&d.state)st=FLASH_STATUS_MAP[String(d.state)]||"";
-            if(!st&&d&&d.routes&&d.routes.length>0){for(var ri=d.routes.length-1;ri>=0;ri--){if(d.routes[ri].state){st=FLASH_STATUS_MAP[String(d.routes[ri].state)]||"";if(st)break;}}}
-            if(!st&&Array.isArray(d)&&d.length>0){for(var ri2=d.length-1;ri2>=0;ri2--){if(d[ri2].state){st=FLASH_STATUS_MAP[String(d[ri2].state)]||"";if(st)break;}}}
+            if(!st&&d&&d.stateText){var stMap={"Picked up":"รับพัสดุแล้ว","In transit":"กำลังขนส่ง","Out for delivery":"การนำจ่าย","Delivered":"ลูกค้ารับของ","Failed delivery":"จัดส่งไม่สำเร็จ","Returned":"ตีกลับ","Cancelled":"ยกเลิก"};st=stMap[d.stateText]||"";}
+            if(!st&&d&&d.routes&&d.routes.length>0){var lastR=d.routes[d.routes.length-1];st=FLASH_ACTION_MAP[lastR.routeAction]||FLASH_STATUS_MAP[String(lastR.state)]||"";}
+            if(!st&&Array.isArray(d)&&d.length>0){var lastR2=d[d.length-1];st=FLASH_ACTION_MAP[lastR2.routeAction]||FLASH_STATUS_MAP[String(lastR2.state)]||"";}
           }
           if(st&&st!==all[i].FlashStatus){
             await sbFetch(all[i]._table+"?order_id=eq."+encodeURIComponent(all[i].OrderID),{method:"PATCH",body:{flash_status:st}});
@@ -981,14 +984,10 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
         var st="";
         if(r.code===1){
           var d=r.data;
-          // format 1: { data: { state: 1006 } }
           if(d&&d.state)st=FLASH_STATUS_MAP[String(d.state)]||"";
-          // format 2: { data: { routes: [{ state: 1006 }] } } — ใช้ตัวล่าสุด
-          if(!st&&d&&d.routes&&d.routes.length>0){for(var ri=d.routes.length-1;ri>=0;ri--){if(d.routes[ri].state){st=FLASH_STATUS_MAP[String(d.routes[ri].state)]||"";if(st)break;}}}
-          // format 3: { data: [{ state: 1006 }] } — array ตรง
-          if(!st&&Array.isArray(d)&&d.length>0){for(var ri2=d.length-1;ri2>=0;ri2--){if(d[ri2].state){st=FLASH_STATUS_MAP[String(d[ri2].state)]||"";if(st)break;}}}
-          // format 4: { data: { routeElements: [{ state: 1006 }] } }
-          if(!st&&d&&d.routeElements&&d.routeElements.length>0){for(var ri3=d.routeElements.length-1;ri3>=0;ri3--){if(d.routeElements[ri3].state){st=FLASH_STATUS_MAP[String(d.routeElements[ri3].state)]||"";if(st)break;}}}
+          if(!st&&d&&d.stateText){var stMap2={"Picked up":"รับพัสดุแล้ว","In transit":"กำลังขนส่ง","Out for delivery":"การนำจ่าย","Delivered":"ลูกค้ารับของ","Failed delivery":"จัดส่งไม่สำเร็จ","Returned":"ตีกลับ","Cancelled":"ยกเลิก"};st=stMap2[d.stateText]||"";}
+          if(!st&&d&&d.routes&&d.routes.length>0){var lr=d.routes[d.routes.length-1];st=FLASH_ACTION_MAP[lr.routeAction]||FLASH_STATUS_MAP[String(lr.state)]||"";}
+          if(!st&&Array.isArray(d)&&d.length>0){var lr2=d[d.length-1];st=FLASH_ACTION_MAP[lr2.routeAction]||FLASH_STATUS_MAP[String(lr2.state)]||"";}
         }
         console.log("Parsed status for "+o.TrackingNo+": "+(st||"(ไม่พบ)"));
         if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});console.log("✅ Updated "+o.TrackingNo+" → "+st);}
