@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v10";
+var APP_VERSION = "20260331v11";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -939,8 +939,18 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       if(idx.v>=withPno.length){if(!silent){setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);}setLastSync(new Date().toLocaleTimeString("th-TH"));if(onRefresh)onRefresh();return;}
       var o=withPno[idx.v];
       flashTrackStatus(o.TrackingNo).then(function(r){
-        if(r.code===1&&r.data){var st=r.data.state?FLASH_STATUS_MAP[String(r.data.state)]||"":"";if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});}}
-      }).catch(function(){}).then(function(){
+        console.log("Flash track "+o.TrackingNo+":",JSON.stringify(r));
+        var st="";
+        if(r.code===1&&r.data){
+          // format 1: r.data.state
+          if(r.data.state)st=FLASH_STATUS_MAP[String(r.data.state)]||"";
+          // format 2: r.data.routes array — ใช้ตัวล่าสุด
+          if(!st&&r.data.routes&&r.data.routes.length>0){var last=r.data.routes[r.data.routes.length-1];st=FLASH_STATUS_MAP[String(last.state||last.status)]||"";}
+          // format 3: r.data[0].state (array)
+          if(!st&&Array.isArray(r.data)&&r.data.length>0){var last2=r.data[r.data.length-1];st=FLASH_STATUS_MAP[String(last2.state||last2.status)]||"";}
+        }
+        if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});console.log("Updated "+o.TrackingNo+" → "+st);}
+      }).catch(function(e){console.log("Track error "+o.TrackingNo+":",e.message);}).then(function(){
         idx.v++;if(!silent)setFlashProgress({done:idx.v,total:withPno.length,ok:idx.v,fail:0});next();
       });
     }
