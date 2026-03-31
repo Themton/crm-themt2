@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v15";
+var APP_VERSION = "20260331v16";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -969,6 +969,15 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     if(mins>0){syncRef.current=setInterval(function(){doFlashSync(true);},mins*60*1000);}
     return function(){if(syncRef.current)clearInterval(syncRef.current);};
   },[autoSync]);
+
+  // Auto-sync เมื่อเปิดหน้าครั้งแรก
+  var firstSyncRef=useRef(false);
+  useEffect(function(){
+    if(!firstSyncRef.current&&allItemsRef.current.length>0&&allItemsRef.current.some(function(o){return o.TrackingNo;})){
+      firstSyncRef.current=true;
+      setTimeout(function(){doFlashSync(true);},2000);
+    }
+  });
   var[flashSettings,setFlashSettings]=useState(false);
 
   // รวม orders + upsell + กรองวันที่
@@ -1033,15 +1042,15 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
       </select>}
       {canManage&&selCount>0&&<button onClick={async function(){var withPno=selItems.filter(function(o){return o.TrackingNo;});if(withPno.length===0){alert("ไม่มีรายการที่มีเลข Tracking");return;}if(!confirm("ยกเลิกเลขพัสดุ "+withPno.length+" รายการ?\n\n"+withPno.map(function(o){return o.Name+" → "+o.TrackingNo;}).join("\n")))return;setFlashLoading(true);for(var i=0;i<withPno.length;i++){var tbl=withPno[i]._table||"orders";try{await sbFetch(tbl+"?order_id=eq."+encodeURIComponent(withPno[i].OrderID),{method:"PATCH",body:{tracking_no:"",status:"ยกเลิกเลขพัสดุ"}});}catch(e){}}setFlashLoading(false);setSelected({});if(onRefresh)onRefresh();alert("✅ ยกเลิกเลขพัสดุ "+withPno.length+" รายการ");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #ef4444",background:"#fef2f2",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer"}}>🗑 ยกเลิกเลขพัสดุ</button>}
       {canManage&&selCount>0&&<button onClick={function(){setSelected({});}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #94a3b8",background:"#f8fafc",color:"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ ยกเลิก</button>}
-      {canManage&&<button onClick={function(){alert("Debug: allItemsRef="+allItemsRef.current.length+", withTracking="+allItemsRef.current.filter(function(o){return o.TrackingNo;}).length);doFlashSync(false);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #10b981",background:"#f0fdf4",color:"#059669",fontSize:11,fontWeight:700,cursor:"pointer"}}>🔄 ซิงค์{lastSync?" ("+lastSync+")":""}</button>}
-      {canManage&&<select value={autoSync} onChange={function(e){setAutoSync(e.target.value);localStorage.setItem("flash_autosync",e.target.value);}} style={{padding:"4px 6px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:10,fontWeight:600,color:"#64748b"}}>
+      <button onClick={function(){doFlashSync(false);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #10b981",background:"#f0fdf4",color:"#059669",fontSize:11,fontWeight:700,cursor:"pointer"}}>🔄 ซิงค์{lastSync?" ("+lastSync+")":""}</button>
+      <select value={autoSync} onChange={function(e){setAutoSync(e.target.value);localStorage.setItem("flash_autosync",e.target.value);}} style={{padding:"4px 6px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:10,fontWeight:600,color:"#64748b"}}>
         <option value="0">ปิด Auto</option>
         <option value="1">ทุก 1 นาที</option>
         <option value="3">ทุก 3 นาที</option>
         <option value="5">ทุก 5 นาที</option>
         <option value="10">ทุก 10 นาที</option>
         <option value="30">ทุก 30 นาที</option>
-      </select>}
+      </select>
       {canManage&&<button onClick={async function(){var logs=await dbGetAllStatusLogs(200);setStatusLogs(logs);setShowStatusLogs(true);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #6366f1",background:"#eff6ff",color:"#4f46e5",fontSize:11,fontWeight:700,cursor:"pointer"}}>📜 ประวัติสถานะ</button>}
       <div style={{flex:1}}/>
       <select value={sourceFilter} onChange={function(e){setSourceFilter(e.target.value);setSelected({});}} style={{padding:"6px 10px",borderRadius:6,border:"1px solid #e2e8f0",fontSize:11,fontWeight:600,color:"#64748b"}}>
