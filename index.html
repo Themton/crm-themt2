@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v8";
+var APP_VERSION = "20260331v9";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -160,7 +160,7 @@ function printCustomLabels(orders,pnos){
   html+='function toggleAll(val){document.querySelectorAll("#pageSelect input").forEach(function(cb){cb.checked=val;updateLabel(parseInt(cb.dataset.idx),val);});}';
   html+='function applyRange(){var txt=document.getElementById("rangeInput").value;if(!txt)return;toggleAll(false);txt.split(",").forEach(function(part){part=part.trim();var m=part.match(/^(\\d+)-(\\d+)$/);if(m){for(var i=parseInt(m[1]);i<=parseInt(m[2]);i++){var cb=document.querySelector("#pageSelect input[data-idx=\'"+(i-1)+"\']");if(cb){cb.checked=true;updateLabel(i-1,true);}}}else{var n=parseInt(part);if(n>0){var cb=document.querySelector("#pageSelect input[data-idx=\'"+(n-1)+"\']");if(cb){cb.checked=true;updateLabel(n-1,true);}}}});}';
   html+='function printSelected(){window.print();}';
-  html+='async function savePDF(){var btn=document.querySelector(".btn-dl");btn.textContent="⏳ กำลังสร้าง PDF...";btn.disabled=true;try{var labels=document.querySelectorAll(".label:not(.hide-print)");if(labels.length===0){alert("ไม่มีใบที่เลือก");btn.textContent="⬇️ ดาวน์โหลด PDF";btn.disabled=false;return;}var pdf=new jspdf.jsPDF({orientation:"landscape",unit:"mm",format:[100,75]});for(var i=0;i<labels.length;i++){if(i>0)pdf.addPage([100,75],"landscape");var canvas=await html2canvas(labels[i],{scale:3,useCORS:true,backgroundColor:"#fff",width:378,height:283});var imgData=canvas.toDataURL("image/jpeg",0.95);pdf.addImage(imgData,"JPEG",0,0,100,75);}pdf.save("flash-labels-"+labels.length+".pdf");}catch(e){alert("❌ สร้าง PDF ผิดพลาด: "+e.message);}btn.textContent="⬇️ ดาวน์โหลด PDF";btn.disabled=false;}';
+  html+='async function savePDF(){var btn=document.querySelector(".btn-dl");var labels=document.querySelectorAll(".label:not(.hide-print)");if(labels.length===0){alert("ไม่มีใบที่เลือก");return;}btn.innerHTML="⏳ 0%";btn.disabled=true;try{var pdf=new jspdf.jsPDF({orientation:"landscape",unit:"mm",format:[100,75]});for(var i=0;i<labels.length;i++){if(i>0)pdf.addPage([100,75],"landscape");var canvas=await html2canvas(labels[i],{scale:3,useCORS:true,backgroundColor:"#fff",width:378,height:283});var imgData=canvas.toDataURL("image/jpeg",0.95);pdf.addImage(imgData,"JPEG",0,0,100,75);var pct=Math.round((i+1)/labels.length*100);btn.innerHTML="⏳ "+pct+"% ("+(i+1)+"/"+labels.length+")";}pdf.save("flash-labels-"+labels.length+".pdf");btn.innerHTML="✅ เสร็จ!";setTimeout(function(){btn.innerHTML="⬇️ ดาวน์โหลด PDF";btn.disabled=false;},2000);}catch(e){alert("❌ สร้าง PDF ผิดพลาด: "+e.message);btn.innerHTML="⬇️ ดาวน์โหลด PDF";btn.disabled=false;}}';
   html+='renderAll();';
   html+='<\/script></body></html>';
   var w=window.open("","_blank");
