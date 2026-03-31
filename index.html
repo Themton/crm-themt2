@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v13";
+var APP_VERSION = "20260331v14";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -930,8 +930,10 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
   var allItemsRef=useRef([]);
 
   function doFlashSync(silent){
+    console.log("doFlashSync called, allItemsRef.current length:",allItemsRef.current.length);
     var withPno=allItemsRef.current.filter(function(o){return o.TrackingNo&&o.FlashStatus!=="ลูกค้ารับของ"&&o.FlashStatus!=="ยกเลิก";});
-    if(withPno.length===0){if(!silent)alert("ไม่มีรายการที่ต้องซิงค์");return;}
+    console.log("Items with TrackingNo to sync:",withPno.length,withPno.map(function(o){return o.TrackingNo+" ("+o.FlashStatus+")";}));
+    if(withPno.length===0){if(!silent)alert("ไม่มีรายการที่ต้องซิงค์ (มีเลข Tracking "+allItemsRef.current.filter(function(o){return o.TrackingNo;}).length+" รายการ แต่ทั้งหมดเป็น ลูกค้ารับของ/ยกเลิก)");return;}
     if(!silent){setFlashProgress({done:0,total:withPno.length,ok:0,fail:0});setFlashLoading(true);}
     var idx={v:0};
     function next(){
