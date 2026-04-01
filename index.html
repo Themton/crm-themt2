@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260401v4";
+var APP_VERSION = "20260401v5";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -585,9 +585,9 @@ function App(){var _s=useState;
     var interval=setInterval(function(){loadOrders();loadUpsell();},15000);
     // Sync Flash status หลังโหลดข้อมูลครั้งแรก
     console.log("⚡ Flash sync scheduled: first in 3s, then every 2min");
-    setTimeout(function(){console.log("⚡ First sync starting...");syncFlashStatus();},3000);
-    // Sync Flash ทุก 10 นาที (ประหยัด Worker)
-    var flashInterval=setInterval(function(){syncFlashStatus();},600000);
+    // ไม่ auto sync เมื่อเปิดหน้า — ให้กดปุ่มซิงค์เอง
+    // Sync Flash ทุก 30 นาที — เฉพาะเมื่อแท็บ active
+    var flashInterval=setInterval(function(){if(!document.hidden)syncFlashStatus();},1800000);
     return function(){clearInterval(interval);clearInterval(flashInterval);};
   }},[sbOk]);
   function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"orders";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
@@ -1041,17 +1041,17 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
   var allItemsRef=useRef([]);
 
   function doFlashSync(silent){
-    console.log("doFlashSync called, allItemsRef.current length:",allItemsRef.current.length);
-    var withPno=allItemsRef.current.filter(function(o){return o.TrackingNo&&o.FlashStatus!=="ลูกค้ารับของ"&&o.FlashStatus!=="ยกเลิก";});
-    console.log("Items with TrackingNo to sync:",withPno.length,withPno.map(function(o){return o.TrackingNo+" ("+o.FlashStatus+")";}));
-    if(withPno.length===0){if(!silent)alert("ไม่มีรายการที่ต้องซิงค์ (มีเลข Tracking "+allItemsRef.current.filter(function(o){return o.TrackingNo;}).length+" รายการ แต่ทั้งหมดเป็น ลูกค้ารับของ/ยกเลิก)");return;}
-    if(!silent){setFlashProgress({done:0,total:withPno.length,ok:0,fail:0});setFlashLoading(true);}
+    var skipSt=["ลูกค้ารับของ","ยกเลิก","ตีกลับ","จัดส่งไม่สำเร็จ"];
+    var withPno=allItemsRef.current.filter(function(o){return o.TrackingNo&&skipSt.indexOf(o.FlashStatus)<0;});
+    if(withPno.length===0){if(!silent)alert("ไม่มีรายการที่ต้องซิงค์");return;}
+    // จำกัด batch 30 รายการ
+    var batch=withPno.slice(0,30);
+    if(!silent){setFlashProgress({done:0,total:batch.length,ok:0,fail:0});setFlashLoading(true);}
     var idx={v:0};
     function next(){
-      if(idx.v>=withPno.length){if(!silent){setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);}setLastSync(new Date().toLocaleTimeString("th-TH"));if(onRefresh)onRefresh();return;}
-      var o=withPno[idx.v];
+      if(idx.v>=batch.length){if(!silent){setTimeout(function(){setFlashProgress(null);},1500);setFlashLoading(false);}setLastSync(new Date().toLocaleTimeString("th-TH"));if(onRefresh)onRefresh();return;}
+      var o=batch[idx.v];
       flashTrackStatus(o.TrackingNo).then(function(r){
-        console.log("Flash track "+o.TrackingNo+":",JSON.stringify(r).substring(0,500));
         var st="";
         if(r.code===1){
           var d=r.data;
@@ -1060,10 +1060,11 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
           if(!st&&d&&d.routes&&d.routes.length>0){var lr=d.routes[d.routes.length-1];st=FLASH_ACTION_MAP[lr.routeAction]||FLASH_STATUS_MAP[String(lr.state)]||"";}
           if(!st&&Array.isArray(d)&&d.length>0){var lr2=d[d.length-1];st=FLASH_ACTION_MAP[lr2.routeAction]||FLASH_STATUS_MAP[String(lr2.state)]||"";}
         }
-        console.log("Parsed status for "+o.TrackingNo+": "+(st||"(ไม่พบ)"));
-        if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});console.log("✅ Updated "+o.TrackingNo+" → "+st);}
-      }).catch(function(e){console.log("❌ Track error "+o.TrackingNo+":",e.message);}).then(function(){
-        idx.v++;if(!silent)setFlashProgress({done:idx.v,total:withPno.length,ok:idx.v,fail:0});next();
+        if(st&&st!==o.FlashStatus){var tbl=o._table||"orders";sbFetch(tbl+"?order_id=eq."+encodeURIComponent(o.OrderID),{method:"PATCH",body:{flash_status:st}});}
+      }).catch(function(e){}).then(function(){
+        idx.v++;if(!silent)setFlashProgress({done:idx.v,total:batch.length,ok:idx.v,fail:0});
+        // delay 500ms ระหว่าง requests
+        setTimeout(next,500);
       });
     }
     next();
