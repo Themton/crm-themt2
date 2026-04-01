@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260401v10";
+var APP_VERSION = "20260401v11";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -380,7 +380,8 @@ function smartParse(t){t=t.trim();if(!t)return null;var r={MobileNo:"",Name:"",A
   if(!r.ZIP&&(r.SubDistrict||r.District)){var az=lookupZIP(r.SubDistrict,r.District);if(az)r.ZIP=az;}
   if(!r.Province&&(r.SubDistrict||r.District)){r.Province=lookupProvince(r.SubDistrict,r.District);}
   return r;}
-function searchAddr(q,field){if(!q||q.length<1||typeof TH==="undefined")return[];var r=[];var ql=q.toLowerCase();for(var i=0;i<TH.length&&r.length<8;i++){var v=field==="s"?TH[i][0]:field==="d"?TH[i][1]:String(TH[i][3]);if(v.toLowerCase().indexOf(ql)>=0)r.push(TH[i]);}return r;}
+function searchAddr(q,field){if(!q||q.length<1||typeof TH==="undefined")return[];var r=[];var ql=q.toLowerCase();for(var i=0;i<TH.length&&r.length<8;i++){var v=field==="s"?TH[i][0]:field==="d"?TH[i][1]:field==="z"?String(TH[i][3]):String(TH[i][3]);if(v.toLowerCase().indexOf(ql)>=0)r.push(TH[i]);}return r;}
+function isAddrValid(sub,dist,prov,zip){if(typeof TH==="undefined"||!sub||!dist||!prov||!zip)return null;return TH.some(function(r){return r[0]===sub&&r[1]===dist&&r[2]===prov&&r[3]===zip;});}
 function AddrAC({label,value,field,onSelect,onChange}){var[show,setShow]=useState(false);var[items,setItems]=useState([]);function hc(v){onChange(v);if(v.length>=1){setItems(searchAddr(v,field));setShow(true);}else setShow(false);}function pick(it){onSelect(it);setShow(false);}return<div style={{position:"relative"}}><label style={S.fLabel}>{label}</label><div style={{position:"relative"}}><input value={value||""} onChange={function(e){hc(e.target.value);}} onFocus={function(){if(value)hc(value);}} onBlur={function(){setTimeout(function(){setShow(false);},200);}} style={{...S.pInput,paddingRight:value?28:12}}/>{value&&<button onClick={function(){onChange("");setShow(false);}} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",width:20,height:20,borderRadius:"50%",border:"none",background:"#f1f5f9",color:"#94a3b8",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>}</div>{show&&items.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #e2e8f0",borderRadius:8,maxHeight:200,overflowY:"auto",zIndex:50,boxShadow:"0 8px 24px rgba(0,0,0,.1)"}}>{items.map(function(it,i){return<div key={i} onClick={function(){pick(it);}} style={{padding:"8px 12px",cursor:"pointer",fontSize:12,borderBottom:"1px solid #f1f5f9"}} onMouseEnter={function(e){e.currentTarget.style.background="#fffbeb";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>{it[0]} › {it[1]} › {it[2]} <span style={{color:"#d97706",fontWeight:700}}>{it[3]}</span></div>;})}</div>}</div>;}
 
 /* ===== SUPABASE DATA LAYER ===== */
@@ -903,7 +904,8 @@ function ProductRank({orders,title}){
     </div>
   </div>;
 }
-function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders,upsellPrices}){var[raw,setRaw]=useState("");var[f,setF]=useState({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});var[isTransfer,setIsTransfer]=useState(false);var[saving,setSaving]=useState(false);var slipRef=useRef(null);var[slipPreview,setSlipPreview]=useState(null);var[addrError,setAddrError]=useState(false);
+function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders,upsellPrices}){var[raw,setRaw]=useState("");var[f,setF]=useState({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});var[isTransfer,setIsTransfer]=useState(false);var[saving,setSaving]=useState(false);var slipRef=useRef(null);var[slipPreview,setSlipPreview]=useState(null);var[addrError,setAddrError]=useState(false);var[zipDrop,setZipDrop]=useState(false);var[zipItems,setZipItems]=useState([]);
+  var addrOk=isAddrValid(f.SubDistrict,f.District,f.Province,f.ZIP);
   // ตรวจเบอร์ซ้ำ 7 วัน
   var[dupWarning,setDupWarning]=useState(null);
   function checkDup(phone){
@@ -924,43 +926,8 @@ function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders,up
   function setAddr(sub,dist,prov,zip){setF(function(p){var n={};for(var x in p)n[x]=p[x];if(sub)n.SubDistrict=sub;if(dist)n.District=dist;if(prov)n.Province=prov;if(zip)n.ZIP=String(zip);return n;});setAddrError(false);}
   function handleText(t){setRaw(t);if(t.trim().length>8){var r=smartParse(t);if(r){if(!r.ZIP&&(r.SubDistrict||r.District)){var z=lookupZIP(r.SubDistrict,r.District);if(z)r.ZIP=z;}if((r.SubDistrict||r.District)&&!r.Province){var pv=lookupProvince(r.SubDistrict,r.District);if(pv)r.Province=pv;}setF(function(p){var n={};for(var k in p)n[k]=r[k]||p[k];return n;});if(r.COD==="0")setIsTransfer(true);if(r.MobileNo)checkDup(r.MobileNo);}}}
   function submit(){setTried(true);if(dupWarning){alert("🚫 ห้ามลงออเดอร์ซ้ำ!\n\nเบอร์ "+f.MobileNo+" ลงแล้ว "+dupWarning.count+" ครั้ง ภายใน 7 วัน\n\nลูกค้า: "+dupWarning.name+"\nวันที่: "+dupWarning.date+"\nพนักงาน: "+dupWarning.person);return;}var missing=[];if(!f.MobileNo)missing.push("เบอร์โทร");else if(f.MobileNo.length!==10)missing.push("เบอร์ต้อง 10 หลัก");if(!f.Name)missing.push("ชื่อลูกค้า");if(!f.Address)missing.push("ที่อยู่");if(!f.SubDistrict)missing.push("ตำบล");if(!f.District)missing.push("อำเภอ");if(!f.Province)missing.push("จังหวัด");if(!f.ZIP)missing.push("รหัส ปณ.");else if(f.ZIP.length!==5)missing.push("ปณ. ต้อง 5 หลัก");if(!f.Remark)missing.push("หมายเหตุ/สินค้า");if(forceUpsell&&(!f.PrevPromo||Number(f.PrevPromo)<=0))missing.push("ยอดโปรก่อนหน้า (ต้องมากกว่า 0)");if(isTransfer){if(!f.SalePrice||Number(f.SalePrice)<=0)missing.push("ยอดโอน (ต้องมากกว่า 0)");if(!slipPreview)missing.push("สลิปโอนเงิน (บังคับ)");}else{if(!f.COD||Number(f.COD)<=0)missing.push("ยอด COD (ต้องมากกว่า 0)");}if(missing.length>0){alert("กรุณากรอก:\n• "+missing.join("\n• "));return;}
-    // ตรวจสอบที่อยู่กับฐานข้อมูล TH
-    if(typeof TH!=="undefined"&&f.SubDistrict&&f.District&&f.Province&&f.ZIP){
-      var addrValid=TH.some(function(r){return r[0]===f.SubDistrict&&r[1]===f.District&&r[2]===f.Province&&r[3]===f.ZIP;});
-      if(!addrValid){
-        // ลองหาที่ใกล้เคียง
-        var suggestions=[];
-        var bySD=TH.filter(function(r){return r[0]===f.SubDistrict;});
-        var byDist=TH.filter(function(r){return r[1]===f.District;});
-        var byProv=TH.filter(function(r){return r[2]===f.Province;});
-        var errParts=[];
-        if(bySD.length===0)errParts.push("❌ ตำบล \""+f.SubDistrict+"\" ไม่พบในระบบ");
-        else{
-          var sdMatch=bySD.some(function(r){return r[1]===f.District;});
-          if(!sdMatch)errParts.push("❌ ตำบล \""+f.SubDistrict+"\" ไม่อยู่ในอำเภอ \""+f.District+"\"");
-        }
-        if(byDist.length===0)errParts.push("❌ อำเภอ \""+f.District+"\" ไม่พบในระบบ");
-        else{
-          var distMatch=byDist.some(function(r){return r[2]===f.Province;});
-          if(!distMatch)errParts.push("❌ อำเภอ \""+f.District+"\" ไม่อยู่ในจังหวัด \""+f.Province+"\"");
-        }
-        if(byProv.length===0)errParts.push("❌ จังหวัด \""+f.Province+"\" ไม่พบในระบบ");
-        // เช็ค ZIP
-        var zipMatch=TH.filter(function(r){return r[0]===f.SubDistrict&&r[1]===f.District&&r[2]===f.Province;});
-        if(zipMatch.length>0&&!zipMatch.some(function(r){return r[3]===f.ZIP;})){
-          errParts.push("❌ รหัสไปรษณีย์ \""+f.ZIP+"\" ไม่ตรง — ควรเป็น "+zipMatch.map(function(r){return r[3];}).filter(function(v,i,a){return a.indexOf(v)===i;}).join(" หรือ "));
-        }
-        // หาตำบลที่ใกล้เคียง
-        if(bySD.length>0&&errParts.length>0){
-          suggestions=bySD.slice(0,3).map(function(r){return r[0]+", "+r[1]+", "+r[2]+" "+r[3];});
-        }
-        var msg="🚫 ที่อยู่ไม่ถูกต้อง!\n\n";
-        msg+=errParts.length>0?errParts.join("\n"):("ไม่พบ: "+f.SubDistrict+", "+f.District+", "+f.Province+" "+f.ZIP);
-        if(suggestions.length>0)msg+="\n\n💡 ที่อยู่ที่ใกล้เคียง:\n• "+suggestions.join("\n• ");
-        msg+="\n\nกรุณาแก้ไขที่อยู่ให้ถูกต้อง";
-        alert(msg);setAddrError(true);return;
-      }else{setAddrError(false);}
-    }
+    // ตรวจที่อยู่กับฐานข้อมูล
+    if(addrOk===false){alert("🚫 ที่อยู่ไม่ถูกต้อง!\n\nตำบล: "+f.SubDistrict+"\nอำเภอ: "+f.District+"\nจังหวัด: "+f.Province+"\nปณ.: "+f.ZIP+"\n\nกรุณาพิมพ์ตำบล หรือ รหัส ปณ. แล้วเลือกจากรายการ");return;}
     setSaving(true);var finalCOD=isTransfer?"0":f.COD;var finalPrice=isTransfer?f.SalePrice:(f.SalePrice||f.COD||"0");var addr=f.Address;if(f.Province&&addr.indexOf(f.Province)<0)addr=(addr?addr+" ":"")+f.Province;onSubmit({...f,Address:addr,Remark:(forceUpsell&&f.PrevPromo?("[PREV:"+f.PrevPromo+"] "):"")+f.Remark,SalePrice:finalPrice,COD:finalCOD,upsell:!!forceUpsell,slipData:slipPreview||""});}
   function clear(){setRaw("");setF({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});setIsTransfer(false);setSlipPreview(null);setTried(false);setDupWarning(null);setAddrError(false);}
   // ช่อง input พร้อมปุ่ม x ล้าง
@@ -994,10 +961,10 @@ function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders,up
     </div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:10}}>
       <div>{reqLabel("จังหวัด",f.Province)}<ClearInput value={f.Province||""} onChange={function(e){set("Province",e.target.value);}} placeholder="จังหวัด" style={reqStyle(f.Province)}/></div>
-      <div>{reqLabelCustom("รหัส ปณ.",badZip())}<div style={{position:"relative"}}><input value={f.ZIP||""} onChange={function(e){var v=e.target.value.replace(/[^0-9]/g,"");if(v.length<=5)set("ZIP",v);}} maxLength={5} placeholder="xxxxx" style={{...reqStyleCustom(badZip()),paddingRight:f.ZIP?28:12}}/>{f.ZIP&&<button onClick={function(){set("ZIP","");}} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",width:20,height:20,borderRadius:"50%",border:"none",background:"#f1f5f9",color:"#94a3b8",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>}</div>{tried&&f.ZIP&&f.ZIP.length!==5&&<span style={{fontSize:10,color:"#ef4444"}}>ต้อง 5 หลัก ({f.ZIP.length}/5)</span>}</div>
-      <div style={{display:"flex",alignItems:"flex-end"}}>{typeof TH!=="undefined"?<span style={{fontSize:10,color:"#10b981",padding:"10px 0"}}>✅ ที่อยู่ {TH.length.toLocaleString()} ตำบล</span>:<span style={{fontSize:10,color:"#ef4444",padding:"10px 0"}}>❌ ไม่พบ thai-addr.js</span>}</div>
+      <div style={{position:"relative"}}>{reqLabelCustom("🔍 รหัส ปณ.",badZip())}<div style={{position:"relative"}}><input value={f.ZIP||""} onChange={function(e){var v=e.target.value.replace(/[^0-9]/g,"");if(v.length<=5){set("ZIP",v);if(v.length>=3){setZipItems(searchAddr(v,"z"));setZipDrop(true);}else{setZipDrop(false);}}}} onFocus={function(){if(f.ZIP&&f.ZIP.length>=3){setZipItems(searchAddr(f.ZIP,"z"));setZipDrop(true);}}} onBlur={function(){setTimeout(function(){setZipDrop(false);},200);}} maxLength={5} placeholder="พิมพ์ ปณ. ค้นหา" style={{...reqStyleCustom(badZip()),paddingRight:f.ZIP?28:12}}/>{f.ZIP&&<button onClick={function(){set("ZIP","");setZipDrop(false);}} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",width:20,height:20,borderRadius:"50%",border:"none",background:"#f1f5f9",color:"#94a3b8",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>}</div>{tried&&f.ZIP&&f.ZIP.length!==5&&<span style={{fontSize:10,color:"#ef4444"}}>ต้อง 5 หลัก ({f.ZIP.length}/5)</span>}{zipDrop&&zipItems.length>0&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #e2e8f0",borderRadius:8,maxHeight:200,overflowY:"auto",zIndex:50,boxShadow:"0 8px 24px rgba(0,0,0,.1)"}}>{zipItems.map(function(it,i){return<div key={i} onClick={function(){setAddr(it[0],it[1],it[2],it[3]);setZipDrop(false);}} style={{padding:"8px 12px",cursor:"pointer",fontSize:12,borderBottom:"1px solid #f1f5f9"}} onMouseEnter={function(e){e.currentTarget.style.background="#fffbeb";}} onMouseLeave={function(e){e.currentTarget.style.background="";}}>{it[0]} › {it[1]} › {it[2]} <span style={{color:"#d97706",fontWeight:700}}>{it[3]}</span></div>;})}</div>}</div>
+      <div style={{display:"flex",alignItems:"flex-end"}}>{f.SubDistrict&&f.District&&f.Province&&f.ZIP?addrOk?<span style={{fontSize:10,color:"#10b981",padding:"10px 0",fontWeight:700}}>✅ ที่อยู่ถูกต้อง</span>:<span style={{fontSize:10,color:"#ef4444",padding:"10px 0",fontWeight:700}}>❌ ที่อยู่ไม่ถูกต้อง</span>:<span style={{fontSize:10,color:"#94a3b8",padding:"10px 0"}}>กรอกที่อยู่ หรือ พิมพ์ ปณ.</span>}</div>
     </div>
-    {addrError&&<div style={{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:11,color:"#dc2626",fontWeight:600}}>⚠️ ที่อยู่ไม่ถูกต้อง — กรุณาเลือกจากรายการที่แนะนำ (พิมพ์ตำบลแล้วเลือก)</div>}
+    {addrOk===false&&f.SubDistrict&&f.District&&f.Province&&f.ZIP&&<div style={{background:"#fef2f2",border:"1px solid #fca5a5",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:11,color:"#dc2626",fontWeight:600}}>⚠️ ที่อยู่ไม่ตรงฐานข้อมูล — พิมพ์ตำบล/รหัส ปณ. แล้วเลือกจากรายการ</div>}
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
       <div>{reqLabel("📝 หมายเหตุ/สินค้า",f.Remark)}<ClearInput value={f.Remark||""} onChange={function(e){set("Remark",e.target.value);}} placeholder="สินค้า จำนวน" style={reqStyle(f.Remark)}/></div>
     </div>
