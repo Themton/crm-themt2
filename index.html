@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260331v25";
+var APP_VERSION = "20260331v26";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -534,13 +534,17 @@ function App(){var _s=useState;
     try{
       var ordersData=(await dbGetOrders("ALL")).map(function(o){return{...o,_table:"orders"};});
       var upsellData=(await dbGetUpsell("ALL")).map(function(o){return{...o,_table:"upsell"};});
-      var all=ordersData.concat(upsellData).filter(function(o){return o.TrackingNo&&o.FlashStatus!=="ลูกค้ารับของ"&&o.FlashStatus!=="ยกเลิก";});
+      // ข้ามสถานะที่จบแล้ว — ลดการเรียก API
+      var skipStatus=["ลูกค้ารับของ","ยกเลิก","ตีกลับ","จัดส่งไม่สำเร็จ"];
+      var all=ordersData.concat(upsellData).filter(function(o){return o.TrackingNo&&skipStatus.indexOf(o.FlashStatus)<0;});
       if(all.length===0){console.log("syncFlash: ไม่มีรายการที่ต้องซิงค์");setLastFlashSync(new Date().toLocaleTimeString("th-TH"));return;}
-      console.log("syncFlash: "+all.length+" items");
+      // จำกัดครั้งละ 30 รายการ — ลด request
+      var batch=all.slice(0,30);
+      console.log("syncFlash: "+batch.length+"/"+all.length+" items");
       var changed=0;
-      for(var i=0;i<all.length;i++){
+      for(var i=0;i<batch.length;i++){
         try{
-          var r=await flashTrackStatus(all[i].TrackingNo);
+          var r=await flashTrackStatus(batch[i].TrackingNo);
           var st="";
           if(r.code===1){var d=r.data;
             if(d&&d.state)st=FLASH_STATUS_MAP[String(d.state)]||"";
@@ -548,12 +552,12 @@ function App(){var _s=useState;
             if(!st&&d&&d.routes&&d.routes.length>0){var lastR=d.routes[d.routes.length-1];st=FLASH_ACTION_MAP[lastR.routeAction]||FLASH_STATUS_MAP[String(lastR.state)]||"";}
             if(!st&&Array.isArray(d)&&d.length>0){var lastR2=d[d.length-1];st=FLASH_ACTION_MAP[lastR2.routeAction]||FLASH_STATUS_MAP[String(lastR2.state)]||"";}
           }
-          if(st&&st!==all[i].FlashStatus){
-            await sbFetch(all[i]._table+"?order_id=eq."+encodeURIComponent(all[i].OrderID),{method:"PATCH",body:{flash_status:st}});
-            console.log("✅ "+all[i].TrackingNo+" → "+st);changed++;
+          if(st&&st!==batch[i].FlashStatus){
+            await sbFetch(batch[i]._table+"?order_id=eq."+encodeURIComponent(batch[i].OrderID),{method:"PATCH",body:{flash_status:st}});
+            console.log("✅ "+batch[i].TrackingNo+" → "+st);changed++;
           }
-        }catch(e){console.log("❌ "+all[i].TrackingNo+": "+e.message);}
-        if(i<all.length-1)await new Promise(function(w){setTimeout(w,500);});
+        }catch(e){console.log("❌ "+batch[i].TrackingNo+": "+e.message);}
+        if(i<batch.length-1)await new Promise(function(w){setTimeout(w,500);});
       }
       setLastFlashSync(new Date().toLocaleTimeString("th-TH"));
       if(changed>0){loadOrders();loadUpsell();}
@@ -566,8 +570,8 @@ function App(){var _s=useState;
     // Sync Flash status หลังโหลดข้อมูลครั้งแรก
     console.log("⚡ Flash sync scheduled: first in 3s, then every 2min");
     setTimeout(function(){console.log("⚡ First sync starting...");syncFlashStatus();},3000);
-    // Sync Flash ทุก 2 นาที
-    var flashInterval=setInterval(function(){syncFlashStatus();},120000);
+    // Sync Flash ทุก 10 นาที (ประหยัด Worker)
+    var flashInterval=setInterval(function(){syncFlashStatus();},600000);
     return function(){clearInterval(interval);clearInterval(flashInterval);};
   }},[sbOk]);
   function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"orders";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
@@ -1010,22 +1014,12 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     next();
   }
 
-  // Auto sync
+  // Auto sync — ใช้จาก App แทน (ไม่ซ้ำ)
   useEffect(function(){
-    if(syncRef.current)clearInterval(syncRef.current);
-    var mins=Number(autoSync);
-    if(mins>0){syncRef.current=setInterval(function(){doFlashSync(true);},mins*60*1000);}
-    return function(){if(syncRef.current)clearInterval(syncRef.current);};
+    return function(){};
   },[autoSync]);
 
-  // Auto-sync เมื่อเปิดหน้าครั้งแรก
-  var firstSyncRef=useRef(false);
-  useEffect(function(){
-    if(!firstSyncRef.current&&allItemsRef.current.length>0&&allItemsRef.current.some(function(o){return o.TrackingNo;})){
-      firstSyncRef.current=true;
-      setTimeout(function(){doFlashSync(true);},2000);
-    }
-  });
+  // Auto-sync handled by App component
   var[flashSettings,setFlashSettings]=useState(false);
 
   // รวม orders + upsell + กรองวันที่
