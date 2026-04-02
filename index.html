@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260401v12";
+var APP_VERSION = "20260402v1";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -586,7 +586,7 @@ function App(){var _s=useState;
   useEffect(function(){if(sbOk){loadAccounts();loadUpsellPrices();}},[sbOk]);
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
     // Auto-refresh ทุก 15 วินาที
-    var interval=setInterval(function(){loadOrders();loadUpsell();},15000);
+    var interval=setInterval(function(){loadOrders();loadUpsell();},60000);
     // Sync Flash status หลังโหลดข้อมูลครั้งแรก
     console.log("⚡ Flash sync scheduled: first in 3s, then every 2min");
     // ไม่ auto sync เมื่อเปิดหน้า — ให้กดปุ่มซิงค์เอง
@@ -904,7 +904,7 @@ function ProductRank({orders,title}){
     </div>
   </div>;
 }
-function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders,upsellPrices}){var[raw,setRaw]=useState("");var[f,setF]=useState({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});var[isTransfer,setIsTransfer]=useState(false);var[saving,setSaving]=useState(false);var slipRef=useRef(null);var[slipPreview,setSlipPreview]=useState(null);var[addrError,setAddrError]=useState(false);var[zipDrop,setZipDrop]=useState(false);var[zipItems,setZipItems]=useState([]);
+function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders,upsellPrices}){var[raw,setRaw]=useState("");var[f,setF]=useState({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});var[isTransfer,setIsTransfer]=useState(false);var[saving,setSaving]=useState(false);var slipRef=useRef(null);var[slipPreview,setSlipPreview]=useState(null);var[zipDrop,setZipDrop]=useState(false);var[zipItems,setZipItems]=useState([]);
   var addrOk=isAddrValid(f.SubDistrict,f.District,f.Province,f.ZIP);
   // ตรวจเบอร์ซ้ำ 7 วัน
   var[dupWarning,setDupWarning]=useState(null);
@@ -922,14 +922,14 @@ function OrderForm({onSubmit,onCancel,user,forceUpsell,allOrders,upsellOrders,up
       setDupWarning({count:found.length,name:last.Name||"",date:getDate(last.Timestamp),person:last.SalesPerson||"",remark:last.Remark||""});
     }else{setDupWarning(null);}
   }
-  function set(k,v){setF(function(p){var n={};for(var x in p)n[x]=p[x];n[k]=v;if(k==="COD"&&v){n.SalePrice=v;}if(k==="SubDistrict"||k==="District"){var sub=k==="SubDistrict"?v:n.SubDistrict;var dist=k==="District"?v:n.District;if(sub||dist){var az=lookupZIP(sub||"",dist||"");if(az)n.ZIP=String(az);var pv=lookupProvince(sub||"",dist||"");if(pv)n.Province=pv;}}return n;});if(k==="SubDistrict"||k==="District"||k==="Province"||k==="ZIP")setAddrError(false);}
-  function setAddr(sub,dist,prov,zip){setF(function(p){var n={};for(var x in p)n[x]=p[x];if(sub)n.SubDistrict=sub;if(dist)n.District=dist;if(prov)n.Province=prov;if(zip)n.ZIP=String(zip);return n;});setAddrError(false);}
+  function set(k,v){setF(function(p){var n={};for(var x in p)n[x]=p[x];n[k]=v;if(k==="COD"&&v){n.SalePrice=v;}if(k==="SubDistrict"||k==="District"){var sub=k==="SubDistrict"?v:n.SubDistrict;var dist=k==="District"?v:n.District;if(sub||dist){var az=lookupZIP(sub||"",dist||"");if(az)n.ZIP=String(az);var pv=lookupProvince(sub||"",dist||"");if(pv)n.Province=pv;}}return n;});}
+  function setAddr(sub,dist,prov,zip){setF(function(p){var n={};for(var x in p)n[x]=p[x];if(sub)n.SubDistrict=sub;if(dist)n.District=dist;if(prov)n.Province=prov;if(zip)n.ZIP=String(zip);return n;});}
   function handleText(t){setRaw(t);if(t.trim().length>8){var r=smartParse(t);if(r){if(!r.ZIP&&(r.SubDistrict||r.District)){var z=lookupZIP(r.SubDistrict,r.District);if(z)r.ZIP=z;}if((r.SubDistrict||r.District)&&!r.Province){var pv=lookupProvince(r.SubDistrict,r.District);if(pv)r.Province=pv;}setF(function(p){var n={};for(var k in p)n[k]=r[k]||p[k];return n;});if(r.COD==="0")setIsTransfer(true);if(r.MobileNo)checkDup(r.MobileNo);}}}
   function submit(){setTried(true);if(dupWarning){alert("🚫 ห้ามลงออเดอร์ซ้ำ!\n\nเบอร์ "+f.MobileNo+" ลงแล้ว "+dupWarning.count+" ครั้ง ภายใน 7 วัน\n\nลูกค้า: "+dupWarning.name+"\nวันที่: "+dupWarning.date+"\nพนักงาน: "+dupWarning.person);return;}var missing=[];if(!f.MobileNo)missing.push("เบอร์โทร");else if(f.MobileNo.length!==10)missing.push("เบอร์ต้อง 10 หลัก");if(!f.Name)missing.push("ชื่อลูกค้า");if(!f.Address)missing.push("ที่อยู่");if(!f.SubDistrict)missing.push("ตำบล");if(!f.District)missing.push("อำเภอ");if(!f.Province)missing.push("จังหวัด");if(!f.ZIP)missing.push("รหัส ปณ.");else if(f.ZIP.length!==5)missing.push("ปณ. ต้อง 5 หลัก");if(!f.Remark)missing.push("หมายเหตุ/สินค้า");if(forceUpsell&&(!f.PrevPromo||Number(f.PrevPromo)<=0))missing.push("ยอดโปรก่อนหน้า (ต้องมากกว่า 0)");if(isTransfer){if(!f.SalePrice||Number(f.SalePrice)<=0)missing.push("ยอดโอน (ต้องมากกว่า 0)");if(!slipPreview)missing.push("สลิปโอนเงิน (บังคับ)");}else{if(!f.COD||Number(f.COD)<=0)missing.push("ยอด COD (ต้องมากกว่า 0)");}if(missing.length>0){alert("กรุณากรอก:\n• "+missing.join("\n• "));return;}
     // ตรวจที่อยู่กับฐานข้อมูล
     if(addrOk===false){alert("🚫 ที่อยู่ไม่ถูกต้อง!\n\nตำบล: "+f.SubDistrict+"\nอำเภอ: "+f.District+"\nจังหวัด: "+f.Province+"\nปณ.: "+f.ZIP+"\n\nกรุณาพิมพ์ตำบล หรือ รหัส ปณ. แล้วเลือกจากรายการ");return;}
     setSaving(true);var finalCOD=isTransfer?"0":f.COD;var finalPrice=isTransfer?f.SalePrice:(f.SalePrice||f.COD||"0");var addr=f.Address;if(f.Province&&addr.indexOf(f.Province)<0)addr=(addr?addr+" ":"")+f.Province;onSubmit({...f,Address:addr,Remark:(forceUpsell&&f.PrevPromo?("[PREV:"+f.PrevPromo+"] "):"")+f.Remark,SalePrice:finalPrice,COD:finalCOD,upsell:!!forceUpsell,slipData:slipPreview||""});}
-  function clear(){setRaw("");setF({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",CustomerFBLine:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});setIsTransfer(false);setSlipPreview(null);setTried(false);setDupWarning(null);setAddrError(false);}
+  function clear(){setRaw("");setF({MobileNo:"",Name:"",Address:"",SubDistrict:"",District:"",Province:"",ZIP:"",SalePrice:"",COD:"",Remark:"",PrevPromo:""});setIsTransfer(false);setSlipPreview(null);setTried(false);setDupWarning(null);}
   // ช่อง input พร้อมปุ่ม x ล้าง
   function ClearInput({value,onChange,style:st,placeholder,maxLength,disabled}){return<div style={{position:"relative"}}><input value={value||""} onChange={onChange} placeholder={placeholder} maxLength={maxLength} disabled={disabled} style={{...st,paddingRight:value?28:12}}/>{value&&!disabled&&<button onClick={function(){onChange({target:{value:""}});}} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",width:20,height:20,borderRadius:"50%",border:"none",background:"#f1f5f9",color:"#94a3b8",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>✕</button>}</div>;}
   var[tried,setTried]=useState(false);
