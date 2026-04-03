@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260402v4";
+var APP_VERSION = "20260402v5";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -443,32 +443,38 @@ async function dbGetAllStatusLogs(limit){
   try{var d=await sbFetch("status_logs?order=changed_at.desc&limit="+(limit||100));return d||[];}catch(e){return[];}
 }
 // Export CSV — ProShip Format
-function exportCSV(orders,filename){
+function exportCSV(orders,filename,table){
+  var isUpsell=table==="upsell";
   var headers=["MobileNo","Name","Address","SubDistrict","District","ZIP","CustomerFBLine","SalesChannel","SalesPerson","SalePrice","COD","Remark"];
   var headerTH=["MobileNo*\nเบอร์มือถือ","Name\nชื่อ","Address\nที่อยู่","SubDistrict\nตำบล","District\nอำเภอ","ZIP\nรหัส ปณ.","Customer FB/Line\nเฟส/ไลน์ลูกค้า","SalesChannel\nช่องทางจำหน่าย","SalesPerson\nชื่อแอดมิน","SalePrice\nราคาขาย","COD*\nยอดเก็บเงินปลายทาง","Remark\nหมายเหตุ"];
+  if(isUpsell){headerTH.push("PrevPromo\nโปรก่อนหน้า");headerTH.push("Diff\nส่วนต่าง");}
   var csv="\uFEFF"+headerTH.map(function(h){return'"'+h.replace(/"/g,'""')+'"';}).join(",")+"\n";
   orders.forEach(function(o){
     var rm=String(o.Remark||"").replace(/\[PREV:\d+\]\s*/g,"");
     var row=[o.MobileNo||"",o.Name||"",o.Address||"",o.SubDistrict||"",o.District||"",o.ZIP||"",o.CustomerFBLine||"","CRM",o.SalesPerson||"",o.SalePrice||0,o.COD||0,rm];
+    if(isUpsell){var pm=String(o.Remark||"").match(/\[PREV:(\d+)\]/);var prev=pm?Number(pm[1]):0;var diff=prev>0?(Number(o.SalePrice)||0)-prev:0;row.push(prev);row.push(diff);}
     csv+=row.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(",")+"\n";
   });
   var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=filename||"export.csv";a.click();
 }
 // Export Excel (.xlsx) — ProShip Format with styling (ExcelJS)
-function exportXLSX(orders,filename){
-  if(typeof ExcelJS==="undefined"){var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js";s.onload=function(){doExportXLSX(orders,filename);};document.head.appendChild(s);return;}
-  doExportXLSX(orders,filename);
+function exportXLSX(orders,filename,table){
+  if(typeof ExcelJS==="undefined"){var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js";s.onload=function(){doExportXLSX(orders,filename,table);};document.head.appendChild(s);return;}
+  doExportXLSX(orders,filename,table);
 }
-function doExportXLSX(orders,filename){
+function doExportXLSX(orders,filename,table){
+  var isUpsell=table==="upsell";
   var wb=new ExcelJS.Workbook();
   var ws=wb.addWorksheet("ProShip");
 
   // Column widths
-  ws.columns=[{width:14},{width:12},{width:30},{width:18},{width:20},{width:10},{width:20},{width:14},{width:16},{width:12},{width:16},{width:22}];
+  var cols=[{width:14},{width:12},{width:30},{width:18},{width:20},{width:10},{width:20},{width:14},{width:16},{width:12},{width:16},{width:22}];
+  if(isUpsell){cols.push({width:14});cols.push({width:14});}
+  ws.columns=cols;
 
   // Row 1 — คำอธิบาย (merged)
-  ws.mergeCells("A1:L1");
+  ws.mergeCells(isUpsell?"A1:N1":"A1:L1");
   var r1=ws.getCell("A1");
   r1.value="ช่องสีแดงต้องกรอก ช่องสีขาวไม่จำเป็น\nอำเภอ จังหวัด หากสกดผิด ระบบจะไม่นำเข้าให้\nเบอร์มือถือ ต้องครบ 10 หลัก ไม่สามารถใช้เบอร์ 02 ได้";
   r1.font={bold:true,size:10};
@@ -478,6 +484,7 @@ function doExportXLSX(orders,filename){
 
   // Row 2 — หัวตาราง
   var headers=["MobileNo*\nเบอร์มือถือ","Name\nชื่อ","Address\nที่อยู่","SubDistrict\nตำบล","District\nอำเภอ","ZIP\nรหัส ปณ.","Customer FB/Line\nเฟส/ไลน์ลูกค้า","SalesChannel\nช่องทางจำหน่าย","SalesPerson\nชื่อแอดมิน","SalePrice\nราคาขาย","COD*\nยอดเก็บเงินปลายทาง","Remark\nหมายเหตุ"];
+  if(isUpsell){headers.push("PrevPromo\nโปรก่อนหน้า");headers.push("Diff\nส่วนต่าง");}
   var redCols=[1,2,3,4,5,6,11]; // A,B,C,D,E,F,K = สีแดง (บังคับ)
   var row2=ws.getRow(2);
   headers.forEach(function(h,i){
@@ -495,14 +502,17 @@ function doExportXLSX(orders,filename){
   // Row 3+ — ข้อมูล
   orders.forEach(function(o){
     var rm=String(o.Remark||"").replace(/\[PREV:\d+\]\s*/g,"");
-    var dataRow=ws.addRow([
+    var rowData=[
       String(o.MobileNo||""),o.Name||"",o.Address||"",o.SubDistrict||"",o.District||"",
       o.ZIP?Number(o.ZIP):0,o.CustomerFBLine||"","CRM",o.SalesPerson||"",
       Number(o.SalePrice)||0,Number(o.COD)||0,rm
-    ]);
-    dataRow.eachCell(function(cell){
+    ];
+    if(isUpsell){var pm=String(o.Remark||"").match(/\[PREV:(\d+)\]/);var prev=pm?Number(pm[1]):0;var diff=prev>0?(Number(o.SalePrice)||0)-prev:0;rowData.push(prev);rowData.push(diff);}
+    var dataRow=ws.addRow(rowData);
+    dataRow.eachCell(function(cell,colNum){
       cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
       cell.font={size:10};
+      if(isUpsell&&colNum===headers.length){cell.font={size:10,bold:true,color:{argb:cell.value>0?"FF10B981":"FFEF4444"}}}
     });
   });
 
@@ -632,8 +642,8 @@ function App(){var _s=useState;
   function handleExport(orders,format,table){
     if(orders.length===0){alert("ไม่มีออเดอร์ให้ Export");return;}
     var fname=(table==="upsell"?"Upsell":"Orders")+"_"+todayStr();
-    if(format==="csv")exportCSV(orders,fname+".csv");
-    else exportXLSX(orders,fname+".xlsx");
+    if(format==="csv")exportCSV(orders,fname+".csv",table);
+    else exportXLSX(orders,fname+".xlsx",table);
     // บันทึกประวัติ Export
     try{var hist=JSON.parse(localStorage.getItem("export_history")||"[]");
     var totalSales=0;orders.forEach(function(o){totalSales+=Number(o.SalePrice)||0;});
