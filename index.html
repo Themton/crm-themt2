@@ -549,6 +549,9 @@ async function dbDeleteAccount(email){await sbFetch("accounts?email=eq."+encodeU
 async function dbResetPassword(email,pw){await sbFetch("accounts?email=eq."+encodeURIComponent(email),{method:"PATCH",body:{password:pw}});}
 async function dbEditAccount(oldEmail,d){var up={};if(d.username)up.email=d.username;if(d.displayName)up.display_name=d.displayName;up.role=d.role||"user";await sbFetch("accounts?email=eq."+encodeURIComponent(oldEmail),{method:"PATCH",body:up});}
 async function dbSaveUpsellBatch(usernames){var all=await sbFetch("accounts?select=email,can_upsell");for(var i=0;i<(all||[]).length;i++){var should=usernames.indexOf(all[i].email)>=0;if(all[i].can_upsell!==should)await sbFetch("accounts?email=eq."+encodeURIComponent(all[i].email),{method:"PATCH",body:{can_upsell:should}});}}
+/* ===== NAME HELPERS ===== */
+function getNameVariants(dn){var names=[];if(!dn)return[dn];var parts=[];var re=/\(([^)]+)\)/g;var m;while((m=re.exec(dn))!==null)parts.push(m[1].trim());parts.forEach(function(p){if(names.indexOf(p)<0)names.push(p);});var noP=dn.replace(/\s*\([^)]*\)/g,"").trim();if(noP&&names.indexOf(noP)<0)names.push(noP);if(names.indexOf(dn)<0)names.push(dn);var first=dn.split(" ")[0];if(first&&first.indexOf("(")<0&&names.indexOf(first)<0)names.push(first);return names;}
+function extractNickname(dn){if(!dn)return dn;var m=dn.match(/\(([^)]+)\)/);return m?m[1].trim():dn;}
 /* ===== MAIN APP ===== */
 function App(){var _s=useState;
   var[sbOk,setSbOk]=_s(sbReady);
@@ -559,8 +562,6 @@ function App(){var _s=useState;
   async function saveUpsellPrices(prices){try{var val=prices.join(",");await sbFetch("app_settings?key=eq.upsell_prices",{method:"PATCH",body:{value:val,updated_at:new Date().toISOString()}});setUpsellPrices(prices);notify("✅ บันทึกราคา Upsell แล้ว");}catch(e){notify("❌ บันทึกไม่สำเร็จ","warning");}}
   function notify(msg,type){setNotif({msg:msg,type:type||"success"});setTimeout(function(){setNotif(null);},3500);}
   async function loadAccounts(){try{var d=await dbGetAccounts();setAccounts(d);}catch(e){console.error(e);}}
-  function getNameVariants(dn){var names=[];if(!dn)return[dn];var parts=[];var re=/\(([^)]+)\)/g;var m;while((m=re.exec(dn))!==null)parts.push(m[1].trim());parts.forEach(function(p){if(names.indexOf(p)<0)names.push(p);});var noP=dn.replace(/\s*\([^)]*\)/g,"").trim();if(noP&&names.indexOf(noP)<0)names.push(noP);if(names.indexOf(dn)<0)names.push(dn);var first=dn.split(" ")[0];if(first&&first.indexOf("(")<0&&names.indexOf(first)<0)names.push(first);console.log("getNameVariants:",names);return names;}
-  function extractNickname(dn){if(!dn)return dn;var m=dn.match(/\(([^)]+)\)/);return m?m[1].trim():dn;}
   async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":getNameVariants(u.displayName));setAllOrders(d);}catch(e){notify("โหลดผิดพลาด","warning");}}
   async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":getNameVariants(u.displayName));setUpsellOrders(d);}catch(e){}}
   useEffect(function(){if(sbOk){loadAccounts();loadUpsellPrices();}},[sbOk]);
