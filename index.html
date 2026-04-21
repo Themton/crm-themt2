@@ -550,8 +550,8 @@ async function dbResetPassword(email,pw){await sbFetch("accounts?email=eq."+enco
 async function dbEditAccount(oldEmail,d){var up={};if(d.username)up.email=d.username;if(d.displayName)up.display_name=d.displayName;up.role=d.role||"user";await sbFetch("accounts?email=eq."+encodeURIComponent(oldEmail),{method:"PATCH",body:up});}
 async function dbSaveUpsellBatch(usernames){var all=await sbFetch("accounts?select=email,can_upsell");for(var i=0;i<(all||[]).length;i++){var should=usernames.indexOf(all[i].email)>=0;if(all[i].can_upsell!==should)await sbFetch("accounts?email=eq."+encodeURIComponent(all[i].email),{method:"PATCH",body:{can_upsell:should}});}}
 /* ===== NAME HELPERS ===== */
-function getNameVariants(dn){var names=[];if(!dn)return[dn];var parts=[];var re=/\(([^)]+)\)/g;var m;while((m=re.exec(dn))!==null)parts.push(m[1].trim());parts.forEach(function(p){if(names.indexOf(p)<0)names.push(p);});var noP=dn.replace(/\s*\([^)]*\)/g,"").trim();if(noP&&names.indexOf(noP)<0)names.push(noP);if(names.indexOf(dn)<0)names.push(dn);var first=dn.split(" ")[0];if(first&&first.indexOf("(")<0&&names.indexOf(first)<0)names.push(first);return names;}
-function extractNickname(dn){if(!dn)return dn;var m=dn.match(/\(([^)]+)\)/);return m?m[1].trim():dn;}
+window.getNameVariants=function(dn){var names=[];if(!dn)return[dn];var parts=[];var re=/\(([^)]+)\)/g;var m;while((m=re.exec(dn))!==null)parts.push(m[1].trim());parts.forEach(function(p){if(names.indexOf(p)<0)names.push(p);});var noP=dn.replace(/\s*\([^)]*\)/g,"").trim();if(noP&&names.indexOf(noP)<0)names.push(noP);if(names.indexOf(dn)<0)names.push(dn);var first=dn.split(" ")[0];if(first&&first.indexOf("(")<0&&names.indexOf(first)<0)names.push(first);return names;};
+window.extractNickname=function(dn){if(!dn)return dn;var m=dn.match(/\(([^)]+)\)/);return m?m[1].trim():dn;};
 /* ===== MAIN APP ===== */
 function App(){var _s=useState;
   var[sbOk,setSbOk]=_s(sbReady);
