@@ -1535,7 +1535,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   // กรองตามคนและวันที่ — แยก Orders / Upsell / รวม
   function filterByDate(list){return(list||[]).filter(function(o){
     var d=getDate(o.Timestamp);if(d<dateFrom||d>dateTo)return false;
-    if(selPerson!=="ALL"&&o.SalesPerson!==selPerson)return false;return true;
+    if(selPerson!=="ALL"){var variants=getNameVariants(selPerson);if(variants.indexOf(o.SalesPerson)<0)return false;}return true;
   });}
   var fOrders=filterByDate(allOrders);
   var fUpsell=filterByDate(upsellOrders);
@@ -1606,7 +1606,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       {isAdmin&&<div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>พนักงาน:</span>
         <button onClick={function(){setSelPerson("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selPerson==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selPerson==="ALL"?"#fef3c7":"#fff",color:selPerson==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทุกคน</button>
-        {staffNames.map(function(n){var active=selPerson===n;var ps=personSummary[n];return<button key={n} onClick={function(){setSelPerson(n);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid #d97706":"1px solid #e2e8f0",background:active?"#fef3c7":"#fff",color:active?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{n} {ps?<span style={{fontSize:10,color:"#94a3b8"}}>({ps.count})</span>:""}{tab==="upsell"&&ps&&ps.diff!==0?<span style={{fontSize:10,fontWeight:700,color:ps.diff>=0?"#10b981":"#ef4444",marginLeft:4}}>{ps.diff>=0?"+":""}฿{ps.diff.toLocaleString()}</span>:""}</button>;})}
+        {staffNames.map(function(n){var active=selPerson===n;var variants=getNameVariants(n);var ps=null;variants.forEach(function(v){if(personSummary[v]){if(!ps)ps={count:0,sales:0,diff:0};ps.count+=personSummary[v].count;ps.sales+=personSummary[v].sales;ps.diff+=(personSummary[v].diff||0);}});return<button key={n} onClick={function(){setSelPerson(n);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid #d97706":"1px solid #e2e8f0",background:active?"#fef3c7":"#fff",color:active?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{n} {ps?<span style={{fontSize:10,color:"#94a3b8"}}>({ps.count})</span>:""}{tab==="upsell"&&ps&&ps.diff!==0?<span style={{fontSize:10,fontWeight:700,color:ps.diff>=0?"#10b981":"#ef4444",marginLeft:4}}>{ps.diff>=0?"+":""}฿{ps.diff.toLocaleString()}</span>:""}</button>;})}
       </div>}
     </div>
 
