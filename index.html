@@ -633,7 +633,7 @@ function App(){var _s=useState;
   var navItems=[];
   if(isShipping){navItems=[{id:"shipping",icon:"🚚",label:"การจัดส่ง"},{id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"}];}
   else if(isAccounting){navItems=[{id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"},{id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"},{id:"report",icon:"📊",label:"รายงาน"}];}
-  else{navItems.push({id:"orders",icon:"📋",label:"ออเดอร์"});if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});if(isAdmin)navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin||canUpsell)navItems.push({id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"});navItems.push({id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"});navItems.push({id:"crm",icon:"📞",label:"CRM โทรลูกค้า",link:"https://themton.github.io/crmtel/"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});}
+  else{navItems.push({id:"orders",icon:"📋",label:"ออเดอร์"});if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});if(isAdmin)navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin||canUpsell)navItems.push({id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"});navItems.push({id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});}
   // Default page สำหรับ shipping role
   useEffect(function(){if(isShipping&&page!=="shipping")setPage("shipping");if(isAccounting&&page!=="export_tracking")setPage("export_tracking");},[isShipping,isAccounting]);
   var roleLabel=isAdmin?"แอดมิน":isShipping?"จัดส่ง":isAccounting?"บัญชี":"พนักงาน";
