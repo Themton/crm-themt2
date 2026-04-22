@@ -453,13 +453,13 @@ async function dbGetAllStatusLogs(limit){
 }
 // Export CSV — ProShip Format
 function exportCSV(orders,filename,table){
-  var headers=["MobileNo","Name","Address","SubDistrict","District","ZIP","CustomerFBLine","SalesChannel","SalesPerson","AccountEmail","SalePrice","COD","Remark"];
-  var headerTH=["MobileNo*\nเบอร์มือถือ","Name\nชื่อ","Address\nที่อยู่","SubDistrict\nตำบล","District\nอำเภอ","ZIP\nรหัส ปณ.","Customer FB/Line\nเฟส/ไลน์ลูกค้า","SalesChannel\nช่องทางจำหน่าย","SalesPerson\nชื่อแอดมิน","AccountEmail\nอีเมลพนักงาน","SalePrice\nราคาขาย","COD*\nยอดเก็บเงินปลายทาง","Remark\nหมายเหตุ","PrevPromo\nโปรก่อนหน้า","Diff\nส่วนต่าง"];
+  var headers=["MobileNo","Name","Address","SubDistrict","District","ZIP","CustomerFBLine","SalesChannel","SalesPerson","StaffName","AccountEmail","SalePrice","COD","Remark"];
+  var headerTH=["MobileNo*\nเบอร์มือถือ","Name\nชื่อ","Address\nที่อยู่","SubDistrict\nตำบล","District\nอำเภอ","ZIP\nรหัส ปณ.","Customer FB/Line\nเฟส/ไลน์ลูกค้า","SalesChannel\nช่องทางจำหน่าย","SalesPerson\nชื่อเล่น","StaffName\nชื่อจริง","AccountEmail\nอีเมลพนักงาน","SalePrice\nราคาขาย","COD*\nยอดเก็บเงินปลายทาง","Remark\nหมายเหตุ","PrevPromo\nโปรก่อนหน้า","Diff\nส่วนต่าง"];
   var csv="\uFEFF"+headerTH.map(function(h){return'"'+h.replace(/"/g,'""')+'"';}).join(",")+"\n";
   orders.forEach(function(o){
     var rm=String(o.Remark||"").replace(/\[PREV:\d+\]\s*/g,"");
     var pm=String(o.Remark||"").match(/\[PREV:(\d+)\]/);var prev=pm?Number(pm[1]):0;var diff=prev>0?(Number(o.SalePrice)||0)-prev:0;
-    var row=[o.MobileNo||"",o.Name||"",o.Address||"",o.SubDistrict||"",o.District||"",o.ZIP||"",o.CustomerFBLine||"","CRM",o.SalesPerson||"",o.AccountEmail||"",o.SalePrice||0,o.COD||0,rm,prev,diff];
+    var row=[o.MobileNo||"",o.Name||"",o.Address||"",o.SubDistrict||"",o.District||"",o.ZIP||"",o.CustomerFBLine||"","CRM",o.SalesPerson||"",o.StaffName||"",o.AccountEmail||"",o.SalePrice||0,o.COD||0,rm,prev,diff];
     csv+=row.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(",")+"\n";
   });
   var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
@@ -475,11 +475,11 @@ function doExportXLSX(orders,filename,table){
   var ws=wb.addWorksheet("ProShip");
 
   // Column widths
-  var cols=[{width:14},{width:12},{width:30},{width:18},{width:20},{width:10},{width:20},{width:14},{width:16},{width:28},{width:12},{width:16},{width:22},{width:14},{width:14}];
+  var cols=[{width:14},{width:12},{width:30},{width:18},{width:20},{width:10},{width:20},{width:14},{width:16},{width:18},{width:28},{width:12},{width:16},{width:22},{width:14},{width:14}];
   ws.columns=cols;
 
   // Row 1 — คำอธิบาย (merged)
-  ws.mergeCells("A1:O1");
+  ws.mergeCells("A1:P1");
   var r1=ws.getCell("A1");
   r1.value="ช่องสีแดงต้องกรอก ช่องสีขาวไม่จำเป็น\nอำเภอ จังหวัด หากสกดผิด ระบบจะไม่นำเข้าให้\nเบอร์มือถือ ต้องครบ 10 หลัก ไม่สามารถใช้เบอร์ 02 ได้";
   r1.font={bold:true,size:10};
@@ -488,8 +488,8 @@ function doExportXLSX(orders,filename,table){
   ws.getRow(1).height=42;
 
   // Row 2 — หัวตาราง
-  var headers=["MobileNo*\nเบอร์มือถือ","Name\nชื่อ","Address\nที่อยู่","SubDistrict\nตำบล","District\nอำเภอ","ZIP\nรหัส ปณ.","Customer FB/Line\nเฟส/ไลน์ลูกค้า","SalesChannel\nช่องทางจำหน่าย","SalesPerson\nชื่อแอดมิน","AccountEmail\nอีเมลพนักงาน","SalePrice\nราคาขาย","COD*\nยอดเก็บเงินปลายทาง","Remark\nหมายเหตุ","PrevPromo\nโปรก่อนหน้า","Diff\nส่วนต่าง"];
-  var redCols=[1,2,3,4,5,6,12]; // A,B,C,D,E,F,L = สีแดง (บังคับ)
+  var headers=["MobileNo*\nเบอร์มือถือ","Name\nชื่อ","Address\nที่อยู่","SubDistrict\nตำบล","District\nอำเภอ","ZIP\nรหัส ปณ.","Customer FB/Line\nเฟส/ไลน์ลูกค้า","SalesChannel\nช่องทางจำหน่าย","SalesPerson\nชื่อเล่น","StaffName\nชื่อจริง","AccountEmail\nอีเมลพนักงาน","SalePrice\nราคาขาย","COD*\nยอดเก็บเงินปลายทาง","Remark\nหมายเหตุ","PrevPromo\nโปรก่อนหน้า","Diff\nส่วนต่าง"];
+  var redCols=[1,2,3,4,5,6,13]; // A,B,C,D,E,F,M = สีแดง (บังคับ)
   var row2=ws.getRow(2);
   headers.forEach(function(h,i){
     var cell=row2.getCell(i+1);
@@ -509,14 +509,14 @@ function doExportXLSX(orders,filename,table){
     var pm=String(o.Remark||"").match(/\[PREV:(\d+)\]/);var prev=pm?Number(pm[1]):0;var diff=prev>0?(Number(o.SalePrice)||0)-prev:0;
     var rowData=[
       String(o.MobileNo||""),o.Name||"",o.Address||"",o.SubDistrict||"",o.District||"",
-      o.ZIP?Number(o.ZIP):0,o.CustomerFBLine||"","CRM",o.SalesPerson||"",o.AccountEmail||"",
+      o.ZIP?Number(o.ZIP):0,o.CustomerFBLine||"","CRM",o.SalesPerson||"",o.StaffName||"",o.AccountEmail||"",
       Number(o.SalePrice)||0,Number(o.COD)||0,rm,prev,diff
     ];
     var dataRow=ws.addRow(rowData);
     dataRow.eachCell(function(cell,colNum){
       cell.border={top:{style:"thin"},bottom:{style:"thin"},left:{style:"thin"},right:{style:"thin"}};
       cell.font={size:10};
-      if(colNum===15&&cell.value!==0){cell.font={size:10,bold:true,color:{argb:cell.value>0?"FF10B981":"FFEF4444"}};}
+      if(colNum===16&&cell.value!==0){cell.font={size:10,bold:true,color:{argb:cell.value>0?"FF10B981":"FFEF4444"}};}
     });
   });
 
@@ -602,11 +602,13 @@ function App(){var _s=useState;
       loadOrders();loadUpsell();
     }catch(e){setStatusProgress(null);notify("ผิดพลาด","warning");}
   }
+  var emailToName={};(accounts||[]).forEach(function(a){emailToName[a.username]=a.displayName;});
   function handleExport(orders,format,table){
     if(orders.length===0){alert("ไม่มีออเดอร์ให้ Export");return;}
+    var enriched=orders.map(function(o){return{...o,StaffName:emailToName[o.AccountEmail]||""};});
     var fname=(table==="upsell"?"Upsell":"Orders")+"_"+todayStr();
-    if(format==="csv")exportCSV(orders,fname+".csv",table);
-    else exportXLSX(orders,fname+".xlsx",table);
+    if(format==="csv")exportCSV(enriched,fname+".csv",table);
+    else exportXLSX(enriched,fname+".xlsx",table);
     // บันทึกประวัติ Export
     try{var hist=JSON.parse(localStorage.getItem("export_history")||"[]");
     var totalSales=0;orders.forEach(function(o){totalSales+=Number(o.SalePrice)||0;});
@@ -650,7 +652,7 @@ function App(){var _s=useState;
       {statusProgress.fail>0&&<div style={{fontSize:12,color:"#ef4444",fontWeight:700,marginTop:8}}>❌ ล้มเหลว {statusProgress.fail} รายการ</div>}
     </div></div>}
     <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:roleColor}}>{roleLabel}</span></div></div><nav style={S.nav}>{navItems.map(function(item){if(item.link)return<a key={item.id} href={item.link} style={{...S.navItem,textDecoration:"none",fontWeight:800,color:"#93c5fd",background:"rgba(59,130,246,.1)"}}><span style={{fontSize:16}}>{item.icon}</span> {item.label} →</a>;return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><div style={{marginBottom:8}}><div style={{fontSize:10,color:"#fbbf24",fontWeight:600,marginBottom:4}}>📱 ค้นหาเลขพัสดุ</div><input placeholder="ใส่เบอร์โทร..." value={sidePhoneSearch} onChange={function(e){setSidePhoneSearch(e.target.value.replace(/[^0-9]/g,""));}} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.1)",color:"#fde68a",fontSize:12,boxSizing:"border-box",outline:"none"}}/>{sidePhoneSearch.length>=3&&function(){var found=allOrders.concat(upsellOrders).filter(function(o){return phoneMatch(o.MobileNo,sidePhoneSearch);});return<div style={{marginTop:6,maxHeight:200,overflow:"auto",borderRadius:8,background:"rgba(0,0,0,.3)"}}>{found.length===0?<div style={{padding:8,fontSize:10,color:"#94a3b8",textAlign:"center"}}>ไม่พบ</div>:found.map(function(o,i){return<div key={i} style={{padding:"6px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:10}}><div style={{fontWeight:700,color:"#fde68a"}}>{o.Name} <span style={{color:"#94a3b8"}}>{o.MobileNo}</span></div>{o.TrackingNo?<span onClick={function(){copyTrack(o.TrackingNo);}} style={{color:"#93c5fd",fontWeight:700,fontSize:10,cursor:"pointer"}} title="คลิกเพื่อคัดลอก">{o.TrackingNo} 📋</span>:<span style={{color:"#64748b",fontSize:9}}>ยังไม่มีเลข</span>}</div>;})}</div>;}()}</div><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
-    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
+    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport} accounts={accounts}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
 
 /* ===== SETUP (Supabase URL+Key) ===== */
 function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useState("");var[testing,setTesting]=useState(false);var[error,setError]=useState("");
@@ -1431,7 +1433,8 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     {viewOrder&&<DetailModal order={viewOrder} onClose={function(){setViewOrder(null);}} onDel={function(){}} onEdit={canManage?function(oid,data){if(onEdit)onEdit(oid,data);setViewOrder(null);setTimeout(function(){if(onRefresh)onRefresh();},500);}:null} onUploadSlip={function(){}} isAdmin={canManage} onUpdateStatus={canManage?function(ids,s){var tbl=viewOrder._table||"orders";onUpdateStatus(ids,s,tbl);setViewOrder(null);}:null}/>}
   </div>;
 }
-function ExportTrackingPage({allOrders,upsellOrders,onExport}){
+function ExportTrackingPage({allOrders,upsellOrders,onExport,accounts}){
+  var emailToName={};(accounts||[]).forEach(function(a){emailToName[a.username]=a.displayName;});
   var[from,setFrom]=useState(todayStr());
   var[to,setTo]=useState(todayStr());
   var[source,setSource]=useState("ALL");
@@ -1447,9 +1450,9 @@ function ExportTrackingPage({allOrders,upsellOrders,onExport}){
   var totalCOD=filtered.reduce(function(s,o){return s+Number(o.COD||0);},0);
 
   function exportCSV(){
-    var rows=[["ลำดับ","วันที่","เวลา","ชื่อลูกค้า","เบอร์โทร","เลขTracking","ราคา","COD","ประเภท","สถานะFlash","ที่มา","พนักงาน","อีเมลพนักงาน","หมายเหตุ","ช่องทางการขาย"]];
+    var rows=[["ลำดับ","วันที่","เวลา","ชื่อลูกค้า","เบอร์โทร","เลขTracking","ราคา","COD","ประเภท","สถานะFlash","ที่มา","พนักงาน","ชื่อจริง","อีเมลพนักงาน","หมายเหตุ","ช่องทางการขาย"]];
     filtered.forEach(function(o,i){
-      rows.push([(i+1),getDate(o.Timestamp),getTime(o.Timestamp),o.Name,o.MobileNo,o.TrackingNo,o.SalePrice,o.COD||"",Number(o.COD||0)>0?"COD":"โอน",o.FlashStatus||"",o._table==="upsell"?"Upsell":"Order",o.SalesPerson,o.AccountEmail||"",String(o.Remark||"").replace(/\[PREV:\d+\]\s*/g,""),"CRM"]);
+      rows.push([(i+1),getDate(o.Timestamp),getTime(o.Timestamp),o.Name,o.MobileNo,o.TrackingNo,o.SalePrice,o.COD||"",Number(o.COD||0)>0?"COD":"โอน",o.FlashStatus||"",o._table==="upsell"?"Upsell":"Order",o.SalesPerson,emailToName[o.AccountEmail]||"",o.AccountEmail||"",String(o.Remark||"").replace(/\[PREV:\d+\]\s*/g,""),"CRM"]);
     });
     var csv="\uFEFF"+rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"';}).join(",");}).join("\n");
     var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="tracking-export-"+from+"-to-"+to+".csv";a.click();URL.revokeObjectURL(url);
