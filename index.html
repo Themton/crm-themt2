@@ -397,21 +397,21 @@ function AddrAC({label,value,field,onSelect,onChange}){var[show,setShow]=useStat
 /* ===== SUPABASE DATA LAYER ===== */
 function normalizePhone(p){var s=String(p||"").replace(/\D/g,"");if(s.length===9)s="0"+s;return s;}
 function phoneMatch(stored,query){var s=normalizePhone(stored);var q=query.replace(/\D/g,"");if(!q)return false;return s.indexOf(q)>=0||(q.charAt(0)==="0"&&s.indexOf(q.substring(1))>=0)||(q.charAt(0)!=="0"&&s.indexOf("0"+q)>=0);}
-function mapRow(r){return{OrderID:r.order_id,Timestamp:r.timestamp,MobileNo:normalizePhone(r.mobile_no),Name:r.name,Address:r.address,SubDistrict:r.sub_district,District:r.district,Province:r.province,ZIP:r.zip,CustomerFBLine:r.customer_fb_line,SalesChannel:r.sales_channel,SalesPerson:r.sales_person,SalePrice:r.sale_price,COD:r.cod,Remark:r.remark,SlipURL:r.slip_url,Status:r.status||"รอส่ง",TrackingNo:r.tracking_no||"",FlashStatus:r.flash_status||"",SortCode:r.sort_code||""};}
+function mapRow(r){return{OrderID:r.order_id,Timestamp:r.timestamp,MobileNo:normalizePhone(r.mobile_no),Name:r.name,Address:r.address,SubDistrict:r.sub_district,District:r.district,Province:r.province,ZIP:r.zip,CustomerFBLine:r.customer_fb_line,SalesChannel:r.sales_channel,SalesPerson:r.sales_person,AccountEmail:r.account_email||"",SalePrice:r.sale_price,COD:r.cod,Remark:r.remark,SlipURL:r.slip_url,Status:r.status||"รอส่ง",TrackingNo:r.tracking_no||"",FlashStatus:r.flash_status||"",SortCode:r.sort_code||""};}
 var FLASH_STATUS_MAP={"1001":"สร้างรายการ","1002":"รับเข้าระบบ","1003":"พิคกิ้งเสร็จ","1004":"แพ็คแล้ว","1005":"รับพัสดุแล้ว","1006":"กำลังขนส่ง","1007":"การนำจ่าย","1008":"ระงับ","1009":"ลูกค้ารับของ","1010":"ติดต่อผู้รับไม่ได้","1011":"ตีกลับ","1012":"จัดส่งไม่สำเร็จ","1013":"ยกเลิก",
   "1":"รับพัสดุแล้ว","2":"กำลังขนส่ง","3":"การนำจ่าย","4":"ลูกค้ารับของ","5":"ติดต่อผู้รับไม่ได้","6":"ตีกลับ","7":"จัดส่งไม่สำเร็จ","8":"ยกเลิก","9":"ระงับ"};
 var FLASH_ACTION_MAP={"RECEIVE_WAREHOUSE_SCAN":"รับเข้าระบบ","PICK_UP":"รับพัสดุแล้ว","SHIPPING":"กำลังขนส่ง","IN_TRANSIT":"กำลังขนส่ง","OUT_FOR_DELIVERY":"การนำจ่าย","DELIVERY":"การนำจ่าย","DELIVERED":"ลูกค้ารับของ","FAILED_DELIVERY":"จัดส่งไม่สำเร็จ","RETURN":"ตีกลับ","RETURNED":"ตีกลับ","CANCELLED":"ยกเลิก"};
 var FLASH_STATUS_COLOR={"สร้างรายการ":"#94a3b8","รับเข้าระบบ":"#6366f1","รับพัสดุแล้ว":"#0284c7","กำลังขนส่ง":"#d97706","การนำจ่าย":"#ea580c","ลูกค้ารับของ":"#059669","ติดต่อผู้รับไม่ได้":"#dc2626","ตีกลับ":"#dc2626","จัดส่งไม่สำเร็จ":"#dc2626","ยกเลิก":"#64748b"};
 function FlashStatusBadge({status}){if(!status)return null;var co=FLASH_STATUS_COLOR[status]||"#94a3b8";var icon=status==="ลูกค้ารับของ"?"✅":status==="การนำจ่าย"?"🚚":status==="กำลังขนส่ง"?"📦":status==="รับเข้าระบบ"?"📥":status==="ตีกลับ"||status==="จัดส่งไม่สำเร็จ"?"❌":status==="ติดต่อผู้รับไม่ได้"?"📞":"📋";return<span style={{padding:"2px 6px",borderRadius:10,fontSize:9,fontWeight:700,background:co+"20",color:co}}>{icon} {status}</span>;}
 async function dbGetAccounts(){try{var data=await sbFetch("accounts?select=*");return(data||[]).map(function(a){return{username:a.email,password:String(a.password),displayName:a.display_name,nickname:a.nickname||"",role:a.role,active:a.active,canUpsell:a.can_upsell};});}catch(e){console.error("dbGetAccounts:",e);return[];}}
-async function dbGetOrders(userId){try{var q="orders?select=*&order=timestamp.desc";if(userId&&userId!=="ALL"){if(Array.isArray(userId)){var hasParenNick=userId.find(function(n){return n.indexOf("(")>=0&&n.indexOf(")")>=0;});if(hasParenNick){q+="&sales_person=eq."+encodeURIComponent(hasParenNick);}else{var orParts=userId.map(function(n){return"sales_person.like."+n+"*";});q+="&or=("+orParts.join(",")+")";};}else{q+="&sales_person=eq."+encodeURIComponent(userId);}}var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch(q,{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all.map(mapRow);}catch(e){console.error("dbGetOrders:",e);return[];}}
-async function dbGetUpsell(userId){try{var q="upsell?select=*&order=timestamp.desc";if(userId&&userId!=="ALL"){if(Array.isArray(userId)){var hasParenNick=userId.find(function(n){return n.indexOf("(")>=0&&n.indexOf(")")>=0;});if(hasParenNick){q+="&sales_person=eq."+encodeURIComponent(hasParenNick);}else{var orParts=userId.map(function(n){return"sales_person.like."+n+"*";});q+="&or=("+orParts.join(",")+")";};}else{q+="&sales_person=eq."+encodeURIComponent(userId);}}var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch(q,{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all.map(mapRow);}catch(e){console.error("dbGetUpsell:",e);return[];}}
+async function dbGetOrders(userId){try{var q="orders?select=*&order=timestamp.desc";if(userId&&userId!=="ALL"){q+="&account_email=eq."+encodeURIComponent(userId);}var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch(q,{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all.map(mapRow);}catch(e){console.error("dbGetOrders:",e);return[];}}
+async function dbGetUpsell(userId){try{var q="upsell?select=*&order=timestamp.desc";if(userId&&userId!=="ALL"){q+="&account_email=eq."+encodeURIComponent(userId);}var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch(q,{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all.map(mapRow);}catch(e){console.error("dbGetUpsell:",e);return[];}}
 async function dbAddOrder(d,isUpsell){
   var table=isUpsell?"upsell":"orders";
   var oid;
   try{oid=await sbRpc("generate_order_id");}catch(e){oid="ORD-"+todayStr().replace(/-/g,"")+"-"+String(Date.now()).slice(-4);}
   var thaiTS=nowThai();
-  var row={order_id:oid,timestamp:thaiTS,mobile_no:d.MobileNo,name:d.Name,address:d.Address,sub_district:d.SubDistrict,district:d.District,province:d.Province||"",zip:d.ZIP,customer_fb_line:d.CustomerFBLine||"",sales_channel:"CRM",sales_person:d.SalesPerson,sale_price:Number(d.SalePrice)||0,cod:Number(d.COD)||0,remark:d.Remark||"",slip_url:""};
+  var row={order_id:oid,timestamp:thaiTS,mobile_no:d.MobileNo,name:d.Name,address:d.Address,sub_district:d.SubDistrict,district:d.District,province:d.Province||"",zip:d.ZIP,customer_fb_line:d.CustomerFBLine||"",sales_channel:"CRM",sales_person:d.SalesPerson,account_email:d.AccountEmail||"",sale_price:Number(d.SalePrice)||0,cod:Number(d.COD)||0,remark:d.Remark||"",slip_url:""};
   await sbFetch(table,{method:"POST",body:row,prefer:"return=representation"});
   // Sync to Google Sheet
   syncToSheet(isUpsell?"addUpsell":"addOrder",{OrderID:oid,Timestamp:nowThai(),MobileNo:d.MobileNo,Name:d.Name,Address:d.Address,SubDistrict:d.SubDistrict,District:d.District,ZIP:d.ZIP,CustomerFBLine:d.CustomerFBLine||"",SalesChannel:"CRM",SalesPerson:d.SalesPerson,SalePrice:Number(d.SalePrice)||0,COD:Number(d.COD)||0,Remark:d.Remark||"",Province:d.Province||""});
@@ -564,8 +564,8 @@ function App(){var _s=useState;
   async function saveUpsellPrices(prices){try{var val=prices.join(",");await sbFetch("app_settings?key=eq.upsell_prices",{method:"PATCH",body:{value:val,updated_at:new Date().toISOString()}});setUpsellPrices(prices);notify("✅ บันทึกราคา Upsell แล้ว");}catch(e){notify("❌ บันทึกไม่สำเร็จ","warning");}}
   function notify(msg,type){setNotif({msg:msg,type:type||"success"});setTimeout(function(){setNotif(null);},3500);}
   async function loadAccounts(){try{var d=await dbGetAccounts();setAccounts(d);var cur=userRef.current;if(cur){var match=d.find(function(a){return a.username===cur.username;});if(match&&(cur.nickname!==match.nickname||cur.displayName!==match.displayName)){var u2={...cur,nickname:match.nickname,displayName:match.displayName};userRef.current=u2;setUser(u2);localStorage.setItem("ps_user",JSON.stringify(u2));}}}catch(e){console.error(e);}}
-  async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":getNameVariants(u.displayName,u.nickname));setAllOrders(d);}catch(e){notify("โหลดผิดพลาด","warning");}}
-  async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":getNameVariants(u.displayName,u.nickname));setUpsellOrders(d);}catch(e){}}
+  async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);setAllOrders(d);}catch(e){notify("โหลดผิดพลาด","warning");}}
+  async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);setUpsellOrders(d);}catch(e){}}
   useEffect(function(){if(sbOk){loadAccounts();loadUpsellPrices();}},[sbOk]);
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
     // Auto-refresh ทุก 15 วินาที
@@ -583,7 +583,7 @@ function App(){var _s=useState;
   var isShipping=user.role==="shipping";
   var isAccounting=user.role==="accounting";
   var dayOrders=allOrders.filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});
-  async function addOrder(data){try{var res=await dbAddOrder({...data,SalesPerson:extractNickname(user.displayName,user.nickname)},data.upsell);setShowForm(false);notify("✅ "+res.orderId+(data.upsell?" → 🔥 Upsell":" → Orders"));if(!data.upsell)loadOrders();else loadUpsell();if(data.slipData)uploadSlip(res.orderId,data.slipData);}catch(e){setShowForm(false);notify(e.message||"ผิดพลาด","warning");}}
+  async function addOrder(data){try{var res=await dbAddOrder({...data,SalesPerson:extractNickname(user.displayName,user.nickname),AccountEmail:user.username},data.upsell);setShowForm(false);notify("✅ "+res.orderId+(data.upsell?" → 🔥 Upsell":" → Orders"));if(!data.upsell)loadOrders();else loadUpsell();if(data.slipData)uploadSlip(res.orderId,data.slipData);}catch(e){setShowForm(false);notify(e.message||"ผิดพลาด","warning");}}
   async function delOrder(oid){setViewOrder(null);setAllOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});setUpsellOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});try{await dbDeleteOrder(oid);notify("ลบสำเร็จ");loadOrders();loadUpsell();}catch(e){notify("ลบผิดพลาด","warning");loadOrders();loadUpsell();}}
   async function editOrder(oid,data){setViewOrder(null);try{await dbEditOrder(oid,data);notify("✅ แก้ไขสำเร็จ");loadOrders();loadUpsell();}catch(e){notify("แก้ไขผิดพลาด","warning");loadOrders();}}
   async function updateStatus(orderIds,status,table){
@@ -1536,13 +1536,13 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   var sourceOrders=tab==="upsell"?(upsellOrders||[]):(allOrders||[]);
 
   // สร้าง map displayName → nickname
-  var nickMap={};
-  (accounts||[]).forEach(function(a){if(a.nickname)nickMap[a.displayName]=a.nickname;});
+  var nickMap={};var emailMap={};
+  (accounts||[]).forEach(function(a){if(a.nickname)nickMap[a.displayName]=a.nickname;if(a.username)emailMap[a.displayName]=a.username;});
 
   // กรองตามคนและวันที่ — แยก Orders / Upsell / รวม
   function filterByDate(list){return(list||[]).filter(function(o){
     var d=getDate(o.Timestamp);if(d<dateFrom||d>dateTo)return false;
-    if(selPerson!=="ALL"){var variants=getNameVariants(selPerson,nickMap[selPerson]);if(!matchesPerson(o.SalesPerson,variants))return false;}return true;
+    if(selPerson!=="ALL"){var email=emailMap[selPerson];if(email){if(o.AccountEmail!==email)return false;}else{var variants=getNameVariants(selPerson,nickMap[selPerson]);if(!matchesPerson(o.SalesPerson,variants))return false;}}return true;
   });}
   var fOrders=filterByDate(allOrders);
   var fUpsell=filterByDate(upsellOrders);
@@ -1561,13 +1561,16 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   });
   var days=Object.values(dayMap).sort(function(a,b){return b.date>a.date?1:-1;});
 
-  // สรุปแต่ละคน (สำหรับแสดงปุ่มเลือก)
+  // สรุปแต่ละคน — group by AccountEmail (unique)
   var personSummary={};
+  var emailToDisplay={};
+  (accounts||[]).forEach(function(a){if(a.username)emailToDisplay[a.username]=a.displayName;});
   filtered.forEach(function(o){
-    var p=o.SalesPerson||"?";
-    if(!personSummary[p])personSummary[p]={name:p,count:0,sales:0,prev:0,diff:0};
-    personSummary[p].count++;personSummary[p].sales+=Number(o.SalePrice)||0;
-    var rm=String(o.Remark||"");var pm=rm.match(/\[PREV:(\d+)\]/);if(pm){var pp=Number(pm[1]);personSummary[p].prev+=pp;personSummary[p].diff+=(Number(o.SalePrice)||0)-pp;}
+    var key=o.AccountEmail||o.SalesPerson||"?";
+    var displayName=emailToDisplay[key]||o.SalesPerson||key;
+    if(!personSummary[displayName])personSummary[displayName]={name:displayName,count:0,sales:0,prev:0,diff:0};
+    personSummary[displayName].count++;personSummary[displayName].sales+=Number(o.SalePrice)||0;
+    var rm=String(o.Remark||"");var pm=rm.match(/\[PREV:(\d+)\]/);if(pm){var pp=Number(pm[1]);personSummary[displayName].prev+=pp;personSummary[displayName].diff+=(Number(o.SalePrice)||0)-pp;}
   });
   var personList=Object.values(personSummary).sort(function(a,b){return b.sales-a.sales;});
   var personListUpsell=Object.values(personSummary).sort(function(a,b){return b.diff-a.diff;});
@@ -1613,7 +1616,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       {isAdmin&&<div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>พนักงาน:</span>
         <button onClick={function(){setSelPerson("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selPerson==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selPerson==="ALL"?"#fef3c7":"#fff",color:selPerson==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทุกคน</button>
-        {staffNames.map(function(n){var active=selPerson===n;var variants=getNameVariants(n,nickMap[n]);var ps=null;Object.keys(personSummary).forEach(function(k){if(matchesPerson(k,variants)){if(!ps)ps={count:0,sales:0,diff:0};ps.count+=personSummary[k].count;ps.sales+=personSummary[k].sales;ps.diff+=(personSummary[k].diff||0);}});return<button key={n} onClick={function(){setSelPerson(n);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid #d97706":"1px solid #e2e8f0",background:active?"#fef3c7":"#fff",color:active?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{n} {ps?<span style={{fontSize:10,color:"#94a3b8"}}>({ps.count})</span>:""}{tab==="upsell"&&ps&&ps.diff!==0?<span style={{fontSize:10,fontWeight:700,color:ps.diff>=0?"#10b981":"#ef4444",marginLeft:4}}>{ps.diff>=0?"+":""}฿{ps.diff.toLocaleString()}</span>:""}</button>;})}
+        {staffNames.map(function(n){var active=selPerson===n;var ps=personSummary[n];return<button key={n} onClick={function(){setSelPerson(n);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid #d97706":"1px solid #e2e8f0",background:active?"#fef3c7":"#fff",color:active?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{n} {ps?<span style={{fontSize:10,color:"#94a3b8"}}>({ps.count})</span>:""}{tab==="upsell"&&ps&&ps.diff!==0?<span style={{fontSize:10,fontWeight:700,color:ps.diff>=0?"#10b981":"#ef4444",marginLeft:4}}>{ps.diff>=0?"+":""}฿{ps.diff.toLocaleString()}</span>:""}</button>;})}
       </div>}
     </div>
 
@@ -1770,7 +1773,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
 function TrackingSearchPage({allOrders,upsellOrders,user,isAdmin}){
   var[q,setQ]=useState("");
   // พนักงานเห็นแค่ของตัวเอง, admin เห็นทั้งหมด
-  var myOrders=isAdmin?(allOrders||[]).concat(upsellOrders||[]):(function(){var variants=getNameVariants(user.displayName,user.nickname);return(allOrders||[]).concat(upsellOrders||[]).filter(function(o){return matchesPerson(o.SalesPerson,variants);});})();
+  var myOrders=isAdmin?(allOrders||[]).concat(upsellOrders||[]):(allOrders||[]).concat(upsellOrders||[]).filter(function(o){return o.AccountEmail===user.username;});
   var results=q.length>=2?myOrders.filter(function(o){var ql=q.toLowerCase();return phoneMatch(o.MobileNo,q)||String(o.Name||"").toLowerCase().indexOf(ql)>=0||String(o.TrackingNo||"").toLowerCase().indexOf(ql)>=0||String(o.OrderID||"").toLowerCase().indexOf(ql)>=0;}):[]; 
   var withTracking=results.filter(function(o){return o.TrackingNo;});
   var noTracking=results.filter(function(o){return!o.TrackingNo;});
