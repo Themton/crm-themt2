@@ -1447,9 +1447,9 @@ function ExportTrackingPage({allOrders,upsellOrders,onExport}){
   var totalCOD=filtered.reduce(function(s,o){return s+Number(o.COD||0);},0);
 
   function exportCSV(){
-    var rows=[["ลำดับ","วันที่","เวลา","ชื่อลูกค้า","เบอร์โทร","เลขTracking","ราคา","COD","ประเภท","สถานะFlash","ที่มา","พนักงาน","หมายเหตุ","ช่องทางการขาย"]];
+    var rows=[["ลำดับ","วันที่","เวลา","ชื่อลูกค้า","เบอร์โทร","เลขTracking","ราคา","COD","ประเภท","สถานะFlash","ที่มา","พนักงาน","อีเมลพนักงาน","หมายเหตุ","ช่องทางการขาย"]];
     filtered.forEach(function(o,i){
-      rows.push([(i+1),getDate(o.Timestamp),getTime(o.Timestamp),o.Name,o.MobileNo,o.TrackingNo,o.SalePrice,o.COD||"",Number(o.COD||0)>0?"COD":"โอน",o.FlashStatus||"",o._table==="upsell"?"Upsell":"Order",o.SalesPerson,String(o.Remark||"").replace(/\[PREV:\d+\]\s*/g,""),"CRM"]);
+      rows.push([(i+1),getDate(o.Timestamp),getTime(o.Timestamp),o.Name,o.MobileNo,o.TrackingNo,o.SalePrice,o.COD||"",Number(o.COD||0)>0?"COD":"โอน",o.FlashStatus||"",o._table==="upsell"?"Upsell":"Order",o.SalesPerson,o.AccountEmail||"",String(o.Remark||"").replace(/\[PREV:\d+\]\s*/g,""),"CRM"]);
     });
     var csv="\uFEFF"+rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"';}).join(",");}).join("\n");
     var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="tracking-export-"+from+"-to-"+to+".csv";a.click();URL.revokeObjectURL(url);
