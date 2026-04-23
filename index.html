@@ -567,6 +567,7 @@ function App(){var _s=useState;
   async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var em={};(accounts||[]).forEach(function(a){em[a.username]=a.displayName;});setAllOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){notify("โหลดผิดพลาด","warning");}}
   async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var em={};(accounts||[]).forEach(function(a){em[a.username]=a.displayName;});setUpsellOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){}}
   useEffect(function(){if(sbOk){loadAccounts();loadUpsellPrices();}},[sbOk]);
+  useEffect(function(){if(accounts.length>0&&(allOrders.length>0||upsellOrders.length>0)){var em={};accounts.forEach(function(a){em[a.username]=a.displayName;});if(allOrders.length>0&&!allOrders[0].StaffName){setAllOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}if(upsellOrders.length>0&&!upsellOrders[0].StaffName){setUpsellOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}}},[accounts]);
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
     // Auto-refresh ทุก 15 วินาที
     var interval=setInterval(function(){loadOrders();loadUpsell();},60000);
@@ -673,7 +674,7 @@ function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setSh
   useEffect(function(){setPg(1);},[search,dateFrom,dateTo,statusFilter]);
   var totalPages=Math.max(1,Math.ceil(filtered.length/perPage));var pageOrders=filtered.slice((pg-1)*perPage,(pg-1)*perPage+perPage);
   var countByStatus={};orders.forEach(function(o){var s=o.Status||"รอส่ง";countByStatus[s]=(countByStatus[s]||0)+1;});
-  var personMap={};orders.forEach(function(o){var p=o.SalesPerson||"?";if(!personMap[p])personMap[p]={name:p,count:0,sales:0,cod:0,transfer:0,first:"99:99",last:"00:00"};personMap[p].count++;personMap[p].sales+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)personMap[p].cod+=c;else personMap[p].transfer+=Number(o.SalePrice)||0;var tm=getTime(o.Timestamp);if(tm&&tm<personMap[p].first)personMap[p].first=tm;if(tm&&tm>personMap[p].last)personMap[p].last=tm;});
+  var personMap={};orders.forEach(function(o){var p=o.StaffName||o.SalesPerson||"?";if(!personMap[p])personMap[p]={name:p,count:0,sales:0,cod:0,transfer:0,first:"99:99",last:"00:00"};personMap[p].count++;personMap[p].sales+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)personMap[p].cod+=c;else personMap[p].transfer+=Number(o.SalePrice)||0;var tm=getTime(o.Timestamp);if(tm&&tm<personMap[p].first)personMap[p].first=tm;if(tm&&tm>personMap[p].last)personMap[p].last=tm;});
   var persons=Object.values(personMap).sort(function(a,b){return b.sales-a.sales;});
   var tS=0,tC=0,tT=0;orders.forEach(function(o){tS+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)tC+=c;else tT+=Number(o.SalePrice)||0;});
   // คำนวณ Upsell ส่วนต่าง (กรองวันเดียวกัน)
@@ -681,7 +682,7 @@ function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setSh
   var uS=0,uPrev=0,uDiff=0,uCount=dayUpsell.length;
   dayUpsell.forEach(function(o){uS+=Number(o.SalePrice)||0;var rm=String(o.Remark||"");var pm=rm.match(/\[PREV:(\d+)\]/);if(pm){var pp=Number(pm[1]);uPrev+=pp;uDiff+=(Number(o.SalePrice)||0)-pp;}});
   // ส่วนต่างรายคน
-  var upsellByPerson={};dayUpsell.forEach(function(o){var p=o.SalesPerson||"?";if(!upsellByPerson[p])upsellByPerson[p]={count:0,sales:0,prev:0,diff:0};upsellByPerson[p].count++;upsellByPerson[p].sales+=Number(o.SalePrice)||0;var rm=String(o.Remark||"");var pm=rm.match(/\[PREV:(\d+)\]/);if(pm){var pp=Number(pm[1]);upsellByPerson[p].prev+=pp;upsellByPerson[p].diff+=(Number(o.SalePrice)||0)-pp;}});
+  var upsellByPerson={};dayUpsell.forEach(function(o){var p=o.StaffName||o.SalesPerson||"?";if(!upsellByPerson[p])upsellByPerson[p]={count:0,sales:0,prev:0,diff:0};upsellByPerson[p].count++;upsellByPerson[p].sales+=Number(o.SalePrice)||0;var rm=String(o.Remark||"");var pm=rm.match(/\[PREV:(\d+)\]/);if(pm){var pp=Number(pm[1]);upsellByPerson[p].prev+=pp;upsellByPerson[p].diff+=(Number(o.SalePrice)||0)-pp;}});
   return(<div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}><div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><h1 style={{fontSize:22,fontWeight:800,margin:0}}>📋 ออเดอร์</h1><input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/><span style={{fontSize:12,color:"#94a3b8"}}>ถึง</span><input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13,fontWeight:600}}/><button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===todayStr()&&dateTo===todayStr())}>วันนี้</button><button onClick={function(){setDateFrom(sevenDaysAgo());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===sevenDaysAgo()&&dateTo===todayStr())}>7 วัน</button><button onClick={function(){setDateFrom(monthStart());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===monthStart()&&dateTo===todayStr())}>เดือนนี้</button><button onClick={function(){setDateFrom(prevMonthStart());setDateTo(prevMonthEnd());}} style={dateBtnStyle(dateFrom===prevMonthStart()&&dateTo===prevMonthEnd())}>เดือนก่อน</button><button onClick={function(){setDateFrom(threeMonthsAgo());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===threeMonthsAgo()&&dateTo===todayStr())}>3 เดือน</button><button onClick={function(){setDateFrom("2020-01-01");setDateTo(todayStr());}} style={dateBtnStyle(dateFrom==="2020-01-01"&&dateTo===todayStr())}>ทั้งหมด</button></div><button style={S.addBtn} onClick={function(){setShowForm(!showForm);}}>{showForm?"✕ ปิด":"＋ สร้าง"}</button></div>
     {/* สถานะ + Export */}
@@ -738,7 +739,7 @@ function UpsellPage({showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,onUpda
   var countByStatus={};dayOrders.forEach(function(o){var s=o.Status||"รอส่ง";countByStatus[s]=(countByStatus[s]||0)+1;});
   var tS=0,tC=0,tT=0,tPrev=0,tDiff=0;filteredUpsell.forEach(function(o){tS+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)tC+=c;else tT+=Number(o.SalePrice)||0;var rm=String(o.Remark||"");var pm=rm.match(/\[PREV:(\d+)\]/);if(pm){var pp=Number(pm[1]);tPrev+=pp;tDiff+=(Number(o.SalePrice)||0)-pp;}});
 
-  var personMap={};filteredUpsell.forEach(function(o){var p=o.SalesPerson||"?";if(!personMap[p])personMap[p]={name:p,count:0,sales:0};personMap[p].count++;personMap[p].sales+=Number(o.SalePrice)||0;});
+  var personMap={};filteredUpsell.forEach(function(o){var p=o.StaffName||o.SalesPerson||"?";if(!personMap[p])personMap[p]={name:p,count:0,sales:0};personMap[p].count++;personMap[p].sales+=Number(o.SalePrice)||0;});
   var persons=Object.values(personMap).sort(function(a,b){return b.sales-a.sales;});
 
   return<div>
@@ -974,7 +975,7 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin,onUpdateSt
   // parse [PREV:xxx] จาก Remark
   var rmRaw=String(o.Remark||"");var prevM=rmRaw.match(/\[PREV:(\d+)\]\s*/);var prevPr=prevM?Number(prevM[1]):0;var cleanRm=prevM?rmRaw.replace(prevM[0],""):rmRaw;var curPr=Number(o.SalePrice||0);var diffPr=prevPr>0?curPr-prevPr:0;
   return<div style={S.modalOverlay} onClick={onClose}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
-  <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div><div style={{fontSize:11,fontFamily:"'JetBrains Mono'",color:"#d97706",fontWeight:600}}>{o.OrderID}</div><div style={{fontSize:12,color:"#94a3b8"}}>{o.Timestamp} • {o.SalesPerson}</div></div><button onClick={onClose} style={S.closeBtn}>✕</button></div>
+  <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div><div style={{fontSize:11,fontFamily:"'JetBrains Mono'",color:"#d97706",fontWeight:600}}>{o.OrderID}</div><div style={{fontSize:12,color:"#94a3b8"}}>{o.Timestamp} • {o.StaffName||o.SalesPerson}</div></div><button onClick={onClose} style={S.closeBtn}>✕</button></div>
   {editing?<div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{editInput("เบอร์โทร","MobileNo")}{editInput("ชื่อลูกค้า","Name")}</div>
     {editInput("ที่อยู่","Address")}
@@ -1580,12 +1581,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   var personListUpsell=Object.values(personSummary).sort(function(a,b){return b.diff-a.diff;});
 
   // แยก TOP SALE สำหรับ Orders / Upsell (ใช้ในหน้ารวม)
-  function buildPersonList(list){var m={};list.forEach(function(o){var p=o.SalesPerson||"?";if(!m[p])m[p]={name:p,count:0,sales:0};m[p].count++;m[p].sales+=Number(o.SalePrice)||0;});return Object.values(m).sort(function(a,b){return b.sales-a.sales;});}
-  var plOrders=buildPersonList(fOrders);
-  var plUpsell=buildPersonList(fUpsell);
-
-  // แยก TOP SALE สำหรับ Orders / Upsell
-  function buildPersonList(list){var m={};(list||[]).forEach(function(o){var p=o.SalesPerson||"?";if(!m[p])m[p]={name:p,count:0,sales:0};m[p].count++;m[p].sales+=Number(o.SalePrice)||0;});return Object.values(m).sort(function(a,b){return b.sales-a.sales;});}
+  function buildPersonList(list){var m={};(list||[]).forEach(function(o){var p=o.StaffName||o.SalesPerson||"?";if(!m[p])m[p]={name:p,count:0,sales:0};m[p].count++;m[p].sales+=Number(o.SalePrice)||0;});return Object.values(m).sort(function(a,b){return b.sales-a.sales;});}
   var plOrders=buildPersonList(fOrders);
   var plUpsell=buildPersonList(fUpsell);
 
@@ -1801,7 +1797,7 @@ function TrackingSearchPage({allOrders,upsellOrders,user,isAdmin}){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
           <div>
             <div style={{fontWeight:700,fontSize:14}}>{o.Name} <span style={{color:"#94a3b8",fontWeight:400,fontSize:12}}>{o.MobileNo}</span></div>
-            <div style={{fontSize:11,color:"#94a3b8"}}>{o.OrderID} • {o.Timestamp} • {o.SalesPerson}</div>
+            <div style={{fontSize:11,color:"#94a3b8"}}>{o.OrderID} • {o.Timestamp} • {o.StaffName||o.SalesPerson}</div>
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:14,fontWeight:700,color:Number(o.COD)>0?"#ef4444":"#10b981"}}>{Number(o.COD)>0?"COD ฿"+Number(o.COD).toLocaleString():"โอน ฿"+Number(o.SalePrice).toLocaleString()}</div>
