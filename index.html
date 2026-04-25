@@ -41,6 +41,7 @@ textarea:focus,input:focus,select:focus{border-color:#fbbf24!important;box-shado
 <script>
 function getNameVariants(dn,nickname){var names=[];if(nickname){names.push(nickname);if(nickname.indexOf("(")>=0)return names;}if(!dn)return names.length?names:[dn];var parts=[];var re=/\(([^)]+)\)/g;var m;while((m=re.exec(dn))!==null)parts.push(m[1].trim());parts.forEach(function(p){if(names.indexOf(p)<0)names.push(p);});var noP=dn.replace(/\s*\([^)]*\)/g,"").trim();if(noP&&names.indexOf(noP)<0)names.push(noP);return names;}
 function extractNickname(dn,nickname){if(nickname)return nickname;if(!dn)return dn;var m=dn.match(/\(([^)]+)\)/);return m?m[1].trim():dn;}
+function extractRealName(dn){if(!dn)return"";return dn.replace(/\s*\([^)]*\)/g,"").trim()||dn;}
 function matchesPerson(sp,variants){if(!sp)return false;for(var i=0;i<variants.length;i++){var v=variants[i];if(sp===v)return true;if(v.indexOf("(")<0&&v.indexOf(")")<0&&sp.indexOf(v)===0)return true;}return false;}
 </script>
 <script type="text/babel">
@@ -564,8 +565,8 @@ function App(){var _s=useState;
   async function saveUpsellPrices(prices){try{var val=prices.join(",");await sbFetch("app_settings?key=eq.upsell_prices",{method:"PATCH",body:{value:val,updated_at:new Date().toISOString()}});setUpsellPrices(prices);notify("✅ บันทึกราคา Upsell แล้ว");}catch(e){notify("❌ บันทึกไม่สำเร็จ","warning");}}
   function notify(msg,type){setNotif({msg:msg,type:type||"success"});setTimeout(function(){setNotif(null);},3500);}
   async function loadAccounts(){try{var d=await dbGetAccounts();setAccounts(d);var cur=userRef.current;if(cur){var match=d.find(function(a){return a.username===cur.username;});if(match&&(cur.nickname!==match.nickname||cur.displayName!==match.displayName)){var u2={...cur,nickname:match.nickname,displayName:match.displayName};userRef.current=u2;setUser(u2);localStorage.setItem("ps_user",JSON.stringify(u2));}}}catch(e){console.error(e);}}
-  async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var em={};(accounts||[]).forEach(function(a){em[a.username]=a.displayName;});setAllOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){notify("โหลดผิดพลาด","warning");}}
-  async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var em={};(accounts||[]).forEach(function(a){em[a.username]=a.displayName;});setUpsellOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){}}
+  async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var accs=(accounts&&accounts.length>0)?accounts:await dbGetAccounts();var em={};accs.forEach(function(a){em[a.username]=extractRealName(a.displayName);});setAllOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){notify("โหลดผิดพลาด","warning");}}
+  async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var accs=(accounts&&accounts.length>0)?accounts:await dbGetAccounts();var em={};accs.forEach(function(a){em[a.username]=extractRealName(a.displayName);});setUpsellOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){}}
   useEffect(function(){if(sbOk){loadAccounts();loadUpsellPrices();}},[sbOk]);
   useEffect(function(){if(accounts.length>0&&(allOrders.length>0||upsellOrders.length>0)){var em={};accounts.forEach(function(a){em[a.username]=a.displayName;});if(allOrders.length>0&&!allOrders[0].StaffName){setAllOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}if(upsellOrders.length>0&&!upsellOrders[0].StaffName){setUpsellOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}}},[accounts]);
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
@@ -603,7 +604,7 @@ function App(){var _s=useState;
       loadOrders();loadUpsell();
     }catch(e){setStatusProgress(null);notify("ผิดพลาด","warning");}
   }
-  var emailToName={};(accounts||[]).forEach(function(a){emailToName[a.username]=a.displayName;});
+  var emailToName={};(accounts||[]).forEach(function(a){emailToName[a.username]=extractRealName(a.displayName);});
   function handleExport(orders,format,table){
     if(orders.length===0){alert("ไม่มีออเดอร์ให้ Export");return;}
     var enriched=orders.map(function(o){return{...o,StaffName:emailToName[o.AccountEmail]||""};});
@@ -1435,7 +1436,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
   </div>;
 }
 function ExportTrackingPage({allOrders,upsellOrders,onExport,accounts}){
-  var emailToName={};(accounts||[]).forEach(function(a){emailToName[a.username]=a.displayName;});
+  var emailToName={};(accounts||[]).forEach(function(a){emailToName[a.username]=extractRealName(a.displayName);});
   var[from,setFrom]=useState(todayStr());
   var[to,setTo]=useState(todayStr());
   var[source,setSource]=useState("ALL");
