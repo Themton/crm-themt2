@@ -1650,6 +1650,79 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       <div style={{textAlign:"center",fontSize:10,color:"#94a3b8",marginTop:6}}>วันที่ / จำนวนออเดอร์</div>
     </div>}
 
+    {/* 📅 สรุปวันขายดี — กราฟแยกตามวันในสัปดาห์ */}
+    {days.length>0&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>📅 สรุปวันขายดี (แยกตามวันในสัปดาห์)</div>
+      {(function(){
+        var dayNames=["อาทิตย์","จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์"];
+        var dowMap={};dayNames.forEach(function(n,i){dowMap[i]={name:n,sales:0,count:0,orders:0};});
+        filtered.forEach(function(o){
+          var ts=o.Timestamp;if(!ts)return;
+          var d;
+          if(typeof ts==="string"&&ts.match(/^\d{4}-\d{2}-\d{2}/)){d=new Date(ts);}
+          else if(typeof ts==="number"){d=new Date(ts);}
+          else{d=new Date(ts);}
+          if(isNaN(d.getTime()))return;
+          var dow=d.getDay();
+          dowMap[dow].sales+=Number(o.SalePrice)||0;
+          dowMap[dow].count++;
+        });
+        var dowArr=Object.values(dowMap);
+        var maxSales=Math.max.apply(null,dowArr.map(function(d){return d.sales;}))||1;
+        var bestIdx=0;dowArr.forEach(function(d,i){if(d.sales>dowArr[bestIdx].sales)bestIdx=i;});
+        var totalAll=dowArr.reduce(function(s,d){return s+d.sales;},0);
+        return<div>
+          <div style={{display:"flex",alignItems:"flex-end",gap:6,height:180,padding:"0 8px",marginBottom:8}}>
+            {dowArr.map(function(d,i){
+              var h=Math.max(d.sales/maxSales*150,4);
+              var isBest=i===bestIdx&&d.sales>0;
+              return<div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,minWidth:0}}>
+                <span style={{fontSize:10,fontWeight:700,color:isBest?"#d97706":"#64748b"}}>฿{d.sales>=1000?(Math.round(d.sales/1000)+"k"):d.sales.toLocaleString()}</span>
+                <div style={{width:"100%",maxWidth:50,borderRadius:"6px 6px 0 0",background:isBest?"linear-gradient(180deg,#f59e0b,#d97706)":d.sales===0?"#e2e8f0":"linear-gradient(180deg,#93c5fd,#3b82f6)",height:h,transition:"height .3s",position:"relative"}}>
+                  {isBest&&<span style={{position:"absolute",top:-20,left:"50%",transform:"translateX(-50%)",fontSize:14}}>🏆</span>}
+                </div>
+                <span style={{fontSize:10,fontWeight:isBest?800:600,color:isBest?"#d97706":"#64748b"}}>{d.name}</span>
+                <span style={{fontSize:9,color:"#94a3b8"}}>{d.count} รายการ</span>
+              </div>;
+            })}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,marginTop:12,padding:"12px 0",borderTop:"1px solid #f1f5f9"}}>
+            <div style={{padding:10,borderRadius:8,background:"#fffbeb",textAlign:"center"}}>
+              <div style={{fontSize:10,color:"#92400e",fontWeight:600}}>🏆 วันขายดีที่สุด</div>
+              <div style={{fontSize:16,fontWeight:800,color:"#d97706"}}>{dowArr[bestIdx].name}</div>
+              <div style={{fontSize:11,color:"#64748b"}}>฿{dowArr[bestIdx].sales.toLocaleString()} ({dowArr[bestIdx].count} ออเดอร์)</div>
+            </div>
+            <div style={{padding:10,borderRadius:8,background:"#f0fdf4",textAlign:"center"}}>
+              <div style={{fontSize:10,color:"#166534",fontWeight:600}}>📊 เฉลี่ยต่อวัน</div>
+              <div style={{fontSize:16,fontWeight:800,color:"#10b981"}}>฿{Math.round(totalAll/7).toLocaleString()}</div>
+              <div style={{fontSize:11,color:"#64748b"}}>{Math.round(dowArr.reduce(function(s,d){return s+d.count;},0)/7)} ออเดอร์</div>
+            </div>
+            <div style={{padding:10,borderRadius:8,background:"#eff6ff",textAlign:"center"}}>
+              <div style={{fontSize:10,color:"#1e40af",fontWeight:600}}>📈 % วันขายดีที่สุด</div>
+              <div style={{fontSize:16,fontWeight:800,color:"#2563eb"}}>{totalAll>0?Math.round(dowArr[bestIdx].sales/totalAll*100):0}%</div>
+              <div style={{fontSize:11,color:"#64748b"}}>ของยอดทั้งหมด</div>
+            </div>
+          </div>
+          <div style={{marginTop:10}}>
+            <div style={{fontSize:11,fontWeight:600,color:"#64748b",marginBottom:6}}>🏅 อันดับวันขายดี</div>
+            {dowArr.slice().sort(function(a,b){return b.sales-a.sales;}).map(function(d,i){
+              var pct=maxSales>0?Math.round(d.sales/maxSales*100):0;
+              var medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":"";
+              return<div key={d.name} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:i<6?"1px solid #f8fafc":"none"}}>
+                <span style={{width:22,fontSize:12,textAlign:"center"}}>{medal||(i+1)}</span>
+                <span style={{width:60,fontSize:12,fontWeight:i<3?700:400,color:i===0?"#d97706":"#475569"}}>{d.name}</span>
+                <div style={{flex:1,height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:pct+"%",borderRadius:4,background:i===0?"linear-gradient(90deg,#f59e0b,#d97706)":i===1?"#60a5fa":i===2?"#93c5fd":"#cbd5e1",transition:"width .5s"}}/>
+                </div>
+                <span style={{fontSize:11,fontWeight:700,color:i===0?"#d97706":"#64748b",minWidth:65,textAlign:"right"}}>฿{d.sales.toLocaleString()}</span>
+                <span style={{fontSize:10,color:"#94a3b8",minWidth:45,textAlign:"right"}}>{d.count} รายการ</span>
+              </div>;
+            })}
+          </div>
+        </div>;
+      })()}
+    </div>}
+
     {/* 🏆 TOP SALE */}
     {selPerson==="ALL"&&tab!=="all"&&personList.length>0&&<div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
       <div style={{fontSize:13,fontWeight:700,marginBottom:12}}>🏆 TOP SALE {tab==="upsell"?"(Upsell — ส่วนต่าง)":"(ออเดอร์)"}</div>
