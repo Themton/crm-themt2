@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v23";
+var APP_VERSION = "20260502v24";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -922,7 +922,9 @@ function ParcelReportPage({parcels,accounts,user}){
   // กรองตามวันที่ + คน (ไม่กรองสถานะ — ใช้แสดงจำนวนปุ่ม)
   var preFiltered=(parcels||[]).filter(function(p){
     var d=p.date||"";
-    if(d<dateFrom||d>dateTo)return false;
+    if(!d||d.length<10||d[4]!=="-")return false;
+    var ymd=d.substring(0,10);
+    if(ymd<dateFrom||ymd>dateTo)return false;
     if(selPerson!=="ALL"&&p.telesale!==selPerson)return false;
     return true;
   });
@@ -991,6 +993,7 @@ function ParcelReportPage({parcels,accounts,user}){
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>ถึง</span>
         <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13}}/>
         <button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===todayStr()&&dateTo===todayStr())}>วันนี้</button>
+        <button onClick={function(){var y=new Date();y.setDate(y.getDate()-1);var ys=y.getFullYear()+"-"+String(y.getMonth()+1).padStart(2,"0")+"-"+String(y.getDate()).padStart(2,"0");setDateFrom(ys);setDateTo(ys);}} style={dateBtnStyle(false)}>เมื่อวาน</button>
         <button onClick={function(){setDateFrom(sevenDaysAgo());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===sevenDaysAgo()&&dateTo===todayStr())}>7 วัน</button>
         <button onClick={function(){setDateFrom(monthStart());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===monthStart()&&dateTo===todayStr())}>เดือนนี้</button>
         <button onClick={function(){setDateFrom(prevMonthStart());setDateTo(prevMonthEnd());}} style={dateBtnStyle(dateFrom===prevMonthStart()&&dateTo===prevMonthEnd())}>เดือนก่อน</button>
