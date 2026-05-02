@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v12";
+var APP_VERSION = "20260502v13";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -716,6 +716,22 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       <div style={{width:16,height:16,borderRadius:"50%",border:"2px solid #3b82f6",borderTopColor:"transparent",animation:"spin 1s linear infinite"}}/>
       <span style={{fontSize:13,fontWeight:600,color:"#1e40af"}}>{autoStatus}</span>
     </div>}
+
+    {/* สถานะ Sync */}
+    <div style={{background:"#f8fafc",borderRadius:10,padding:"10px 16px",marginBottom:12,border:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",fontSize:12,color:"#64748b"}}>
+      <span>📋 ออเดอร์ทั้งหมด: <b style={{color:"#1e293b"}}>{myAllOrders.length}</b></span>
+      <span>🔢 มีเลขพัสดุ: <b style={{color:"#1e40af"}}>{myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3;}).length}</b></span>
+      <span>✅ ดึงแล้ว: <b style={{color:"#059669"}}>{(parcels||[]).length}</b></span>
+      <span>🆕 รอดึง: <b style={{color:withTracking.length>0?"#d97706":"#94a3b8"}}>{withTracking.length}</b></span>
+      {withTracking.length>0&&<button onClick={function(){autoRef.current=false;setAutoStatus("📥 กำลังดึง...");setTimeout(function(){
+        var existing2={};(parcels||[]).forEach(function(p){if(p.tracking_no)existing2[p.tracking_no]=true;});
+        var newOnes=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existing2[o.TrackingNo];});
+        if(newOnes.length===0){setAutoStatus("");notify("ไม่มีพัสดุใหม่","warning");return;}
+        autoRef.current=true;
+        (async function(){var ok=0;for(var i=0;i<newOnes.length;i++){var o=newOnes[i];try{await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});ok++;}catch(e){}}
+        setAutoStatus("");if(ok>0){notify("📥 ดึงสำเร็จ "+ok+" รายการ");onRefresh();}})();
+      },200);}} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#d97706",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer"}}>⚡ ดึงเลย</button>}
+    </div>
 
     {/* Summary */}
     <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
