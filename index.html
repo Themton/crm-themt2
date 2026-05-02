@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v8";
+var APP_VERSION = "20260502v9";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -827,6 +827,7 @@ function ParcelReportPage({parcels,accounts,user}){
   var[dateFrom,setDateFrom]=_s(monthStart());
   var[dateTo,setDateTo]=_s(todayStr());
   var[selPerson,setSelPerson]=_s("ALL");
+  var[selStatus,setSelStatus]=_s("ALL");
   var[expandPerson,setExpandPerson]=_s(null);
 
   var teleNames=[];var nickMap={};
@@ -836,23 +837,27 @@ function ParcelReportPage({parcels,accounts,user}){
     if(a.nickname)nickMap[a.displayName]=a.nickname;
   });
 
-  // กรองตามวันที่
-  var filtered=(parcels||[]).filter(function(p){
+  // กรองตามวันที่ + คน (ไม่กรองสถานะ — ใช้แสดงจำนวนปุ่ม)
+  var preFiltered=(parcels||[]).filter(function(p){
     var d=p.date||"";
     if(d<dateFrom||d>dateTo)return false;
     if(selPerson!=="ALL"&&p.telesale!==selPerson)return false;
     return true;
   });
+  // กรองตามวันที่ + คน + สถานะ
+  var filtered=selStatus==="ALL"?preFiltered:preFiltered.filter(function(p){return p.status===selStatus;});
 
   // --- สรุปรวม ---
   var total=filtered.length;
   var byStatus={};PARCEL_STATUSES.forEach(function(s){byStatus[s.v]=0;});
+  var byStatusAll={};PARCEL_STATUSES.forEach(function(s){byStatusAll[s.v]=0;});
   var totalCOD=0;var codConfirmed=0;
   filtered.forEach(function(p){
     if(byStatus[p.status]!==undefined)byStatus[p.status]++;
     var cod=Number(p.cod)||0;totalCOD+=cod;
     if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว")codConfirmed+=cod;
   });
+  preFiltered.forEach(function(p){if(byStatusAll[p.status]!==undefined)byStatusAll[p.status]++;});
   var successRate=total>0?Math.round((byStatus["ยืนยันรับ"]||0)/total*100):0;
   var contactRate=total>0?Math.round(((byStatus["ยืนยันรับ"]||0)+(byStatus["ติดต่อได้"]||0)+(byStatus["ส่งแล้ว"]||0))/total*100):0;
 
@@ -912,6 +917,11 @@ function ParcelReportPage({parcels,accounts,user}){
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>TeleSale:</span>
         <button onClick={function(){setSelPerson("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selPerson==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selPerson==="ALL"?"#fef3c7":"#fff",color:selPerson==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทุกคน</button>
         {teleNames.map(function(n){var active=selPerson===n;var pm=personMap[n];return<button key={n} onClick={function(){setSelPerson(n);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid #d97706":"1px solid #e2e8f0",background:active?"#fef3c7":"#fff",color:active?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{n} {pm?<span style={{fontSize:10,color:"#94a3b8"}}>({pm.total})</span>:""}</button>;})}
+      </div>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:10}}>
+        <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>สถานะ:</span>
+        <button onClick={function(){setSelStatus("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selStatus==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selStatus==="ALL"?"#fef3c7":"#fff",color:selStatus==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทั้งหมด</button>
+        {PARCEL_STATUSES.map(function(s){var active=selStatus===s.v;var count=byStatusAll[s.v]||0;return<button key={s.v} onClick={function(){setSelStatus(s.v);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid "+s.c:"1px solid #e2e8f0",background:active?s.bg:"#fff",color:active?s.c:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:s.c}}>{s.v}</span> <span style={{fontSize:10,color:"#94a3b8"}}>({count})</span></button>;})}
       </div>
     </div>
 
