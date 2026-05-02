@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v9";
+var APP_VERSION = "20260502v10";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -590,7 +590,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
 
   var filtered=(parcels||[]).filter(function(p){
     var ms=!search||String(p.tracking_no||"").indexOf(search)>=0||String(p.customer_name||"").indexOf(search)>=0||String(p.phone||"").indexOf(search)>=0;
-    var mst=filterStatus==="ทั้งหมด"||p.status===filterStatus;
+    var mst=filterStatus==="ทั้งหมด"||filterStatus==="ว่างเปล่า"?(!p.status&&filterStatus==="ว่างเปล่า")||(filterStatus==="ทั้งหมด"):p.status===filterStatus;
     var mt=filterTele==="ทั้งหมด"||p.telesale===filterTele;
     return ms&&mst&&mt;
   });
@@ -657,7 +657,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
     }catch(e){notify("❌ "+String(e.message||e),"warning");}
   }
   async function handleDel(id){if(!confirm("ลบรายการนี้?"))return;try{await dbDeleteParcel(id);notify("ลบสำเร็จ");onRefresh();}catch(e){notify("ลบผิดพลาด","warning");}}
-  async function quickStatus(id,st){try{await sbFetch("parcel_checks?id=eq."+id,{method:"PATCH",body:{status:st,check_date:todayVal}});onRefresh();}catch(e){}}
+  async function quickStatus(id,st){var actualSt=st===" "?"":st;try{await sbFetch("parcel_checks?id=eq."+id,{method:"PATCH",body:{status:actualSt,check_date:actualSt?todayVal:""}});onRefresh();}catch(e){}}
   function fmtDate(d){if(!d)return"-";try{var dt=new Date(d);return dt.toLocaleDateString("th-TH",{day:"2-digit",month:"2-digit",year:"2-digit"});}catch(e){return d;}}
 
   var cardS={flex:"1 1 140px",background:"#fff",borderRadius:12,padding:"14px 18px",boxShadow:"0 1px 3px rgba(0,0,0,.06)"};
@@ -686,6 +686,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       <select value={filterStatus} onChange={function(e){setFilterStatus(e.target.value);}} style={{padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,background:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
         <option>ทั้งหมด</option>
         {PARCEL_STATUSES.map(function(s){return<option key={s.v}>{s.v}</option>;})}
+        <option>ว่างเปล่า</option>
       </select>
       <select value={filterTele} onChange={function(e){setFilterTele(e.target.value);}} style={{padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,background:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
         <option>ทั้งหมด</option>
@@ -718,7 +719,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:600}}>{p.customer_name}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{p.phone}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate(p.check_date)}</td>
-            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,...pStatusStyle(p.status)}}>{p.status}</span></td>
+            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,...pStatusStyle(p.status)}}>{p.status||"ว่างเปล่า"}</span></td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}><span style={{padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:600,background:"#f0f9ff",color:"#0369a1",border:"1px solid #bae6fd"}}>{p.telesale}</span></td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:700,color:"#059669",textAlign:"right"}}>฿{(Number(p.cod)||0).toLocaleString()}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",textAlign:"center"}}>
@@ -727,6 +728,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
                 <button onClick={function(){handleDel(p.id);}} style={{padding:"3px 6px",border:"none",background:"transparent",cursor:"pointer",fontSize:14}} title="ลบ">🗑️</button>
                 <select value="" onChange={function(e){if(e.target.value)quickStatus(p.id,e.target.value);}} style={{padding:"3px 6px",border:"1px solid #e2e8f0",borderRadius:6,fontSize:10,background:"#fff",cursor:"pointer",fontFamily:"inherit",color:"#64748b"}}>
                   <option value="">สถานะ</option>
+                  <option value=" ">ว่างเปล่า</option>
                   {PARCEL_STATUSES.map(function(s){return<option key={s.v} value={s.v}>{s.v}</option>;})}
                 </select>
               </div>
@@ -750,7 +752,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
           <label style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,fontWeight:600,color:"#475569"}}>ชื่อลูกค้า *<input value={form.customer_name} onChange={function(e){setForm({...form,customer_name:e.target.value});}} style={{padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit"}}/></label>
           <label style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,fontWeight:600,color:"#475569"}}>เบอร์โทร<input value={form.phone} onChange={function(e){setForm({...form,phone:e.target.value});}} placeholder="0xx-xxx-xxxx" style={{padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit"}}/></label>
           <label style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,fontWeight:600,color:"#475569"}}>วันเช็ค<input type="date" value={form.check_date} onChange={function(e){setForm({...form,check_date:e.target.value});}} style={{padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit"}}/></label>
-          <label style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,fontWeight:600,color:"#475569"}}>สถานะ<select value={form.status} onChange={function(e){setForm({...form,status:e.target.value});}} style={{padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit"}}>{PARCEL_STATUSES.map(function(s){return<option key={s.v}>{s.v}</option>;})}</select></label>
+          <label style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,fontWeight:600,color:"#475569"}}>สถานะ<select value={form.status} onChange={function(e){setForm({...form,status:e.target.value});}} style={{padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit"}}><option value="">ว่างเปล่า</option>{PARCEL_STATUSES.map(function(s){return<option key={s.v}>{s.v}</option>;})}</select></label>
           <label style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,fontWeight:600,color:"#475569"}}>TeleSale<select value={form.telesale} onChange={function(e){setForm({...form,telesale:e.target.value});}} style={{padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit"}}><option value="">-- เลือก --</option>{teleNames.map(function(t){return<option key={t}>{t}</option>;})}</select></label>
           <label style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,fontWeight:600,color:"#475569"}}>COD (บาท)<input type="number" value={form.cod} onChange={function(e){setForm({...form,cod:e.target.value});}} style={{padding:"8px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,outline:"none",fontFamily:"inherit"}}/></label>
         </div>
@@ -845,19 +847,20 @@ function ParcelReportPage({parcels,accounts,user}){
     return true;
   });
   // กรองตามวันที่ + คน + สถานะ
-  var filtered=selStatus==="ALL"?preFiltered:preFiltered.filter(function(p){return p.status===selStatus;});
+  var filtered=selStatus==="ALL"?preFiltered:selStatus===""?preFiltered.filter(function(p){return!p.status;}):preFiltered.filter(function(p){return p.status===selStatus;});
 
   // --- สรุปรวม ---
   var total=filtered.length;
-  var byStatus={};PARCEL_STATUSES.forEach(function(s){byStatus[s.v]=0;});
-  var byStatusAll={};PARCEL_STATUSES.forEach(function(s){byStatusAll[s.v]=0;});
+  var byStatus={};PARCEL_STATUSES.forEach(function(s){byStatus[s.v]=0;});byStatus[""]=0;
+  var byStatusAll={};PARCEL_STATUSES.forEach(function(s){byStatusAll[s.v]=0;});byStatusAll[""]=0;
   var totalCOD=0;var codConfirmed=0;
   filtered.forEach(function(p){
-    if(byStatus[p.status]!==undefined)byStatus[p.status]++;
+    var st=p.status||"";
+    if(byStatus[st]!==undefined)byStatus[st]++;else byStatus[""]++;
     var cod=Number(p.cod)||0;totalCOD+=cod;
     if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว")codConfirmed+=cod;
   });
-  preFiltered.forEach(function(p){if(byStatusAll[p.status]!==undefined)byStatusAll[p.status]++;});
+  preFiltered.forEach(function(p){var st=p.status||"";if(byStatusAll[st]!==undefined)byStatusAll[st]++;else byStatusAll[""]++;});
   var successRate=total>0?Math.round((byStatus["ยืนยันรับ"]||0)/total*100):0;
   var contactRate=total>0?Math.round(((byStatus["ยืนยันรับ"]||0)+(byStatus["ติดต่อได้"]||0)+(byStatus["ส่งแล้ว"]||0))/total*100):0;
 
@@ -922,6 +925,7 @@ function ParcelReportPage({parcels,accounts,user}){
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>สถานะ:</span>
         <button onClick={function(){setSelStatus("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selStatus==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selStatus==="ALL"?"#fef3c7":"#fff",color:selStatus==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทั้งหมด</button>
         {PARCEL_STATUSES.map(function(s){var active=selStatus===s.v;var count=byStatusAll[s.v]||0;return<button key={s.v} onClick={function(){setSelStatus(s.v);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid "+s.c:"1px solid #e2e8f0",background:active?s.bg:"#fff",color:active?s.c:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:s.c}}>{s.v}</span> <span style={{fontSize:10,color:"#94a3b8"}}>({count})</span></button>;})}
+        <button onClick={function(){setSelStatus("");}} style={{padding:"6px 14px",borderRadius:8,border:selStatus===""?"2px solid #cbd5e1":"1px solid #e2e8f0",background:selStatus===""?"#f1f5f9":"#fff",color:selStatus===""?"#475569":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:"#94a3b8"}}>ว่างเปล่า</span> <span style={{fontSize:10,color:"#94a3b8"}}>({byStatusAll[""]||0})</span></button>
       </div>
     </div>
 
