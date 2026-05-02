@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v1";
+var APP_VERSION = "20260502v2";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -565,13 +565,17 @@ async function dbDeleteParcel(id){await sbFetch("parcel_checks?id=eq."+id,{metho
 var PARCEL_STATUSES=[{v:"รอเช็ค",c:"#f59e0b",bg:"#fef3c7"},{v:"ติดต่อได้",c:"#10b981",bg:"#d1fae5"},{v:"ติดต่อไม่ได้",c:"#ef4444",bg:"#fee2e2"},{v:"ยืนยันรับ",c:"#3b82f6",bg:"#dbeafe"},{v:"ปฏิเสธ",c:"#6b7280",bg:"#f3f4f6"},{v:"ส่งแล้ว",c:"#8b5cf6",bg:"#ede9fe"},{v:"ตีกลับ",c:"#dc2626",bg:"#fecaca"}];
 function pStatusStyle(st){var f=PARCEL_STATUSES.find(function(s){return s.v===st;});return f?{color:f.c,background:f.bg}:{color:"#94a3b8",background:"#f1f5f9"};}
 
-function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,isAdmin,notify}){
+function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,isAdmin,notify,allOrders,upsellOrders}){
   var _s=useState;
   var[search,setSearch]=_s("");
   var[filterStatus,setFilterStatus]=_s("ทั้งหมด");
   var[filterTele,setFilterTele]=_s("ทั้งหมด");
   var[showModal,setShowModal]=_s(false);
   var[editId,setEditId]=_s(null);
+  var[importing,setImporting]=_s(false);
+  var[showImport,setShowImport]=_s(false);
+  var[importList,setImportList]=_s([]);
+  var[importSel,setImportSel]=_s({});
   var todayVal=new Date().toISOString().slice(0,10);
   var[form,setForm]=_s({date:todayVal,tracking_no:"",customer_name:"",phone:"",check_date:"",status:"รอเช็ค",telesale:"",cod:""});
 
@@ -589,6 +593,31 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   });
 
   var summary={total:parcels.length,confirmed:parcels.filter(function(p){return p.status==="ยืนยันรับ";}).length,pending:parcels.filter(function(p){return p.status==="รอเช็ค";}).length,returned:parcels.filter(function(p){return p.status==="ตีกลับ";}).length,totalCOD:parcels.filter(function(p){return p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
+
+  function openImport(){
+    var myOrders=(allOrders||[]).concat(upsellOrders||[]);
+    if(!isAdmin){myOrders=myOrders.filter(function(o){return o.AccountEmail===user.username;});}
+    var withTracking=myOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3;});
+    var existingTracks={};(parcels||[]).forEach(function(p){existingTracks[p.tracking_no]=true;});
+    var available=withTracking.filter(function(o){return!existingTracks[o.TrackingNo];});
+    if(available.length===0){notify("ไม่มีพัสดุใหม่ให้ดึง — ทุกเลขพัสดุถูกเพิ่มแล้ว","warning");return;}
+    var sel={};available.forEach(function(o){sel[o.TrackingNo]=true;});
+    setImportList(available);setImportSel(sel);setShowImport(true);
+  }
+  async function doImport(){
+    var selected=importList.filter(function(o){return importSel[o.TrackingNo];});
+    if(selected.length===0){notify("กรุณาเลือกพัสดุ","warning");return;}
+    setImporting(true);
+    var ok=0;var fail=0;
+    for(var i=0;i<selected.length;i++){
+      var o=selected[i];
+      try{await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"รอเช็ค",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});ok++;}catch(e){fail++;}
+    }
+    setImporting(false);setShowImport(false);
+    notify("✅ ดึงพัสดุสำเร็จ "+ok+" รายการ"+(fail>0?" (ล้มเหลว "+fail+")":""));
+    onRefresh();
+  }
+  function toggleImportAll(checked){var s={};importList.forEach(function(o){s[o.TrackingNo]=checked;});setImportSel(s);}
 
   function openAdd(){setForm({date:todayVal,tracking_no:"",customer_name:"",phone:"",check_date:"",status:"รอเช็ค",telesale:extractNickname(user.displayName,user.nickname),cod:""});setEditId(null);setShowModal(true);}
   function openEdit(p){setForm({date:p.date||"",tracking_no:p.tracking_no||"",customer_name:p.customer_name||"",phone:p.phone||"",check_date:p.check_date||"",status:p.status||"รอเช็ค",telesale:p.telesale||"",cod:String(p.cod||"")});setEditId(p.id);setShowModal(true);}
@@ -612,6 +641,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
       <h2 style={{fontSize:20,fontWeight:800,color:"#1e293b"}}>📦 เช็คพัสดุ</h2>
       <button onClick={openAdd} style={{padding:"10px 20px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(217,119,6,.3)"}}>+ เพิ่มพัสดุ</button>
+      <button onClick={openImport} style={{padding:"10px 20px",borderRadius:10,border:"2px solid #d97706",background:"transparent",color:"#d97706",fontWeight:700,fontSize:14,cursor:"pointer"}}>📥 ดึงพัสดุของฉัน</button>
     </div>
 
     {/* Summary */}
@@ -700,6 +730,40 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
         <div style={{display:"flex",justifyContent:"flex-end",gap:10,padding:"14px 20px",borderTop:"1px solid #f1f5f9"}}>
           <button onClick={function(){setShowModal(false);}} style={{padding:"9px 18px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#64748b",fontWeight:600,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>ยกเลิก</button>
           <button onClick={save} style={{padding:"9px 22px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:13,boxShadow:"0 2px 8px rgba(217,119,6,.3)",fontFamily:"inherit"}}>{editId?"บันทึก":"เพิ่มพัสดุ"}</button>
+        </div>
+      </div>
+    </div>}
+
+    {/* Import Modal */}
+    {showImport&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={function(){setShowImport(false);}}>
+      <div style={{background:"#fff",borderRadius:16,width:"90%",maxWidth:600,maxHeight:"80vh",display:"flex",flexDirection:"column",boxShadow:"0 20px 60px rgba(0,0,0,.2)"}} onClick={function(e){e.stopPropagation();}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 20px",borderBottom:"1px solid #f1f5f9",background:"#f8fafc",borderRadius:"16px 16px 0 0"}}>
+          <span style={{fontWeight:800,fontSize:16,color:"#0f172a"}}>📥 ดึงพัสดุจากออเดอร์{isAdmin?"":" ของฉัน"} ({importList.length} รายการ)</span>
+          <button onClick={function(){setShowImport(false);}} style={{border:"none",background:"transparent",fontSize:18,cursor:"pointer",color:"#94a3b8"}}>✕</button>
+        </div>
+        <div style={{padding:"12px 20px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <label style={{fontSize:13,fontWeight:600,color:"#475569",display:"flex",alignItems:"center",gap:6,cursor:"pointer"}}><input type="checkbox" checked={importList.length>0&&importList.every(function(o){return importSel[o.TrackingNo];})} onChange={function(e){toggleImportAll(e.target.checked);}}/> เลือกทั้งหมด ({Object.values(importSel).filter(Boolean).length}/{importList.length})</label>
+          <span style={{fontSize:11,color:"#94a3b8"}}>เฉพาะพัสดุที่ยังไม่ได้เพิ่ม</span>
+        </div>
+        <div style={{flex:1,overflow:"auto",padding:"8px 20px"}}>
+          {importList.map(function(o,i){
+            var bg=i%2===0?"#fff":"#f8fafc";
+            return<div key={o.TrackingNo+i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,background:bg,marginBottom:2,cursor:"pointer"}} onClick={function(){setImportSel(function(prev){var n={...prev};n[o.TrackingNo]=!n[o.TrackingNo];return n;});}}>
+              <input type="checkbox" checked={!!importSel[o.TrackingNo]} onChange={function(){}} style={{cursor:"pointer"}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontWeight:700,color:"#1e40af",fontSize:12}}>{o.TrackingNo}</span>
+                  <span style={{fontSize:12,fontWeight:600}}>{o.Name}</span>
+                  <span style={{fontSize:11,color:"#64748b"}}>{o.MobileNo}</span>
+                </div>
+                <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>COD ฿{(Number(o.COD)||0).toLocaleString()} · {o.SalesPerson||"-"} · {getDate(o.Timestamp)||"-"}</div>
+              </div>
+            </div>;
+          })}
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:10,padding:"14px 20px",borderTop:"1px solid #f1f5f9"}}>
+          <button onClick={function(){setShowImport(false);}} style={{padding:"9px 18px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#fff",color:"#64748b",fontWeight:600,cursor:"pointer",fontSize:13,fontFamily:"inherit"}}>ยกเลิก</button>
+          <button onClick={doImport} disabled={importing} style={{padding:"9px 22px",borderRadius:8,border:"none",background:importing?"#94a3b8":"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontWeight:700,cursor:"pointer",fontSize:13,boxShadow:"0 2px 8px rgba(217,119,6,.3)",fontFamily:"inherit"}}>{importing?"⏳ กำลังดึง...":"📥 ดึง "+Object.values(importSel).filter(Boolean).length+" รายการ"}</button>
         </div>
       </div>
     </div>}
@@ -807,7 +871,7 @@ function App(){var _s=useState;
       {statusProgress.fail>0&&<div style={{fontSize:12,color:"#ef4444",fontWeight:700,marginTop:8}}>❌ ล้มเหลว {statusProgress.fail} รายการ</div>}
     </div></div>}
     <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:roleColor}}>{roleLabel}</span></div></div><nav style={S.nav}>{navItems.map(function(item){if(item.link)return<a key={item.id} href={item.link} style={{...S.navItem,textDecoration:"none",fontWeight:800,color:"#93c5fd",background:"rgba(59,130,246,.1)"}}><span style={{fontSize:16}}>{item.icon}</span> {item.label} →</a>;return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><div style={{marginBottom:8}}><div style={{fontSize:10,color:"#fbbf24",fontWeight:600,marginBottom:4}}>📱 ค้นหาเลขพัสดุ</div><input placeholder="ใส่เบอร์โทร..." value={sidePhoneSearch} onChange={function(e){setSidePhoneSearch(e.target.value.replace(/[^0-9]/g,""));}} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.1)",color:"#fde68a",fontSize:12,boxSizing:"border-box",outline:"none"}}/>{sidePhoneSearch.length>=3&&function(){var found=allOrders.concat(upsellOrders).filter(function(o){return phoneMatch(o.MobileNo,sidePhoneSearch);});return<div style={{marginTop:6,maxHeight:200,overflow:"auto",borderRadius:8,background:"rgba(0,0,0,.3)"}}>{found.length===0?<div style={{padding:8,fontSize:10,color:"#94a3b8",textAlign:"center"}}>ไม่พบ</div>:found.map(function(o,i){return<div key={i} style={{padding:"6px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:10}}><div style={{fontWeight:700,color:"#fde68a"}}>{o.Name} <span style={{color:"#94a3b8"}}>{o.MobileNo}</span></div>{o.TrackingNo?<span onClick={function(){copyTrack(o.TrackingNo);}} style={{color:"#93c5fd",fontWeight:700,fontSize:10,cursor:"pointer"}} title="คลิกเพื่อคัดลอก">{o.TrackingNo} 📋</span>:<span style={{color:"#64748b",fontSize:9}}>ยังไม่มีเลข</span>}</div>;})}</div>;}()}</div><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();loadParcels();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
-    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport} accounts={accounts}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="parcel_check"&&<ParcelCheckPage parcels={parcels} onRefresh={loadParcels} accounts={accounts} user={user} isAdmin={isAdmin} notify={notify}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
+    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport} accounts={accounts}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="parcel_check"&&<ParcelCheckPage parcels={parcels} onRefresh={loadParcels} accounts={accounts} user={user} isAdmin={isAdmin} notify={notify} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
 
 /* ===== SETUP (Supabase URL+Key) ===== */
 function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useState("");var[testing,setTesting]=useState(false);var[error,setError]=useState("");
