@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v6";
+var APP_VERSION = "20260502v7";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -567,6 +567,7 @@ function pStatusStyle(st){var f=PARCEL_STATUSES.find(function(s){return s.v===st
 
 function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,isAdmin,notify,allOrders,upsellOrders}){
   var _s=useState;
+  var todayVal=new Date().toISOString().slice(0,10);
   var[search,setSearch]=_s("");
   var[filterStatus,setFilterStatus]=_s("ทั้งหมด");
   var[filterTele,setFilterTele]=_s("ทั้งหมด");
@@ -579,7 +580,6 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   var[importMonth,setImportMonth]=_s(todayVal.substring(0,7));
   var[importDateFrom,setImportDateFrom]=_s(todayVal);
   var[importDateTo,setImportDateTo]=_s(todayVal);
-  var todayVal=new Date().toISOString().slice(0,10);
   var[form,setForm]=_s({date:todayVal,tracking_no:"",customer_name:"",phone:"",check_date:"",status:"รอเช็ค",telesale:"",cod:""});
 
   var teleNames=[];
