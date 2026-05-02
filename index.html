@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v13";
+var APP_VERSION = "20260502v14";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -571,6 +571,10 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   var[search,setSearch]=_s("");
   var[filterStatus,setFilterStatus]=_s("ทั้งหมด");
   var[filterTele,setFilterTele]=_s("ทั้งหมด");
+  var[filterDateMode,setFilterDateMode]=_s("all");
+  var[filterMonth,setFilterMonth]=_s(todayVal.substring(0,7));
+  var[filterDateFrom,setFilterDateFrom]=_s(todayVal);
+  var[filterDateTo,setFilterDateTo]=_s(todayVal);
   var[showModal,setShowModal]=_s(false);
   var[editId,setEditId]=_s(null);
   var[importing,setImporting]=_s(false);
@@ -594,10 +598,17 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
     var ms=!search||String(p.tracking_no||"").indexOf(search)>=0||String(p.customer_name||"").indexOf(search)>=0||String(p.phone||"").indexOf(search)>=0;
     var mst=filterStatus==="ทั้งหมด"||filterStatus==="ว่างเปล่า"?(!p.status&&filterStatus==="ว่างเปล่า")||(filterStatus==="ทั้งหมด"):p.status===filterStatus;
     var mt=filterTele==="ทั้งหมด"||p.telesale===filterTele;
-    return ms&&mst&&mt;
+    var md=true;
+    if(filterDateMode!=="all"){
+      var d=p.date||"";
+      if(filterDateMode==="today")md=d===todayVal;
+      else if(filterDateMode==="month")md=d.substring(0,7)===filterMonth;
+      else if(filterDateMode==="range")md=d>=filterDateFrom&&d<=filterDateTo;
+    }
+    return ms&&mst&&mt&&md;
   });
 
-  var summary={total:parcels.length,confirmed:parcels.filter(function(p){return p.status==="ยืนยันรับ";}).length,pending:parcels.filter(function(p){return p.status==="รอเช็ค";}).length,returned:parcels.filter(function(p){return p.status==="ตีกลับ";}).length,totalCOD:parcels.filter(function(p){return p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
+  var summary={total:filtered.length,confirmed:filtered.filter(function(p){return p.status==="ยืนยันรับ";}).length,pending:filtered.filter(function(p){return p.status==="รอเช็ค";}).length,returned:filtered.filter(function(p){return p.status==="ตีกลับ";}).length,totalCOD:filtered.filter(function(p){return p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
 
   // --- Import logic ---
   var existingTracks={};(parcels||[]).forEach(function(p){if(p.tracking_no)existingTracks[p.tracking_no]=true;});
@@ -742,6 +753,23 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={cardLabel}>ยอด COD</div><div style={{...cardVal,color:"#8b5cf6"}}>฿{summary.totalCOD.toLocaleString()}</div></div>
     </div>
 
+    {/* Date Filter */}
+    <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
+      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+        <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>📅 ช่วงเวลา:</span>
+        {[{k:"all",l:"ทั้งหมด"},{k:"today",l:"วันนี้"},{k:"month",l:"เลือกเดือน"},{k:"range",l:"ระบุวัน"}].map(function(m){
+          return<button key={m.k} onClick={function(){setFilterDateMode(m.k);}} style={{padding:"6px 14px",borderRadius:8,border:filterDateMode===m.k?"2px solid #d97706":"1px solid #e2e8f0",background:filterDateMode===m.k?"#fef3c7":"#fff",color:filterDateMode===m.k?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{m.l}</button>;
+        })}
+        {filterDateMode==="month"&&<input type="month" value={filterMonth} onChange={function(e){setFilterMonth(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit"}}/>}
+        {filterDateMode==="range"&&<div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <input type="date" value={filterDateFrom} onChange={function(e){setFilterDateFrom(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit"}}/>
+          <span style={{fontSize:12,color:"#64748b"}}>ถึง</span>
+          <input type="date" value={filterDateTo} onChange={function(e){setFilterDateTo(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit"}}/>
+        </div>}
+        {filterDateMode!=="all"&&<span style={{fontSize:11,color:"#d97706",fontWeight:600}}>({filtered.length} รายการ)</span>}
+      </div>
+    </div>
+
     {/* Filters */}
     <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
       <input placeholder="🔍 ค้นหา เลขพัสดุ/ชื่อ/เบอร์..." value={search} onChange={function(e){setSearch(e.target.value);}} style={{flex:"1 1 200px",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,outline:"none",background:"#fff",fontFamily:"inherit"}}/>
@@ -799,7 +827,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
         })}</tbody>
       </table>
     </div>
-    <div style={{padding:"8px 14px",fontSize:11,color:"#94a3b8",textAlign:"right"}}>แสดง {filtered.length} จาก {parcels.length} รายการ</div>
+    <div style={{padding:"8px 14px",fontSize:11,color:"#94a3b8",textAlign:"right"}}>แสดง {filtered.length} จาก {(parcels||[]).length} รายการ</div>
 
     {/* Modal */}
     {showModal&&<div style={{position:"fixed",inset:0,zIndex:9999,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center"}} onClick={function(){setShowModal(false);}}>
