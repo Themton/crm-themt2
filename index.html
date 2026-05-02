@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v14";
+var APP_VERSION = "20260502v15";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -584,8 +584,6 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   var[importMonth,setImportMonth]=_s(todayVal.substring(0,7));
   var[importDateFrom,setImportDateFrom]=_s(todayVal);
   var[importDateTo,setImportDateTo]=_s(todayVal);
-  var[autoSynced,setAutoSynced]=_s(false);
-  var autoRef=useRef(false);
   var[form,setForm]=_s({date:todayVal,tracking_no:"",customer_name:"",phone:"",check_date:"",status:"รอเช็ค",telesale:"",cod:""});
 
   var teleNames=[];
@@ -616,43 +614,32 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   if(!isAdmin){myAllOrders=myAllOrders.filter(function(o){return o.AccountEmail===user.username;});}
   var withTracking=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existingTracks[o.TrackingNo];});
 
-  // --- Auto-import: ดึงพัสดุใหม่อัตโนมัติ ---
+  // --- Auto-import: ดึงครั้งเดียวต่อวัน ---
   var[autoStatus,setAutoStatus]=_s("");
+  var autoKey="parcel_auto_"+user.username+"_"+todayVal;
   useEffect(function(){
-    if(autoRef.current)return;
-    if(!allOrders||allOrders.length===0)return;
-    // รอให้ parcels โหลดเสร็จ (ใช้ delay เพื่อให้แน่ใจว่าข้อมูลพร้อม)
-    var timer=setTimeout(function(){
-      if(autoRef.current)return;
-      var existing2={};(parcels||[]).forEach(function(p){if(p.tracking_no)existing2[p.tracking_no]=true;});
-      var myOrds=(allOrders||[]).concat(upsellOrders||[]);
-      if(!isAdmin){myOrds=myOrds.filter(function(o){return o.AccountEmail===user.username;});}
-      var newOnes=myOrds.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existing2[o.TrackingNo];});
-      if(newOnes.length===0){setAutoStatus("✅ ไม่มีพัสดุใหม่");setTimeout(function(){setAutoStatus("");},3000);return;}
-      autoRef.current=true;
-      setAutoStatus("📥 กำลังดึง "+newOnes.length+" รายการ...");
+    if(localStorage.getItem(autoKey))return;
+    if(!allOrders||allOrders.length===0||!parcels)return;
+    var t=setTimeout(function(){
+      if(localStorage.getItem(autoKey))return;
+      localStorage.setItem(autoKey,"1");
+      var ex={};(parcels||[]).forEach(function(p){if(p.tracking_no)ex[p.tracking_no]=true;});
+      var myO=(allOrders||[]).concat(upsellOrders||[]);
+      if(!isAdmin){myO=myO.filter(function(o){return o.AccountEmail===user.username;});}
+      var nw=myO.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!ex[o.TrackingNo];});
+      if(nw.length===0)return;
+      setAutoStatus("📥 กำลังดึง "+nw.length+" รายการ...");
       (async function(){
-        var ok=0;var fail=0;
-        for(var i=0;i<newOnes.length;i++){
-          var o=newOnes[i];
-          try{
-            await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});
-            ok++;
-          }catch(e){fail++;console.error("Auto-import error:",e);}
-          setAutoStatus("📥 ดึงแล้ว "+ok+"/"+(ok+fail)+" จาก "+newOnes.length);
+        var ok=0;
+        for(var i=0;i<nw.length;i++){
+          try{await dbAddParcel({date:getDate(nw[i].Timestamp)||todayVal,tracking_no:nw[i].TrackingNo,customer_name:nw[i].Name||"",phone:nw[i].MobileNo||"",check_date:"",status:"",telesale:nw[i].SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(nw[i].COD)||0});ok++;}catch(e){}
         }
-        if(ok>0){
-          notify("📥 ดึงพัสดุใหม่อัตโนมัติ "+ok+" รายการ"+(fail>0?" (❌ "+fail+" ล้มเหลว)":""));
-          onRefresh();
-        }else if(fail>0){
-          notify("❌ ดึงพัสดุไม่สำเร็จ "+fail+" รายการ — ตรวจสอบตาราง parcel_checks ใน Supabase","warning");
-          autoRef.current=false;
-        }
-        setTimeout(function(){setAutoStatus("");},4000);
+        if(ok>0){notify("📥 ดึงพัสดุใหม่อัตโนมัติ "+ok+" รายการ");onRefresh();}
+        setAutoStatus("");
       })();
-    },1500);
-    return function(){clearTimeout(timer);};
-  },[allOrders,upsellOrders,parcels]);
+    },2000);
+    return function(){clearTimeout(t);};
+  },[]);
 
   var importList=withTracking.filter(function(o){
     var d=getDate(o.Timestamp);
@@ -734,14 +721,13 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       <span>🔢 มีเลขพัสดุ: <b style={{color:"#1e40af"}}>{myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3;}).length}</b></span>
       <span>✅ ดึงแล้ว: <b style={{color:"#059669"}}>{(parcels||[]).length}</b></span>
       <span>🆕 รอดึง: <b style={{color:withTracking.length>0?"#d97706":"#94a3b8"}}>{withTracking.length}</b></span>
-      {withTracking.length>0&&<button onClick={function(){autoRef.current=false;setAutoStatus("📥 กำลังดึง...");setTimeout(function(){
+      {withTracking.length>0&&<button onClick={function(){setAutoStatus("📥 กำลังดึง...");
         var existing2={};(parcels||[]).forEach(function(p){if(p.tracking_no)existing2[p.tracking_no]=true;});
         var newOnes=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existing2[o.TrackingNo];});
         if(newOnes.length===0){setAutoStatus("");notify("ไม่มีพัสดุใหม่","warning");return;}
-        autoRef.current=true;
         (async function(){var ok=0;for(var i=0;i<newOnes.length;i++){var o=newOnes[i];try{await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});ok++;}catch(e){}}
-        setAutoStatus("");if(ok>0){notify("📥 ดึงสำเร็จ "+ok+" รายการ");onRefresh();}})();
-      },200);}} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#d97706",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer"}}>⚡ ดึงเลย</button>}
+        setAutoStatus("");if(ok>0){notify("📥 ดึงสำเร็จ "+ok+" รายการ");onRefresh();}else{notify("ดึงไม่สำเร็จ","warning");}})();
+      }} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#d97706",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer"}}>⚡ ดึงเลย</button>}
     </div>
 
     {/* Summary */}
