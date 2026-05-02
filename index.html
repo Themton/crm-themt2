@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v22";
+var APP_VERSION = "20260502v23";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -1035,59 +1035,6 @@ function ParcelReportPage({parcels,accounts,user}){
         })}
       </div>
     </div>
-
-    {/* พัสดุค้าง — รอเช็คนานเกิน 2 วัน */}
-    {(function(){
-      var now=new Date();var twoDaysAgo=new Date(now);twoDaysAgo.setDate(now.getDate()-2);var cutoff=twoDaysAgo.toISOString().slice(0,10);
-      var overdue=(parcels||[]).filter(function(p){return p.status==="รอเช็ค"&&p.date&&p.date<=cutoff;});
-      if(overdue.length===0)return null;
-      // group by telesale
-      var byTele={};overdue.forEach(function(p){var t=p.telesale||"ไม่ระบุ";if(!byTele[t])byTele[t]=[];byTele[t].push(p);});
-      var teleList=Object.keys(byTele).sort(function(a,b){return byTele[b].length-byTele[a].length;});
-      return<div style={{background:"linear-gradient(135deg,#fef2f2,#fff7ed)",borderRadius:12,padding:16,marginBottom:16,border:"1.5px solid #fecaca"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-          <div style={{fontSize:14,fontWeight:700,color:"#dc2626"}}>📌 พัสดุค้าง — รอเช็คเกิน 2 วัน ({overdue.length} รายการ)</div>
-          <span style={{fontSize:11,color:"#94a3b8"}}>ตั้งแต่ {cutoff} หรือก่อนหน้า</span>
-        </div>
-        {/* สรุปตาม TeleSale */}
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-          {teleList.map(function(t){
-            var items=byTele[t];var codSum=items.reduce(function(s,p){return s+(Number(p.cod)||0);},0);
-            return<div key={t} style={{background:"#fff",borderRadius:10,padding:"10px 14px",border:"1px solid #fecaca",flex:"1 1 160px",minWidth:140}}>
-              <div style={{fontSize:13,fontWeight:700,color:"#dc2626"}}>{t}</div>
-              <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{items.length} รายการค้าง · COD ฿{codSum.toLocaleString()}</div>
-            </div>;
-          })}
-        </div>
-        {/* ตารางพัสดุค้าง */}
-        <div style={{overflow:"auto",maxHeight:300}}>
-          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:600}}>
-            <thead><tr>
-              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>วันที่</th>
-              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>เลขพัสดุ</th>
-              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>ชื่อลูกค้า</th>
-              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>เบอร์โทร</th>
-              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>TeleSale</th>
-              <th style={{...thS,fontSize:10,textAlign:"right",background:"#fef2f2"}}>COD</th>
-              <th style={{...thS,fontSize:10,textAlign:"center",background:"#fef2f2"}}>ค้างกี่วัน</th>
-            </tr></thead>
-            <tbody>{overdue.sort(function(a,b){return(a.date||"")>(b.date||"")?1:-1;}).map(function(p,i){
-              var days=Math.floor((now-new Date(p.date))/(1000*60*60*24));
-              var urgentColor=days>=5?"#dc2626":days>=3?"#ea580c":"#f59e0b";
-              return<tr key={p.id||i} style={{background:i%2===0?"#fff":"#fef2f2"}}>
-                <td style={{...tdS,fontSize:11}}>{fmtDate(p.date)}</td>
-                <td style={{...tdS,fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"#1e40af"}}>{p.tracking_no}</td>
-                <td style={{...tdS,fontSize:11}}>{p.customer_name}</td>
-                <td style={{...tdS,fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>{p.phone}</td>
-                <td style={{...tdS,fontSize:11}}>{p.telesale}</td>
-                <td style={{...tdS,fontSize:11,textAlign:"right",fontWeight:700,color:"#059669"}}>฿{(Number(p.cod)||0).toLocaleString()}</td>
-                <td style={{...tdS,textAlign:"center"}}><span style={{padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:800,color:"#fff",background:urgentColor}}>{days} วัน</span></td>
-              </tr>;
-            })}</tbody>
-          </table>
-        </div>
-      </div>;
-    })()}
 
     {/* จัดอันดับพนักงาน */}
     {personList.length>0&&(function(){
