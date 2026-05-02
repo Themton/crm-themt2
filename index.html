@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v4";
+var APP_VERSION = "20260502v5";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -942,65 +942,111 @@ function ParcelReportPage({parcels,accounts,user}){
       </div>
     </div>
 
-    {/* ตารางแต่ละคน */}
-    {personList.length>0&&<div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
-      <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>👥 ผลงานแต่ละคน</div>
-      <div style={{overflow:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",minWidth:800}}>
-          <thead><tr>
-            <th style={thS}>TeleSale</th>
-            <th style={{...thS,textAlign:"center"}}>ทั้งหมด</th>
-            <th style={{...thS,textAlign:"center",color:"#f59e0b"}}>รอเช็ค</th>
-            <th style={{...thS,textAlign:"center",color:"#10b981"}}>ติดต่อได้</th>
-            <th style={{...thS,textAlign:"center",color:"#ef4444"}}>ติดต่อไม่ได้</th>
-            <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>ยืนยันรับ</th>
-            <th style={{...thS,textAlign:"center",color:"#6b7280"}}>ปฏิเสธ</th>
-            <th style={{...thS,textAlign:"center",color:"#8b5cf6"}}>ส่งแล้ว</th>
-            <th style={{...thS,textAlign:"center",color:"#dc2626"}}>ตีกลับ</th>
-            <th style={{...thS,textAlign:"center",color:"#10b981"}}>% ยืนยัน</th>
-            <th style={{...thS,textAlign:"right"}}>COD ยืนยัน</th>
-          </tr></thead>
-          <tbody>
-            {personList.map(function(p,i){
-              var rate=pct(p.confirmed+p.sent,p.total);
-              var barColor=rate>=70?"#10b981":rate>=40?"#f59e0b":"#ef4444";
-              return<tr key={p.name} style={{background:i%2===0?"#fff":"#f8fafc",cursor:"pointer"}} onClick={function(){setExpandPerson(expandPerson===p.name?null:p.name);}}>
-                <td style={{...tdS,fontWeight:700,fontSize:13}}>{i===0?"🏆 ":i===1?"🥈 ":i===2?"🥉 ":""}{p.name}</td>
-                <td style={{...tdS,textAlign:"center",fontWeight:700}}>{p.total}</td>
-                <td style={{...tdS,textAlign:"center",color:p.pending>0?"#f59e0b":"#e2e8f0"}}>{p.pending||"-"}</td>
-                <td style={{...tdS,textAlign:"center",color:p.contacted>0?"#10b981":"#e2e8f0"}}>{p.contacted||"-"}</td>
-                <td style={{...tdS,textAlign:"center",color:p.unreachable>0?"#ef4444":"#e2e8f0"}}>{p.unreachable||"-"}</td>
-                <td style={{...tdS,textAlign:"center",fontWeight:700,color:p.confirmed>0?"#3b82f6":"#e2e8f0"}}>{p.confirmed||"-"}</td>
-                <td style={{...tdS,textAlign:"center",color:p.rejected>0?"#6b7280":"#e2e8f0"}}>{p.rejected||"-"}</td>
-                <td style={{...tdS,textAlign:"center",color:p.sent>0?"#8b5cf6":"#e2e8f0"}}>{p.sent||"-"}</td>
-                <td style={{...tdS,textAlign:"center",color:p.returned>0?"#dc2626":"#e2e8f0"}}>{p.returned||"-"}</td>
-                <td style={{...tdS,textAlign:"center"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
-                    <div style={{width:50,height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:rate+"%",background:barColor,borderRadius:4}}/></div>
-                    <span style={{fontSize:11,fontWeight:700,color:barColor}}>{rate}%</span>
-                  </div>
-                </td>
-                <td style={{...tdS,textAlign:"right",fontWeight:700,color:"#059669"}}>฿{p.codOk.toLocaleString()}</td>
-              </tr>;
-            })}
-            {/* แถวรวม */}
-            <tr style={{background:"#fffbeb",fontWeight:800}}>
-              <td style={{...tdS,fontSize:13}}>📊 รวม</td>
-              <td style={{...tdS,textAlign:"center",fontSize:14}}>{total}</td>
-              <td style={{...tdS,textAlign:"center",color:"#f59e0b"}}>{byStatus["รอเช็ค"]||0}</td>
-              <td style={{...tdS,textAlign:"center",color:"#10b981"}}>{byStatus["ติดต่อได้"]||0}</td>
-              <td style={{...tdS,textAlign:"center",color:"#ef4444"}}>{byStatus["ติดต่อไม่ได้"]||0}</td>
-              <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{byStatus["ยืนยันรับ"]||0}</td>
-              <td style={{...tdS,textAlign:"center",color:"#6b7280"}}>{byStatus["ปฏิเสธ"]||0}</td>
-              <td style={{...tdS,textAlign:"center",color:"#8b5cf6"}}>{byStatus["ส่งแล้ว"]||0}</td>
-              <td style={{...tdS,textAlign:"center",color:"#dc2626"}}>{byStatus["ตีกลับ"]||0}</td>
-              <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:12,fontWeight:800,color:successRate>=50?"#10b981":"#f59e0b"}}>{successRate}%</span></td>
-              <td style={{...tdS,textAlign:"right",fontSize:14,color:"#059669"}}>฿{codConfirmed.toLocaleString()}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>}
+    {/* จัดอันดับพนักงาน */}
+    {personList.length>0&&(function(){
+      var ranked=personList.slice().map(function(p){var rate=pct(p.confirmed+p.sent,p.total);var failRate=pct(p.returned+p.rejected,p.total);return{...p,rate:rate,failRate:failRate};}).sort(function(a,b){return b.rate-a.rate||b.codOk-a.codOk;});
+      var best=ranked[0];var worst=ranked[ranked.length-1];
+      var rankIcons=["🏆","🥈","🥉"];
+      var getRankBg=function(i,len){if(i===0)return"linear-gradient(135deg,#fef3c7,#fde68a)";if(i===1)return"linear-gradient(135deg,#f1f5f9,#e2e8f0)";if(i===2)return"linear-gradient(135deg,#fed7aa,#fdba74)";if(i>=len-1&&len>2)return"linear-gradient(135deg,#fee2e2,#fecaca)";return"#fff";};
+
+      return<div style={{marginBottom:16}}>
+        {/* Podium Top 3 */}
+        {ranked.length>=2&&<div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap",justifyContent:"center"}}>
+          {ranked.slice(0,Math.min(3,ranked.length)).map(function(p,i){
+            var ringColor=i===0?"#f59e0b":i===1?"#94a3b8":"#f97316";
+            return<div key={p.name} style={{flex:"1 1 200px",maxWidth:260,background:getRankBg(i,ranked.length),borderRadius:16,padding:20,textAlign:"center",border:"2px solid "+(i===0?"#fbbf24":i===1?"#d1d5db":"#fdba74"),boxShadow:i===0?"0 4px 20px rgba(251,191,36,.3)":"0 1px 4px rgba(0,0,0,.06)",position:"relative"}}>
+              <div style={{fontSize:40,marginBottom:4}}>{rankIcons[i]}</div>
+              <div style={{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>อันดับ {i+1}</div>
+              <div style={{fontSize:18,fontWeight:800,color:"#1e293b",marginBottom:8}}>{p.name}</div>
+              <div style={{display:"inline-block",padding:"6px 16px",borderRadius:20,background:p.rate>=70?"#d1fae5":p.rate>=40?"#fef3c7":"#fee2e2",marginBottom:8}}>
+                <span style={{fontSize:22,fontWeight:800,color:p.rate>=70?"#059669":p.rate>=40?"#d97706":"#dc2626"}}>{p.rate}%</span>
+                <span style={{fontSize:11,color:"#64748b",marginLeft:4}}>ยืนยัน</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"center",gap:12,fontSize:11,color:"#475569"}}>
+                <span>เช็ค <b>{p.total}</b></span>
+                <span style={{color:"#10b981"}}>✅ {p.confirmed+p.sent}</span>
+                <span style={{color:"#ef4444"}}>❌ {p.returned+p.rejected}</span>
+              </div>
+              <div style={{fontSize:13,fontWeight:700,color:"#059669",marginTop:6}}>COD ฿{p.codOk.toLocaleString()}</div>
+            </div>;
+          })}
+        </div>}
+
+        {/* คนที่แย่ที่สุด — แสดงเมื่อมี ≥3 คนและคนสุดท้ายไม่ใช่คนแรก */}
+        {ranked.length>=3&&worst.name!==best.name&&<div style={{background:"linear-gradient(135deg,#fef2f2,#fff1f2)",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #fecaca",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+          <div style={{fontSize:32}}>⚠️</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#dc2626",marginBottom:4}}>ต้องปรับปรุง — อันดับสุดท้าย</div>
+            <div style={{fontSize:18,fontWeight:800,color:"#1e293b"}}>{worst.name}</div>
+            <div style={{fontSize:12,color:"#64748b",marginTop:4}}>ยืนยัน <b style={{color:"#dc2626"}}>{worst.rate}%</b> · เช็ค {worst.total} · ปฏิเสธ+ตีกลับ {worst.rejected+worst.returned} ({worst.failRate}%) · COD ฿{worst.codOk.toLocaleString()}</div>
+          </div>
+        </div>}
+
+        {/* ตารางอันดับเต็ม */}
+        <div style={{background:"#fff",borderRadius:12,padding:16,border:"1px solid #e2e8f0"}}>
+          <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>🏅 อันดับผลงาน (เรียงจากดีสุด → แย่สุด)</div>
+          <div style={{overflow:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:860}}>
+              <thead><tr>
+                <th style={{...thS,textAlign:"center",width:50}}>อันดับ</th>
+                <th style={thS}>TeleSale</th>
+                <th style={{...thS,textAlign:"center"}}>เช็คทั้งหมด</th>
+                <th style={{...thS,textAlign:"center",color:"#10b981"}}>ยืนยัน+ส่ง</th>
+                <th style={{...thS,textAlign:"center",color:"#f59e0b"}}>รอเช็ค</th>
+                <th style={{...thS,textAlign:"center",color:"#10b981"}}>ติดต่อได้</th>
+                <th style={{...thS,textAlign:"center",color:"#ef4444"}}>ติดต่อไม่ได้</th>
+                <th style={{...thS,textAlign:"center",color:"#dc2626"}}>ปฏิเสธ+ตีกลับ</th>
+                <th style={{...thS,textAlign:"center",width:120}}>% ยืนยัน</th>
+                <th style={{...thS,textAlign:"center",width:100}}>% ล้มเหลว</th>
+                <th style={{...thS,textAlign:"right"}}>COD ยืนยัน</th>
+              </tr></thead>
+              <tbody>
+                {ranked.map(function(p,i){
+                  var isLast=i===ranked.length-1&&ranked.length>2;
+                  var barColor=p.rate>=70?"#10b981":p.rate>=40?"#f59e0b":"#ef4444";
+                  var failColor=p.failRate>=30?"#dc2626":p.failRate>=15?"#f59e0b":"#94a3b8";
+                  var rowBg=i===0?"#fefce8":isLast?"#fef2f2":i%2===0?"#fff":"#f8fafc";
+                  return<tr key={p.name} style={{background:rowBg}}>
+                    <td style={{...tdS,textAlign:"center",fontSize:16}}>{rankIcons[i]||<span style={{fontSize:13,fontWeight:700,color:isLast?"#dc2626":"#64748b"}}>{i+1}</span>}</td>
+                    <td style={{...tdS,fontWeight:700,fontSize:13,color:isLast?"#dc2626":"#1e293b"}}>{p.name} {isLast&&ranked.length>2?<span style={{fontSize:10,color:"#dc2626",fontWeight:600}}>⚠️</span>:""}</td>
+                    <td style={{...tdS,textAlign:"center",fontWeight:700}}>{p.total}</td>
+                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#10b981"}}>{p.confirmed+p.sent}</td>
+                    <td style={{...tdS,textAlign:"center",color:p.pending>0?"#f59e0b":"#e2e8f0"}}>{p.pending||"-"}</td>
+                    <td style={{...tdS,textAlign:"center",color:p.contacted>0?"#10b981":"#e2e8f0"}}>{p.contacted||"-"}</td>
+                    <td style={{...tdS,textAlign:"center",color:p.unreachable>0?"#ef4444":"#e2e8f0"}}>{p.unreachable||"-"}</td>
+                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:(p.returned+p.rejected)>0?"#dc2626":"#e2e8f0"}}>{(p.returned+p.rejected)||"-"}</td>
+                    <td style={{...tdS,textAlign:"center"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
+                        <div style={{width:56,height:10,background:"#f1f5f9",borderRadius:5,overflow:"hidden"}}><div style={{height:"100%",width:p.rate+"%",background:barColor,borderRadius:5}}/></div>
+                        <span style={{fontSize:12,fontWeight:800,color:barColor,minWidth:32}}>{p.rate}%</span>
+                      </div>
+                    </td>
+                    <td style={{...tdS,textAlign:"center"}}>
+                      <span style={{fontSize:11,fontWeight:700,color:failColor}}>{p.failRate}%</span>
+                    </td>
+                    <td style={{...tdS,textAlign:"right",fontWeight:700,color:"#059669"}}>฿{p.codOk.toLocaleString()}</td>
+                  </tr>;
+                })}
+                {/* แถวรวม */}
+                <tr style={{background:"#fffbeb",fontWeight:800}}>
+                  <td style={{...tdS,textAlign:"center"}}>📊</td>
+                  <td style={{...tdS,fontSize:13}}>รวมทั้งหมด</td>
+                  <td style={{...tdS,textAlign:"center",fontSize:14}}>{total}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#10b981"}}>{(byStatus["ยืนยันรับ"]||0)+(byStatus["ส่งแล้ว"]||0)}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#f59e0b"}}>{byStatus["รอเช็ค"]||0}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#10b981"}}>{byStatus["ติดต่อได้"]||0}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#ef4444"}}>{byStatus["ติดต่อไม่ได้"]||0}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#dc2626"}}>{(byStatus["ปฏิเสธ"]||0)+(byStatus["ตีกลับ"]||0)}</td>
+                  <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:12,fontWeight:800,color:successRate>=50?"#10b981":"#f59e0b"}}>{successRate}%</span></td>
+                  <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:total>0&&pct((byStatus["ปฏิเสธ"]||0)+(byStatus["ตีกลับ"]||0),total)>=20?"#dc2626":"#94a3b8"}}>{pct((byStatus["ปฏิเสธ"]||0)+(byStatus["ตีกลับ"]||0),total)}%</span></td>
+                  <td style={{...tdS,textAlign:"right",fontSize:14,color:"#059669"}}>฿{codConfirmed.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>;
+    })()}
 
     {/* กราฟแท่งรายวัน */}
     {dayList.length>1&&<div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
