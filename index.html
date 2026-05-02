@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v18";
+var APP_VERSION = "20260502v19";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -556,7 +556,7 @@ async function dbResetPassword(email,pw){await sbFetch("accounts?email=eq."+enco
 async function dbEditAccount(oldEmail,d){var up={};if(d.username)up.email=d.username;if(d.displayName)up.display_name=d.displayName;if(d.nickname!==undefined)up.nickname=d.nickname;up.role=d.role||"user";await sbFetch("accounts?email=eq."+encodeURIComponent(oldEmail),{method:"PATCH",body:up});}
 async function dbSaveUpsellBatch(usernames){var all=await sbFetch("accounts?select=email,can_upsell");for(var i=0;i<(all||[]).length;i++){var should=usernames.indexOf(all[i].email)>=0;if(all[i].can_upsell!==should)await sbFetch("accounts?email=eq."+encodeURIComponent(all[i].email),{method:"PATCH",body:{can_upsell:should}});}}
 /* ===== PARCEL CHECK DB ===== */
-async function dbGetParcels(){try{var data=await sbFetch("parcel_checks?select=*&order=created_at.desc");return data||[];}catch(e){console.error("dbGetParcels:",e);return[];}}
+async function dbGetParcels(){try{var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch("parcel_checks?select=*&order=created_at.desc",{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all;}catch(e){console.error("dbGetParcels:",e);return[];}}
 async function dbAddParcel(d){var row={date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status||"รอเช็ค",telesale:d.telesale||"",cod:Number(d.cod)||0,created_at:new Date().toISOString()};await sbFetch("parcel_checks",{method:"POST",body:row,prefer:"return=representation"});return row;}
 async function dbAddParcelBatch(rows){if(!rows||rows.length===0)return 0;var batchSize=50;var ok=0;for(var i=0;i<rows.length;i+=batchSize){var batch=rows.slice(i,i+batchSize).map(function(d){return{date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status||"",telesale:d.telesale||"",cod:Number(d.cod)||0,created_at:new Date().toISOString()};});try{await sbFetch("parcel_checks",{method:"POST",body:batch,prefer:"return=representation"});ok+=batch.length;}catch(e){console.error("Batch insert error:",e);}}return ok;}
 async function dbEditParcel(id,d){var body={date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status,telesale:d.telesale||"",cod:Number(d.cod)||0};await sbFetch("parcel_checks?id=eq."+id,{method:"PATCH",body:body});}
