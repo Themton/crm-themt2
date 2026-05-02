@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v11";
+var APP_VERSION = "20260502v12";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -606,24 +606,41 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   var withTracking=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existingTracks[o.TrackingNo];});
 
   // --- Auto-import: ดึงพัสดุใหม่อัตโนมัติ ---
+  var[autoStatus,setAutoStatus]=_s("");
   useEffect(function(){
     if(autoRef.current)return;
     if(!allOrders||allOrders.length===0)return;
-    if(!parcels)return;
-    var existing={};(parcels||[]).forEach(function(p){if(p.tracking_no)existing[p.tracking_no]=true;});
-    var myOrds=(allOrders||[]).concat(upsellOrders||[]);
-    if(!isAdmin){myOrds=myOrds.filter(function(o){return o.AccountEmail===user.username;});}
-    var newOnes=myOrds.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existing[o.TrackingNo];});
-    if(newOnes.length===0)return;
-    autoRef.current=true;
-    (async function(){
-      var ok=0;
-      for(var i=0;i<newOnes.length;i++){
-        var o=newOnes[i];
-        try{await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});ok++;}catch(e){}
-      }
-      if(ok>0){notify("📥 ดึงพัสดุใหม่อัตโนมัติ "+ok+" รายการ");onRefresh();}
-    })();
+    // รอให้ parcels โหลดเสร็จ (ใช้ delay เพื่อให้แน่ใจว่าข้อมูลพร้อม)
+    var timer=setTimeout(function(){
+      if(autoRef.current)return;
+      var existing2={};(parcels||[]).forEach(function(p){if(p.tracking_no)existing2[p.tracking_no]=true;});
+      var myOrds=(allOrders||[]).concat(upsellOrders||[]);
+      if(!isAdmin){myOrds=myOrds.filter(function(o){return o.AccountEmail===user.username;});}
+      var newOnes=myOrds.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existing2[o.TrackingNo];});
+      if(newOnes.length===0){setAutoStatus("✅ ไม่มีพัสดุใหม่");setTimeout(function(){setAutoStatus("");},3000);return;}
+      autoRef.current=true;
+      setAutoStatus("📥 กำลังดึง "+newOnes.length+" รายการ...");
+      (async function(){
+        var ok=0;var fail=0;
+        for(var i=0;i<newOnes.length;i++){
+          var o=newOnes[i];
+          try{
+            await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});
+            ok++;
+          }catch(e){fail++;console.error("Auto-import error:",e);}
+          setAutoStatus("📥 ดึงแล้ว "+ok+"/"+(ok+fail)+" จาก "+newOnes.length);
+        }
+        if(ok>0){
+          notify("📥 ดึงพัสดุใหม่อัตโนมัติ "+ok+" รายการ"+(fail>0?" (❌ "+fail+" ล้มเหลว)":""));
+          onRefresh();
+        }else if(fail>0){
+          notify("❌ ดึงพัสดุไม่สำเร็จ "+fail+" รายการ — ตรวจสอบตาราง parcel_checks ใน Supabase","warning");
+          autoRef.current=false;
+        }
+        setTimeout(function(){setAutoStatus("");},4000);
+      })();
+    },1500);
+    return function(){clearTimeout(timer);};
   },[allOrders,upsellOrders,parcels]);
 
   var importList=withTracking.filter(function(o){
@@ -693,6 +710,12 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       <button onClick={openAdd} style={{padding:"10px 20px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(217,119,6,.3)"}}>+ เพิ่มพัสดุ</button>
       <button onClick={openImport} style={{padding:"10px 20px",borderRadius:10,border:"2px solid #d97706",background:"transparent",color:"#d97706",fontWeight:700,fontSize:14,cursor:"pointer"}}>📥 ดึงพัสดุของฉัน</button>
     </div>
+
+    {/* Auto-sync status */}
+    {autoStatus&&<div style={{background:"linear-gradient(135deg,#eff6ff,#dbeafe)",borderRadius:10,padding:"10px 16px",marginBottom:12,border:"1px solid #93c5fd",display:"flex",alignItems:"center",gap:8}}>
+      <div style={{width:16,height:16,borderRadius:"50%",border:"2px solid #3b82f6",borderTopColor:"transparent",animation:"spin 1s linear infinite"}}/>
+      <span style={{fontSize:13,fontWeight:600,color:"#1e40af"}}>{autoStatus}</span>
+    </div>}
 
     {/* Summary */}
     <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
