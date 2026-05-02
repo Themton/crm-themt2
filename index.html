@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v16";
+var APP_VERSION = "20260502v17";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -601,6 +601,8 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
     if(filterDateMode!=="all"){
       var d=p.date||"";
       if(filterDateMode==="today")md=d===todayVal;
+      else if(filterDateMode==="yesterday"){var yd=new Date();yd.setDate(yd.getDate()-1);md=d===yd.toISOString().slice(0,10);}
+      else if(filterDateMode==="7days")md=d>=sevenDaysAgo();
       else if(filterDateMode==="month")md=d.substring(0,7)===filterMonth;
       else if(filterDateMode==="range")md=d>=filterDateFrom&&d<=filterDateTo;
     }
@@ -743,7 +745,7 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
     <div style={{background:"#fff",borderRadius:10,padding:"12px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
       <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>📅 ช่วงเวลา:</span>
-        {[{k:"all",l:"ทั้งหมด"},{k:"today",l:"วันนี้"},{k:"month",l:"เลือกเดือน"},{k:"range",l:"ระบุวัน"}].map(function(m){
+        {[{k:"all",l:"ทั้งหมด"},{k:"today",l:"วันนี้"},{k:"yesterday",l:"เมื่อวาน"},{k:"7days",l:"7 วัน"},{k:"month",l:"เลือกเดือน"},{k:"range",l:"ระบุวัน"}].map(function(m){
           return<button key={m.k} onClick={function(){setFilterDateMode(m.k);}} style={{padding:"6px 14px",borderRadius:8,border:filterDateMode===m.k?"2px solid #d97706":"1px solid #e2e8f0",background:filterDateMode===m.k?"#fef3c7":"#fff",color:filterDateMode===m.k?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{m.l}</button>;
         })}
         {filterDateMode==="month"&&<input type="month" value={filterMonth} onChange={function(e){setFilterMonth(e.target.value);}} style={{padding:"6px 10px",borderRadius:8,border:"1.5px solid #e2e8f0",fontSize:13,fontFamily:"inherit"}}/>}
