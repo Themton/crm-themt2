@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v19";
+var APP_VERSION = "20260502v20";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -617,34 +617,18 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   if(!isAdmin){myAllOrders=myAllOrders.filter(function(o){return o.AccountEmail===user.username;});}
   var withTracking=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existingTracks[o.TrackingNo];});
 
-  // --- Auto-import: ดึงครั้งเดียวต่อวัน (เฉพาะ 7 วันล่าสุด) ---
-  var[autoStatus,setAutoStatus]=_s("");
-  var autoKey="parcel_auto_"+user.username+"_"+todayVal;
-  var sevenAgo=sevenDaysAgo();
-  useEffect(function(){
-    if(localStorage.getItem(autoKey))return;
-    if(!allOrders||allOrders.length===0||!parcels)return;
-    var t=setTimeout(function(){
-      if(localStorage.getItem(autoKey))return;
-      localStorage.setItem(autoKey,"1");
-      var ex={};(parcels||[]).forEach(function(p){if(p.tracking_no)ex[p.tracking_no]=true;});
-      var myO=(allOrders||[]).concat(upsellOrders||[]);
-      if(!isAdmin){myO=myO.filter(function(o){return o.AccountEmail===user.username;});}
-      var nw=myO.filter(function(o){
-        if(!o.TrackingNo||o.TrackingNo.length<4||ex[o.TrackingNo])return false;
-        var d=getDate(o.Timestamp);return d>=sevenAgo;
-      });
-      if(nw.length===0)return;
-      setAutoStatus("📥 กำลังดึง "+nw.length+" รายการ (7 วันล่าสุด)...");
-      (async function(){
-        var rows=nw.map(function(o){return{date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0};});
-        var ok=await dbAddParcelBatch(rows);
-        if(ok>0){notify("📥 ดึงอัตโนมัติ "+ok+" รายการ (7 วันล่าสุด)");onRefresh();}
-        setAutoStatus("");
-      })();
-    },2000);
-    return function(){clearTimeout(t);};
-  },[]);
+  // --- ดึงพัสดุ manual only ---
+  var[syncing,setSyncing]=_s(false);
+  var recentNew=withTracking.filter(function(o){var d=getDate(o.Timestamp);return d>=sevenDaysAgo();});
+  var todayNew=withTracking.filter(function(o){return getDate(o.Timestamp)===todayVal;});
+  async function pullParcels(list,label){
+    if(list.length===0){notify("ไม่มีพัสดุใหม่","warning");return;}
+    setSyncing(true);
+    var rows=list.map(function(o){return{date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0};});
+    var ok=await dbAddParcelBatch(rows);
+    setSyncing(false);
+    if(ok>0){notify("📥 ดึงสำเร็จ "+ok+" รายการ "+(label||""));onRefresh();}else{notify("ดึงไม่สำเร็จ","warning");}
+  }
 
   var importList=withTracking.filter(function(o){
     var d=getDate(o.Timestamp);
@@ -711,28 +695,13 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       <button onClick={openImport} style={{padding:"10px 20px",borderRadius:10,border:"2px solid #d97706",background:"transparent",color:"#d97706",fontWeight:700,fontSize:14,cursor:"pointer"}}>📥 ดึงพัสดุของฉัน</button>
     </div>
 
-    {/* Auto-sync status */}
-    {autoStatus&&<div style={{background:"linear-gradient(135deg,#eff6ff,#dbeafe)",borderRadius:10,padding:"10px 16px",marginBottom:12,border:"1px solid #93c5fd",display:"flex",alignItems:"center",gap:8}}>
-      <div style={{width:16,height:16,borderRadius:"50%",border:"2px solid #3b82f6",borderTopColor:"transparent",animation:"spin 1s linear infinite"}}/>
-      <span style={{fontSize:13,fontWeight:600,color:"#1e40af"}}>{autoStatus}</span>
-    </div>}
-
-    {/* สถานะ Sync */}
-    {(function(){
-      var recentNew=withTracking.filter(function(o){var d=getDate(o.Timestamp);return d>=sevenDaysAgo();});
-      return<div style={{background:"#f8fafc",borderRadius:10,padding:"10px 16px",marginBottom:12,border:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",fontSize:12,color:"#64748b"}}>
-        <span>✅ เช็คพัสดุทั้งหมด: <b style={{color:"#059669"}}>{(parcels||[]).length}</b></span>
-        <span>🆕 พัสดุใหม่ 7 วัน: <b style={{color:recentNew.length>0?"#d97706":"#94a3b8"}}>{recentNew.length}</b></span>
-        {recentNew.length>0&&<button onClick={function(){setAutoStatus("📥 กำลังดึง "+recentNew.length+" รายการ...");
-          (async function(){
-            var rows=recentNew.map(function(o){return{date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0};});
-            var ok=await dbAddParcelBatch(rows);
-            setAutoStatus("");if(ok>0){notify("📥 ดึงสำเร็จ "+ok+" รายการ");onRefresh();}else{notify("ดึงไม่สำเร็จ","warning");}
-          })();
-        }} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#d97706",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer"}}>⚡ ดึงเลย</button>}
-        {recentNew.length===0&&<span style={{color:"#10b981",fontWeight:600}}>✅ ดึงครบแล้ว</span>}
-      </div>;
-    })()}
+    {/* ดึงพัสดุ */}
+    <div style={{background:"#f8fafc",borderRadius:10,padding:"10px 16px",marginBottom:12,border:"1px solid #e2e8f0",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",fontSize:12}}>
+      <button disabled={syncing||todayNew.length===0} onClick={function(){pullParcels(todayNew,"(วันนี้)");}} style={{padding:"7px 16px",borderRadius:8,border:"none",background:todayNew.length>0?"linear-gradient(135deg,#d97706,#f59e0b)":"#e2e8f0",color:todayNew.length>0?"#fff":"#94a3b8",fontWeight:700,fontSize:12,cursor:todayNew.length>0?"pointer":"default",fontFamily:"inherit"}}>{syncing?"⏳ กำลังดึง...":"📥 ดึงพัสดุวันนี้"} ({todayNew.length})</button>
+      <button disabled={syncing||recentNew.length===0} onClick={function(){pullParcels(recentNew,"(7 วัน)");}} style={{padding:"7px 16px",borderRadius:8,border:"1.5px solid "+(recentNew.length>0?"#d97706":"#e2e8f0"),background:"#fff",color:recentNew.length>0?"#d97706":"#94a3b8",fontWeight:600,fontSize:12,cursor:recentNew.length>0?"pointer":"default",fontFamily:"inherit"}}>📥 ดึง 7 วัน ({recentNew.length})</button>
+      <span style={{color:"#64748b"}}>✅ ในระบบ: <b style={{color:"#059669"}}>{(parcels||[]).length}</b></span>
+      {todayNew.length===0&&recentNew.length===0&&<span style={{color:"#10b981",fontWeight:600}}>✅ ดึงครบแล้ว</span>}
+    </div>
 
     {/* Summary */}
     <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
