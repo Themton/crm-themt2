@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v15";
+var APP_VERSION = "20260502v16";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -558,6 +558,7 @@ async function dbSaveUpsellBatch(usernames){var all=await sbFetch("accounts?sele
 /* ===== PARCEL CHECK DB ===== */
 async function dbGetParcels(){try{var data=await sbFetch("parcel_checks?select=*&order=created_at.desc");return data||[];}catch(e){console.error("dbGetParcels:",e);return[];}}
 async function dbAddParcel(d){var row={date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status||"รอเช็ค",telesale:d.telesale||"",cod:Number(d.cod)||0,created_at:new Date().toISOString()};await sbFetch("parcel_checks",{method:"POST",body:row,prefer:"return=representation"});return row;}
+async function dbAddParcelBatch(rows){if(!rows||rows.length===0)return 0;var batchSize=50;var ok=0;for(var i=0;i<rows.length;i+=batchSize){var batch=rows.slice(i,i+batchSize).map(function(d){return{date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status||"",telesale:d.telesale||"",cod:Number(d.cod)||0,created_at:new Date().toISOString()};});try{await sbFetch("parcel_checks",{method:"POST",body:batch,prefer:"return=representation"});ok+=batch.length;}catch(e){console.error("Batch insert error:",e);}}return ok;}
 async function dbEditParcel(id,d){var body={date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status,telesale:d.telesale||"",cod:Number(d.cod)||0};await sbFetch("parcel_checks?id=eq."+id,{method:"PATCH",body:body});}
 async function dbDeleteParcel(id){await sbFetch("parcel_checks?id=eq."+id,{method:"DELETE"});}
 
@@ -614,9 +615,10 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   if(!isAdmin){myAllOrders=myAllOrders.filter(function(o){return o.AccountEmail===user.username;});}
   var withTracking=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existingTracks[o.TrackingNo];});
 
-  // --- Auto-import: ดึงครั้งเดียวต่อวัน ---
+  // --- Auto-import: ดึงครั้งเดียวต่อวัน (เฉพาะ 7 วันล่าสุด) ---
   var[autoStatus,setAutoStatus]=_s("");
   var autoKey="parcel_auto_"+user.username+"_"+todayVal;
+  var sevenAgo=sevenDaysAgo();
   useEffect(function(){
     if(localStorage.getItem(autoKey))return;
     if(!allOrders||allOrders.length===0||!parcels)return;
@@ -626,15 +628,16 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       var ex={};(parcels||[]).forEach(function(p){if(p.tracking_no)ex[p.tracking_no]=true;});
       var myO=(allOrders||[]).concat(upsellOrders||[]);
       if(!isAdmin){myO=myO.filter(function(o){return o.AccountEmail===user.username;});}
-      var nw=myO.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!ex[o.TrackingNo];});
+      var nw=myO.filter(function(o){
+        if(!o.TrackingNo||o.TrackingNo.length<4||ex[o.TrackingNo])return false;
+        var d=getDate(o.Timestamp);return d>=sevenAgo;
+      });
       if(nw.length===0)return;
-      setAutoStatus("📥 กำลังดึง "+nw.length+" รายการ...");
+      setAutoStatus("📥 กำลังดึง "+nw.length+" รายการ (7 วันล่าสุด)...");
       (async function(){
-        var ok=0;
-        for(var i=0;i<nw.length;i++){
-          try{await dbAddParcel({date:getDate(nw[i].Timestamp)||todayVal,tracking_no:nw[i].TrackingNo,customer_name:nw[i].Name||"",phone:nw[i].MobileNo||"",check_date:"",status:"",telesale:nw[i].SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(nw[i].COD)||0});ok++;}catch(e){}
-        }
-        if(ok>0){notify("📥 ดึงพัสดุใหม่อัตโนมัติ "+ok+" รายการ");onRefresh();}
+        var rows=nw.map(function(o){return{date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0};});
+        var ok=await dbAddParcelBatch(rows);
+        if(ok>0){notify("📥 ดึงอัตโนมัติ "+ok+" รายการ (7 วันล่าสุด)");onRefresh();}
         setAutoStatus("");
       })();
     },2000);
@@ -673,13 +676,10 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
     var selected=importList.filter(function(o){return importSel[o.TrackingNo];});
     if(selected.length===0){notify("กรุณาเลือกพัสดุ","warning");return;}
     setImporting(true);
-    var ok=0;var fail=0;
-    for(var i=0;i<selected.length;i++){
-      var o=selected[i];
-      try{await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"รอเช็ค",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});ok++;}catch(e){fail++;}
-    }
+    var rows=selected.map(function(o){return{date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0};});
+    var ok=await dbAddParcelBatch(rows);
     setImporting(false);setShowImport(false);
-    notify("✅ ดึงพัสดุสำเร็จ "+ok+" รายการ"+(fail>0?" (ล้มเหลว "+fail+")":""));
+    notify("✅ ดึงพัสดุสำเร็จ "+ok+" รายการ");
     onRefresh();
   }
   function toggleImportAll(checked){var s={};importList.forEach(function(o){s[o.TrackingNo]=checked;});setImportSel(s);}
@@ -721,12 +721,12 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
       <span>🔢 มีเลขพัสดุ: <b style={{color:"#1e40af"}}>{myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3;}).length}</b></span>
       <span>✅ ดึงแล้ว: <b style={{color:"#059669"}}>{(parcels||[]).length}</b></span>
       <span>🆕 รอดึง: <b style={{color:withTracking.length>0?"#d97706":"#94a3b8"}}>{withTracking.length}</b></span>
-      {withTracking.length>0&&<button onClick={function(){setAutoStatus("📥 กำลังดึง...");
-        var existing2={};(parcels||[]).forEach(function(p){if(p.tracking_no)existing2[p.tracking_no]=true;});
-        var newOnes=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existing2[o.TrackingNo];});
-        if(newOnes.length===0){setAutoStatus("");notify("ไม่มีพัสดุใหม่","warning");return;}
-        (async function(){var ok=0;for(var i=0;i<newOnes.length;i++){var o=newOnes[i];try{await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});ok++;}catch(e){}}
-        setAutoStatus("");if(ok>0){notify("📥 ดึงสำเร็จ "+ok+" รายการ");onRefresh();}else{notify("ดึงไม่สำเร็จ","warning");}})();
+      {withTracking.length>0&&<button onClick={function(){setAutoStatus("📥 กำลังดึง "+withTracking.length+" รายการ...");
+        (async function(){
+          var rows=withTracking.map(function(o){return{date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0};});
+          var ok=await dbAddParcelBatch(rows);
+          setAutoStatus("");if(ok>0){notify("📥 ดึงสำเร็จ "+ok+" รายการ");onRefresh();}else{notify("ดึงไม่สำเร็จ","warning");}
+        })();
       }} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#d97706",color:"#fff",fontWeight:700,fontSize:11,cursor:"pointer"}}>⚡ ดึงเลย</button>}
     </div>
 
