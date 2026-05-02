@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v7";
+var APP_VERSION = "20260502v8";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -942,6 +942,59 @@ function ParcelReportPage({parcels,accounts,user}){
       </div>
     </div>
 
+    {/* พัสดุค้าง — รอเช็คนานเกิน 2 วัน */}
+    {(function(){
+      var now=new Date();var twoDaysAgo=new Date(now);twoDaysAgo.setDate(now.getDate()-2);var cutoff=twoDaysAgo.toISOString().slice(0,10);
+      var overdue=(parcels||[]).filter(function(p){return p.status==="รอเช็ค"&&p.date&&p.date<=cutoff;});
+      if(overdue.length===0)return null;
+      // group by telesale
+      var byTele={};overdue.forEach(function(p){var t=p.telesale||"ไม่ระบุ";if(!byTele[t])byTele[t]=[];byTele[t].push(p);});
+      var teleList=Object.keys(byTele).sort(function(a,b){return byTele[b].length-byTele[a].length;});
+      return<div style={{background:"linear-gradient(135deg,#fef2f2,#fff7ed)",borderRadius:12,padding:16,marginBottom:16,border:"1.5px solid #fecaca"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#dc2626"}}>📌 พัสดุค้าง — รอเช็คเกิน 2 วัน ({overdue.length} รายการ)</div>
+          <span style={{fontSize:11,color:"#94a3b8"}}>ตั้งแต่ {cutoff} หรือก่อนหน้า</span>
+        </div>
+        {/* สรุปตาม TeleSale */}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+          {teleList.map(function(t){
+            var items=byTele[t];var codSum=items.reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+            return<div key={t} style={{background:"#fff",borderRadius:10,padding:"10px 14px",border:"1px solid #fecaca",flex:"1 1 160px",minWidth:140}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#dc2626"}}>{t}</div>
+              <div style={{fontSize:11,color:"#64748b",marginTop:2}}>{items.length} รายการค้าง · COD ฿{codSum.toLocaleString()}</div>
+            </div>;
+          })}
+        </div>
+        {/* ตารางพัสดุค้าง */}
+        <div style={{overflow:"auto",maxHeight:300}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:11,minWidth:600}}>
+            <thead><tr>
+              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>วันที่</th>
+              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>เลขพัสดุ</th>
+              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>ชื่อลูกค้า</th>
+              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>เบอร์โทร</th>
+              <th style={{...thS,fontSize:10,background:"#fef2f2"}}>TeleSale</th>
+              <th style={{...thS,fontSize:10,textAlign:"right",background:"#fef2f2"}}>COD</th>
+              <th style={{...thS,fontSize:10,textAlign:"center",background:"#fef2f2"}}>ค้างกี่วัน</th>
+            </tr></thead>
+            <tbody>{overdue.sort(function(a,b){return(a.date||"")>(b.date||"")?1:-1;}).map(function(p,i){
+              var days=Math.floor((now-new Date(p.date))/(1000*60*60*24));
+              var urgentColor=days>=5?"#dc2626":days>=3?"#ea580c":"#f59e0b";
+              return<tr key={p.id||i} style={{background:i%2===0?"#fff":"#fef2f2"}}>
+                <td style={{...tdS,fontSize:11}}>{fmtDate(p.date)}</td>
+                <td style={{...tdS,fontSize:11,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"#1e40af"}}>{p.tracking_no}</td>
+                <td style={{...tdS,fontSize:11}}>{p.customer_name}</td>
+                <td style={{...tdS,fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}>{p.phone}</td>
+                <td style={{...tdS,fontSize:11}}>{p.telesale}</td>
+                <td style={{...tdS,fontSize:11,textAlign:"right",fontWeight:700,color:"#059669"}}>฿{(Number(p.cod)||0).toLocaleString()}</td>
+                <td style={{...tdS,textAlign:"center"}}><span style={{padding:"2px 8px",borderRadius:10,fontSize:10,fontWeight:800,color:"#fff",background:urgentColor}}>{days} วัน</span></td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </div>;
+    })()}
+
     {/* จัดอันดับพนักงาน */}
     {personList.length>0&&(function(){
       var ranked=personList.slice().map(function(p){var rate=pct(p.confirmed+p.sent,p.total);var failRate=pct(p.returned+p.rejected,p.total);return{...p,rate:rate,failRate:failRate};}).sort(function(a,b){return b.rate-a.rate||b.codOk-a.codOk;});
@@ -1098,6 +1151,124 @@ function ParcelReportPage({parcels,accounts,user}){
         </table>
       </div>
     </div>}
+
+    {/* เปรียบเทียบเดือนนี้ vs เดือนก่อน */}
+    {(function(){
+      var thisM=monthStart().substring(0,7);var pm=prevMonthStart().substring(0,7);
+      var allP=parcels||[];
+      function mStats(m){
+        var list=allP.filter(function(p){return(p.date||"").substring(0,7)===m;});
+        var t=list.length;var conf=0;var pend=0;var fail=0;var cod=0;var codOk=0;
+        list.forEach(function(p){
+          var c=Number(p.cod)||0;cod+=c;
+          if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว"){conf++;codOk+=c;}
+          if(p.status==="รอเช็ค")pend++;
+          if(p.status==="ตีกลับ"||p.status==="ปฏิเสธ")fail++;
+        });
+        var pm2={};list.forEach(function(p){
+          var t2=p.telesale||"ไม่ระบุ";if(!pm2[t2])pm2[t2]={name:t2,total:0,confirmed:0,cod:0};
+          pm2[t2].total++;if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว"){pm2[t2].confirmed++;pm2[t2].cod+=Number(p.cod)||0;}
+        });
+        return{total:t,confirmed:conf,pending:pend,fail:fail,cod:cod,codOk:codOk,rate:t>0?Math.round(conf/t*100):0,persons:Object.values(pm2)};
+      }
+      var cur=mStats(thisM);var prev=mStats(pm);
+      var thMN=["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+      var curLabel=thMN[parseInt(thisM.split("-")[1])]+" "+thisM.split("-")[0];
+      var prevLabel=thMN[parseInt(pm.split("-")[1])]+" "+pm.split("-")[0];
+
+      var rows=[
+        {label:"พัสดุทั้งหมด",cur:cur.total,prev:prev.total,fmt:function(v){return v;}},
+        {label:"ยืนยัน+ส่งแล้ว",cur:cur.confirmed,prev:prev.confirmed,fmt:function(v){return v;},good:true},
+        {label:"% ยืนยัน",cur:cur.rate,prev:prev.rate,fmt:function(v){return v+"%";},pct:true},
+        {label:"รอเช็ค",cur:cur.pending,prev:prev.pending,fmt:function(v){return v;},bad:true},
+        {label:"ปฏิเสธ+ตีกลับ",cur:cur.fail,prev:prev.fail,fmt:function(v){return v;},bad:true},
+        {label:"COD ยืนยัน",cur:cur.codOk,prev:prev.codOk,fmt:function(v){return"฿"+v.toLocaleString();},money:true},
+      ];
+
+      return<div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
+        <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>📊 เปรียบเทียบ {curLabel} vs {prevLabel}</div>
+
+        {/* Summary Visual */}
+        <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+          <div style={{flex:"1 1 200px",background:diff(cur.rate,prev.rate)>=0?"#f0fdf4":"#fef2f2",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(diff(cur.rate,prev.rate)>=0?"#bbf7d0":"#fecaca")}}>
+            <div style={{fontSize:11,color:"#64748b",fontWeight:600}}>% ยืนยัน</div>
+            <div style={{fontSize:24,fontWeight:800,color:diff(cur.rate,prev.rate)>=0?"#059669":"#dc2626"}}>{cur.rate}%</div>
+            <div style={{fontSize:12,fontWeight:700,color:diff(cur.rate,prev.rate)>=0?"#10b981":"#ef4444"}}>{diff(cur.rate,prev.rate)>0?"🔺 +":"🔻 "}{diff(cur.rate,prev.rate)}% จาก {prev.rate}%</div>
+          </div>
+          <div style={{flex:"1 1 200px",background:diff(cur.codOk,prev.codOk)>=0?"#f0fdf4":"#fef2f2",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(diff(cur.codOk,prev.codOk)>=0?"#bbf7d0":"#fecaca")}}>
+            <div style={{fontSize:11,color:"#64748b",fontWeight:600}}>COD ยืนยัน</div>
+            <div style={{fontSize:24,fontWeight:800,color:diff(cur.codOk,prev.codOk)>=0?"#059669":"#dc2626"}}>฿{cur.codOk.toLocaleString()}</div>
+            <div style={{fontSize:12,fontWeight:700,color:diff(cur.codOk,prev.codOk)>=0?"#10b981":"#ef4444"}}>{diff(cur.codOk,prev.codOk)>=0?"🔺 +฿":"🔻 ฿"}{Math.abs(diff(cur.codOk,prev.codOk)).toLocaleString()}</div>
+          </div>
+          <div style={{flex:"1 1 200px",background:diff(cur.total,prev.total)>=0?"#eff6ff":"#fef2f2",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(diff(cur.total,prev.total)>=0?"#bfdbfe":"#fecaca")}}>
+            <div style={{fontSize:11,color:"#64748b",fontWeight:600}}>พัสดุเช็ค</div>
+            <div style={{fontSize:24,fontWeight:800,color:"#1e293b"}}>{cur.total}</div>
+            <div style={{fontSize:12,fontWeight:700,color:diff(cur.total,prev.total)>=0?"#3b82f6":"#ef4444"}}>{diff(cur.total,prev.total)>=0?"🔺 +":"🔻 "}{diff(cur.total,prev.total)} จาก {prev.total}</div>
+          </div>
+        </div>
+
+        {/* ตารางเปรียบเทียบ */}
+        <div style={{overflow:"auto",marginBottom:16}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:460}}>
+            <thead><tr>
+              <th style={thS}>รายการ</th>
+              <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>{prevLabel}</th>
+              <th style={{...thS,textAlign:"center",color:"#d97706"}}>{curLabel}</th>
+              <th style={{...thS,textAlign:"center"}}>เปลี่ยนแปลง</th>
+            </tr></thead>
+            <tbody>{rows.map(function(r,i){
+              var d=r.cur-r.prev;var isGood=r.bad?(d<=0):(d>=0);if(r.pct)isGood=d>=0;
+              var cc=d===0?"#94a3b8":isGood?"#10b981":"#ef4444";
+              var ci=d===0?"➖":isGood?"🔺":"🔻";
+              var ct=r.money?(d>=0?"+฿":"฿")+Math.abs(d).toLocaleString():r.pct?(d>=0?"+":"")+d+"%":(d>=0?"+":"")+d;
+              return<tr key={i} style={{background:i%2===0?"#fff":"#f8fafc"}}>
+                <td style={{...tdS,fontWeight:600}}>{r.label}</td>
+                <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{r.fmt(r.prev)}</td>
+                <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#d97706"}}>{r.fmt(r.cur)}</td>
+                <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:12,fontWeight:700,color:cc}}>{ci} {ct}</span></td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+
+        {/* เปรียบเทียบรายคน */}
+        {(cur.persons.length>0||prev.persons.length>0)&&<div>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>👥 เปรียบเทียบรายคน</div>
+          <div style={{overflow:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:580}}>
+              <thead><tr>
+                <th style={thS}>TeleSale</th>
+                <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>เช็ค ({prevLabel})</th>
+                <th style={{...thS,textAlign:"center",color:"#d97706"}}>เช็ค ({curLabel})</th>
+                <th style={{...thS,textAlign:"center"}}>+/-</th>
+                <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>ยืนยัน ({prevLabel})</th>
+                <th style={{...thS,textAlign:"center",color:"#d97706"}}>ยืนยัน ({curLabel})</th>
+                <th style={{...thS,textAlign:"center"}}>+/-</th>
+              </tr></thead>
+              <tbody>{(function(){
+                var allN={};cur.persons.forEach(function(p){allN[p.name]=true;});prev.persons.forEach(function(p){allN[p.name]=true;});
+                return Object.keys(allN).sort().map(function(n,i){
+                  var c2=cur.persons.find(function(p){return p.name===n;})||{total:0,confirmed:0};
+                  var p2=prev.persons.find(function(p){return p.name===n;})||{total:0,confirmed:0};
+                  var dT=c2.total-p2.total;var dC=c2.confirmed-p2.confirmed;
+                  return<tr key={n} style={{background:i%2===0?"#fff":"#f8fafc"}}>
+                    <td style={{...tdS,fontWeight:700}}>{n}</td>
+                    <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{p2.total}</td>
+                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#d97706"}}>{c2.total}</td>
+                    <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:dT===0?"#94a3b8":dT>0?"#10b981":"#ef4444"}}>{dT>0?"+":""}{dT}</span></td>
+                    <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{p2.confirmed}</td>
+                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#d97706"}}>{c2.confirmed}</td>
+                    <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:dC===0?"#94a3b8":dC>0?"#10b981":"#ef4444"}}>{dC>0?"+":""}{dC}</span></td>
+                  </tr>;
+                });
+              })()}</tbody>
+            </table>
+          </div>
+        </div>}
+      </div>;
+
+      function diff(a,b){return a-b;}
+    })()}
   </div>;
 }
 
