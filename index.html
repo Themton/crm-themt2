@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v10";
+var APP_VERSION = "20260502v11";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -580,6 +580,8 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   var[importMonth,setImportMonth]=_s(todayVal.substring(0,7));
   var[importDateFrom,setImportDateFrom]=_s(todayVal);
   var[importDateTo,setImportDateTo]=_s(todayVal);
+  var[autoSynced,setAutoSynced]=_s(false);
+  var autoRef=useRef(false);
   var[form,setForm]=_s({date:todayVal,tracking_no:"",customer_name:"",phone:"",check_date:"",status:"รอเช็ค",telesale:"",cod:""});
 
   var teleNames=[];
@@ -602,6 +604,27 @@ function ParcelCheckPage({parcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,
   var myAllOrders=(allOrders||[]).concat(upsellOrders||[]);
   if(!isAdmin){myAllOrders=myAllOrders.filter(function(o){return o.AccountEmail===user.username;});}
   var withTracking=myAllOrders.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existingTracks[o.TrackingNo];});
+
+  // --- Auto-import: ดึงพัสดุใหม่อัตโนมัติ ---
+  useEffect(function(){
+    if(autoRef.current)return;
+    if(!allOrders||allOrders.length===0)return;
+    if(!parcels)return;
+    var existing={};(parcels||[]).forEach(function(p){if(p.tracking_no)existing[p.tracking_no]=true;});
+    var myOrds=(allOrders||[]).concat(upsellOrders||[]);
+    if(!isAdmin){myOrds=myOrds.filter(function(o){return o.AccountEmail===user.username;});}
+    var newOnes=myOrds.filter(function(o){return o.TrackingNo&&o.TrackingNo.length>3&&!existing[o.TrackingNo];});
+    if(newOnes.length===0)return;
+    autoRef.current=true;
+    (async function(){
+      var ok=0;
+      for(var i=0;i<newOnes.length;i++){
+        var o=newOnes[i];
+        try{await dbAddParcel({date:getDate(o.Timestamp)||todayVal,tracking_no:o.TrackingNo,customer_name:o.Name||"",phone:o.MobileNo||"",check_date:"",status:"",telesale:o.SalesPerson||extractNickname(user.displayName,user.nickname),cod:Number(o.COD)||0});ok++;}catch(e){}
+      }
+      if(ok>0){notify("📥 ดึงพัสดุใหม่อัตโนมัติ "+ok+" รายการ");onRefresh();}
+    })();
+  },[allOrders,upsellOrders,parcels]);
 
   var importList=withTracking.filter(function(o){
     var d=getDate(o.Timestamp);
