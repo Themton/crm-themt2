@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v27";
+var APP_VERSION = "20260502v28";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -662,6 +662,44 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
   // --- Flash Sync ---
   var[flashSyncing,setFlashSyncing]=_s(false);
   var[flashProgress,setFlashProgress]=_s("");
+  var[flashAutoCount,setFlashAutoCount]=_s(0);
+
+  // Auto-sync: ทุก 3 นาที ดึงทีละ 15 ตัว (ป้องกัน rate limit)
+  var flashAutoRef=useRef(false);
+  useEffect(function(){
+    var iv=setInterval(function(){
+      if(flashAutoRef.current)return;
+      if(!parcels||parcels.length===0)return;
+      var candidates=(parcels||[]).filter(function(p){
+        return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ";
+      });
+      if(candidates.length===0)return;
+      // สุ่มเลือก 15 ตัว
+      var batch=candidates.slice(0,15);
+      flashAutoRef.current=true;
+      (async function(){
+        var ok=0;
+        for(var i=0;i<batch.length;i++){
+          try{
+            var res=await flashGetTracking(batch[i].tracking_no);
+            if(res&&res.code===1&&res.data){
+              var nf=flashStateText(res.data.state);
+              if(nf&&nf!==batch[i].flash_status){
+                await sbFetch("parcel_checks?id=eq."+batch[i].id,{method:"PATCH",body:{flash_status:nf}});
+                setParcels(function(prev){return prev.map(function(x){return x.id===batch[i].id?{...x,flash_status:nf}:x;});});
+                ok++;
+              }
+            }
+          }catch(e){}
+          // delay 1 วินาทีต่อตัว
+          await new Promise(function(r){setTimeout(r,1000);});
+        }
+        if(ok>0)setFlashAutoCount(function(c){return c+ok;});
+        flashAutoRef.current=false;
+      })();
+    },180000); // 3 นาที
+    return function(){clearInterval(iv);};
+  },[parcels]);
   async function syncFlashStatus(){
     var toSync=filtered.filter(function(p){return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ";});
     if(toSync.length===0){notify("ไม่มีพัสดุที่ต้องซิงค์","warning");return;}
@@ -777,7 +815,9 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
         <span style={{color:"#64748b"}}>✅ ในระบบ: <b style={{color:"#059669"}}>{pullCounts.total}</b></span>
         {pullCounts.today===0&&pullCounts.recent===0&&<span style={{color:"#10b981",fontWeight:600}}>✅ ดึงครบแล้ว</span>}
         <span style={{borderLeft:"1px solid #e2e8f0",height:20}}/>
-        <button disabled={flashSyncing} onClick={syncFlashStatus} style={{padding:"7px 16px",borderRadius:8,border:"none",background:flashSyncing?"#94a3b8":"linear-gradient(135deg,#0ea5e9,#0284c7)",color:"#fff",fontWeight:700,fontSize:12,cursor:flashSyncing?"default":"pointer",fontFamily:"inherit"}}>{flashSyncing?"⏳ กำลังซิงค์...":"🔄 ซิงค์สถานะ Flash"}</button>
+        <button disabled={flashSyncing} onClick={syncFlashStatus} style={{padding:"7px 16px",borderRadius:8,border:"none",background:flashSyncing?"#94a3b8":"linear-gradient(135deg,#0ea5e9,#0284c7)",color:"#fff",fontWeight:700,fontSize:12,cursor:flashSyncing?"default":"pointer",fontFamily:"inherit"}}>{flashSyncing?"⏳ กำลังซิงค์...":"🔄 ซิงค์ Flash"}</button>
+        {flashAutoCount>0&&<span style={{fontSize:10,color:"#0284c7",fontWeight:600}}>auto +{flashAutoCount}</span>}
+        <span style={{fontSize:9,color:"#94a3b8"}}>⚡auto ทุก 3 นาที</span>
       </>:<span style={{color:"#94a3b8"}}>⏳ กำลังตรวจสอบ...</span>}
     </div>
 
