@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v43";
+var APP_VERSION = "20260502v44";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -981,37 +981,36 @@ function ParcelReportPage({parcels,accounts,user}){
     if(selPerson!=="ALL"&&p.telesale!==selPerson)return false;
     return true;
   });
-  // กรองตามวันที่ + คน + สถานะ
-  var filtered=selStatus==="ALL"?preFiltered:selStatus===""?preFiltered.filter(function(p){return!p.status;}):preFiltered.filter(function(p){return p.status===selStatus;});
+  // กรองตามวันที่ + คน + สถานะ Flash
+  var FLASH_STATS=["สร้างรายการ","รับพัสดุแล้ว","อยู่ในระบบขนส่ง","กำลังจัดส่ง","เซ็นรับแล้ว","ส่งคืน","คืนสำเร็จ"];
+  var filtered=selStatus==="ALL"?preFiltered:selStatus===""?preFiltered.filter(function(p){return!p.flash_status;}):preFiltered.filter(function(p){return p.flash_status===selStatus;});
 
   // --- สรุปรวม ---
   var total=filtered.length;
-  var byStatus={};PARCEL_STATUSES.forEach(function(s){byStatus[s.v]=0;});byStatus[""]=0;
-  var byStatusAll={};PARCEL_STATUSES.forEach(function(s){byStatusAll[s.v]=0;});byStatusAll[""]=0;
+  var byStatus={};FLASH_STATS.forEach(function(s){byStatus[s]=0;});byStatus[""]=0;
+  var byStatusAll={};FLASH_STATS.forEach(function(s){byStatusAll[s]=0;});byStatusAll[""]=0;
   var totalCOD=0;var codConfirmed=0;
   filtered.forEach(function(p){
-    var st=p.status||"";
+    var st=p.flash_status||"";
     if(byStatus[st]!==undefined)byStatus[st]++;else byStatus[""]++;
     var cod=Number(p.cod)||0;totalCOD+=cod;
-    if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว")codConfirmed+=cod;
+    if(p.flash_status==="เซ็นรับแล้ว")codConfirmed+=cod;
   });
-  preFiltered.forEach(function(p){var st=p.status||"";if(byStatusAll[st]!==undefined)byStatusAll[st]++;else byStatusAll[""]++;});
-  var successRate=total>0?Math.round((byStatus["ยืนยันรับ"]||0)/total*100):0;
-  var contactRate=total>0?Math.round(((byStatus["ยืนยันรับ"]||0)+(byStatus["ติดต่อได้"]||0)+(byStatus["ส่งแล้ว"]||0))/total*100):0;
+  preFiltered.forEach(function(p){var st=p.flash_status||"";if(byStatusAll[st]!==undefined)byStatusAll[st]++;else byStatusAll[""]++;});
+  var successRate=total>0?Math.round((byStatus["เซ็นรับแล้ว"]||0)/total*100):0;
+  var deliveryRate=total>0?Math.round(((byStatus["เซ็นรับแล้ว"]||0)+(byStatus["กำลังจัดส่ง"]||0))/total*100):0;
 
   // --- สรุปแต่ละคน ---
   var personMap={};
   filtered.forEach(function(p){
     var t=p.telesale||"ไม่ระบุ";
-    if(!personMap[t])personMap[t]={name:t,total:0,confirmed:0,contacted:0,unreachable:0,rejected:0,returned:0,sent:0,pending:0,cod:0,codOk:0};
+    if(!personMap[t])personMap[t]={name:t,total:0,confirmed:0,delivering:0,inTransit:0,returned:0,pending:0,cod:0,codOk:0};
     var pm=personMap[t];pm.total++;pm.cod+=Number(p.cod)||0;
-    if(p.status==="ยืนยันรับ"){pm.confirmed++;pm.codOk+=Number(p.cod)||0;}
-    if(p.status==="ติดต่อได้")pm.contacted++;
-    if(p.status==="ติดต่อไม่ได้")pm.unreachable++;
-    if(p.status==="ปฏิเสธ")pm.rejected++;
-    if(p.status==="ตีกลับ")pm.returned++;
-    if(p.status==="ส่งแล้ว"){pm.sent++;pm.codOk+=Number(p.cod)||0;}
-    if(p.status==="รอเช็ค")pm.pending++;
+    if(p.flash_status==="เซ็นรับแล้ว"){pm.confirmed++;pm.codOk+=Number(p.cod)||0;}
+    if(p.flash_status==="กำลังจัดส่ง")pm.delivering++;
+    if(p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="รับพัสดุแล้ว")pm.inTransit++;
+    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ")pm.returned++;
+    if(!p.flash_status||p.flash_status==="สร้างรายการ")pm.pending++;
   });
   var personList=Object.values(personMap).sort(function(a,b){return b.total-a.total;});
 
@@ -1021,8 +1020,8 @@ function ParcelReportPage({parcels,accounts,user}){
     var d=p.date||"?";
     if(!dayMap[d])dayMap[d]={date:d,total:0,confirmed:0,pending:0,cod:0};
     dayMap[d].total++;
-    if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว"){dayMap[d].confirmed++;dayMap[d].cod+=Number(p.cod)||0;}
-    if(p.status==="รอเช็ค")dayMap[d].pending++;
+    if(p.flash_status==="เซ็นรับแล้ว"){dayMap[d].confirmed++;dayMap[d].cod+=Number(p.cod)||0;}
+    if(!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว")dayMap[d].pending++;
   });
   var dayList=Object.values(dayMap).sort(function(a,b){return b.date>a.date?1:-1;});
 
@@ -1060,7 +1059,7 @@ function ParcelReportPage({parcels,accounts,user}){
       <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:10}}>
         <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>สถานะ:</span>
         <button onClick={function(){setSelStatus("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selStatus==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selStatus==="ALL"?"#fef3c7":"#fff",color:selStatus==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทั้งหมด</button>
-        {PARCEL_STATUSES.map(function(s){var active=selStatus===s.v;var count=byStatusAll[s.v]||0;return<button key={s.v} onClick={function(){setSelStatus(s.v);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid "+s.c:"1px solid #e2e8f0",background:active?s.bg:"#fff",color:active?s.c:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:s.c}}>{s.v}</span> <span style={{fontSize:10,color:"#94a3b8"}}>({count})</span></button>;})}
+        {FLASH_STATS.map(function(sv){var active=selStatus===sv;var count=byStatusAll[sv]||0;var st=FLASH_STATUS_STYLES[sv]||{c:"#94a3b8",bg:"#f1f5f9"};return<button key={sv} onClick={function(){setSelStatus(sv);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid "+st.c:"1px solid #e2e8f0",background:active?st.bg:"#fff",color:active?st.c:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:st.c}}>{sv}</span> <span style={{fontSize:10,color:"#94a3b8"}}>({count})</span></button>;})}
         <button onClick={function(){setSelStatus("");}} style={{padding:"6px 14px",borderRadius:8,border:selStatus===""?"2px solid #cbd5e1":"1px solid #e2e8f0",background:selStatus===""?"#f1f5f9":"#fff",color:selStatus===""?"#475569":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:"#94a3b8"}}>ว่างเปล่า</span> <span style={{fontSize:10,color:"#94a3b8"}}>({byStatusAll[""]||0})</span></button>
       </div>
     </div>
@@ -1068,24 +1067,25 @@ function ParcelReportPage({parcels,accounts,user}){
     {/* สรุปภาพรวม */}
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
       <div style={{...cardS,borderLeft:"4px solid #3b82f6"}}><div style={{fontSize:28,fontWeight:800,color:"#1e293b"}}>{total}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>พัสดุทั้งหมด</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #10b981"}}><div style={{fontSize:28,fontWeight:800,color:"#10b981"}}>{successRate}%</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>อัตรายืนยันรับ</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #0ea5e9"}}><div style={{fontSize:28,fontWeight:800,color:"#0ea5e9"}}>{contactRate}%</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>อัตราติดต่อได้</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={{fontSize:28,fontWeight:800,color:"#8b5cf6"}}>฿{codConfirmed.toLocaleString()}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>COD ยืนยัน+ส่งแล้ว</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #f59e0b"}}><div style={{fontSize:28,fontWeight:800,color:"#f59e0b"}}>{byStatus["รอเช็ค"]||0}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>รอเช็ค</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #ef4444"}}><div style={{fontSize:28,fontWeight:800,color:"#ef4444"}}>{(byStatus["ตีกลับ"]||0)+(byStatus["ปฏิเสธ"]||0)}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>ตีกลับ+ปฏิเสธ</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #10b981"}}><div style={{fontSize:28,fontWeight:800,color:"#10b981"}}>{successRate}%</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>อัตราเซ็นรับ</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #0ea5e9"}}><div style={{fontSize:28,fontWeight:800,color:"#0ea5e9"}}>{deliveryRate}%</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>อัตราจัดส่ง</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={{fontSize:28,fontWeight:800,color:"#8b5cf6"}}>฿{codConfirmed.toLocaleString()}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>COD เซ็นรับแล้ว</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #f59e0b"}}><div style={{fontSize:28,fontWeight:800,color:"#f59e0b"}}>{(byStatus["สร้างรายการ"]||0)+(byStatus["รับพัสดุแล้ว"]||0)}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>รอจัดส่ง</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #ef4444"}}><div style={{fontSize:28,fontWeight:800,color:"#ef4444"}}>{(byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0)}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>ส่งคืน+ตีกลับ</div></div>
     </div>
 
     {/* กราฟสถานะ */}
     <div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
       <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>📊 สัดส่วนสถานะ</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {PARCEL_STATUSES.map(function(s){
-          var count=byStatus[s.v]||0;var w=total>0?Math.max(count/total*100,count>0?2:0):0;
-          return<div key={s.v} style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:90,fontSize:12,fontWeight:600,color:s.c,textAlign:"right"}}>{s.v}</div>
+        {FLASH_STATS.map(function(sv){
+          var count=byStatus[sv]||0;var w=total>0?Math.max(count/total*100,count>0?2:0):0;
+          var st=FLASH_STATUS_STYLES[sv]||{c:"#94a3b8",bg:"#f1f5f9"};
+          return<div key={sv} style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:100,fontSize:12,fontWeight:600,color:st.c,textAlign:"right"}}>{sv}</div>
             <div style={{flex:1,height:24,background:"#f1f5f9",borderRadius:6,overflow:"hidden",position:"relative"}}>
-              <div style={{height:"100%",width:w+"%",background:s.c,borderRadius:6,transition:"width .4s"}}/>
-              {count>0&&<span style={{position:"absolute",left:w>15?(w/2)+"%":"calc("+w+"% + 6px)",top:"50%",transform:w>15?"translate(-50%,-50%)":"translateY(-50%)",fontSize:11,fontWeight:700,color:w>15?"#fff":s.c}}>{count} ({Math.round(w)}%)</span>}
+              <div style={{height:"100%",width:w+"%",background:st.c,borderRadius:6,transition:"width .4s"}}/>
+              {count>0&&<span style={{position:"absolute",left:w>15?(w/2)+"%":"calc("+w+"% + 6px)",top:"50%",transform:w>15?"translate(-50%,-50%)":"translateY(-50%)",fontSize:11,fontWeight:700,color:w>15?"#fff":st.c}}>{count} ({Math.round(w)}%)</span>}
             </div>
           </div>;
         })}
@@ -1094,7 +1094,7 @@ function ParcelReportPage({parcels,accounts,user}){
 
     {/* จัดอันดับพนักงาน */}
     {personList.length>0&&(function(){
-      var ranked=personList.slice().map(function(p){var rate=pct(p.confirmed+p.sent,p.total);var failRate=pct(p.returned+p.rejected,p.total);return{...p,rate:rate,failRate:failRate};}).sort(function(a,b){return b.rate-a.rate||b.codOk-a.codOk;});
+      var ranked=personList.slice().map(function(p){var rate=pct(p.confirmed,p.total);var failRate=pct(p.returned,p.total);return{...p,rate:rate,failRate:failRate};}).sort(function(a,b){return b.rate-a.rate||b.codOk-a.codOk;});
       var best=ranked[0];var worst=ranked[ranked.length-1];
       var rankIcons=["🏆","🥈","🥉"];
       var getRankBg=function(i,len){if(i===0)return"linear-gradient(135deg,#fef3c7,#fde68a)";if(i===1)return"linear-gradient(135deg,#f1f5f9,#e2e8f0)";if(i===2)return"linear-gradient(135deg,#fed7aa,#fdba74)";if(i>=len-1&&len>2)return"linear-gradient(135deg,#fee2e2,#fecaca)";return"#fff";};
@@ -1110,12 +1110,12 @@ function ParcelReportPage({parcels,accounts,user}){
               <div style={{fontSize:18,fontWeight:800,color:"#1e293b",marginBottom:8}}>{p.name}</div>
               <div style={{display:"inline-block",padding:"6px 16px",borderRadius:20,background:p.rate>=70?"#d1fae5":p.rate>=40?"#fef3c7":"#fee2e2",marginBottom:8}}>
                 <span style={{fontSize:22,fontWeight:800,color:p.rate>=70?"#059669":p.rate>=40?"#d97706":"#dc2626"}}>{p.rate}%</span>
-                <span style={{fontSize:11,color:"#64748b",marginLeft:4}}>ยืนยัน</span>
+                <span style={{fontSize:11,color:"#64748b",marginLeft:4}}>เซ็นรับ</span>
               </div>
               <div style={{display:"flex",justifyContent:"center",gap:12,fontSize:11,color:"#475569"}}>
-                <span>เช็ค <b>{p.total}</b></span>
-                <span style={{color:"#10b981"}}>✅ {p.confirmed+p.sent}</span>
-                <span style={{color:"#ef4444"}}>❌ {p.returned+p.rejected}</span>
+                <span>พัสดุ <b>{p.total}</b></span>
+                <span style={{color:"#0d9488"}}>✅ {p.confirmed}</span>
+                <span style={{color:"#dc2626"}}>❌ {p.returned}</span>
               </div>
               <div style={{fontSize:13,fontWeight:700,color:"#059669",marginTop:6}}>COD ฿{p.codOk.toLocaleString()}</div>
             </div>;
@@ -1128,7 +1128,7 @@ function ParcelReportPage({parcels,accounts,user}){
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:700,color:"#dc2626",marginBottom:4}}>ต้องปรับปรุง — อันดับสุดท้าย</div>
             <div style={{fontSize:18,fontWeight:800,color:"#1e293b"}}>{worst.name}</div>
-            <div style={{fontSize:12,color:"#64748b",marginTop:4}}>ยืนยัน <b style={{color:"#dc2626"}}>{worst.rate}%</b> · เช็ค {worst.total} · ปฏิเสธ+ตีกลับ {worst.rejected+worst.returned} ({worst.failRate}%) · COD ฿{worst.codOk.toLocaleString()}</div>
+            <div style={{fontSize:12,color:"#64748b",marginTop:4}}>เซ็นรับ <b style={{color:"#dc2626"}}>{worst.rate}%</b> · พัสดุ {worst.total} · ส่งคืน {worst.returned} ({worst.failRate}%) · COD ฿{worst.codOk.toLocaleString()}</div>
           </div>
         </div>}
 
@@ -1140,15 +1140,15 @@ function ParcelReportPage({parcels,accounts,user}){
               <thead><tr>
                 <th style={{...thS,textAlign:"center",width:50}}>อันดับ</th>
                 <th style={thS}>TeleSale</th>
-                <th style={{...thS,textAlign:"center"}}>เช็คทั้งหมด</th>
-                <th style={{...thS,textAlign:"center",color:"#10b981"}}>ยืนยัน+ส่ง</th>
-                <th style={{...thS,textAlign:"center",color:"#f59e0b"}}>รอเช็ค</th>
-                <th style={{...thS,textAlign:"center",color:"#10b981"}}>ติดต่อได้</th>
-                <th style={{...thS,textAlign:"center",color:"#ef4444"}}>ติดต่อไม่ได้</th>
-                <th style={{...thS,textAlign:"center",color:"#dc2626"}}>ปฏิเสธ+ตีกลับ</th>
-                <th style={{...thS,textAlign:"center",width:120}}>% ยืนยัน</th>
-                <th style={{...thS,textAlign:"center",width:100}}>% ล้มเหลว</th>
-                <th style={{...thS,textAlign:"right"}}>COD ยืนยัน</th>
+                <th style={{...thS,textAlign:"center"}}>ทั้งหมด</th>
+                <th style={{...thS,textAlign:"center",color:"#0d9488"}}>เซ็นรับ</th>
+                <th style={{...thS,textAlign:"center",color:"#8b5cf6"}}>กำลังส่ง</th>
+                <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>ในระบบ</th>
+                <th style={{...thS,textAlign:"center",color:"#f59e0b"}}>รอส่ง</th>
+                <th style={{...thS,textAlign:"center",color:"#dc2626"}}>ส่งคืน</th>
+                <th style={{...thS,textAlign:"center",width:120}}>% เซ็นรับ</th>
+                <th style={{...thS,textAlign:"center",width:100}}>% ส่งคืน</th>
+                <th style={{...thS,textAlign:"right"}}>COD เซ็นรับ</th>
               </tr></thead>
               <tbody>
                 {ranked.map(function(p,i){
@@ -1160,11 +1160,11 @@ function ParcelReportPage({parcels,accounts,user}){
                     <td style={{...tdS,textAlign:"center",fontSize:16}}>{rankIcons[i]||<span style={{fontSize:13,fontWeight:700,color:isLast?"#dc2626":"#64748b"}}>{i+1}</span>}</td>
                     <td style={{...tdS,fontWeight:700,fontSize:13,color:isLast?"#dc2626":"#1e293b"}}>{p.name} {isLast&&ranked.length>2?<span style={{fontSize:10,color:"#dc2626",fontWeight:600}}>⚠️</span>:""}</td>
                     <td style={{...tdS,textAlign:"center",fontWeight:700}}>{p.total}</td>
-                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#10b981"}}>{p.confirmed+p.sent}</td>
+                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:p.confirmed>0?"#0d9488":"#e2e8f0"}}>{p.confirmed||"-"}</td>
+                    <td style={{...tdS,textAlign:"center",color:p.delivering>0?"#8b5cf6":"#e2e8f0"}}>{p.delivering||"-"}</td>
+                    <td style={{...tdS,textAlign:"center",color:p.inTransit>0?"#3b82f6":"#e2e8f0"}}>{p.inTransit||"-"}</td>
                     <td style={{...tdS,textAlign:"center",color:p.pending>0?"#f59e0b":"#e2e8f0"}}>{p.pending||"-"}</td>
-                    <td style={{...tdS,textAlign:"center",color:p.contacted>0?"#10b981":"#e2e8f0"}}>{p.contacted||"-"}</td>
-                    <td style={{...tdS,textAlign:"center",color:p.unreachable>0?"#ef4444":"#e2e8f0"}}>{p.unreachable||"-"}</td>
-                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:(p.returned+p.rejected)>0?"#dc2626":"#e2e8f0"}}>{(p.returned+p.rejected)||"-"}</td>
+                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:p.returned>0?"#dc2626":"#e2e8f0"}}>{p.returned||"-"}</td>
                     <td style={{...tdS,textAlign:"center"}}>
                       <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
                         <div style={{width:56,height:10,background:"#f1f5f9",borderRadius:5,overflow:"hidden"}}><div style={{height:"100%",width:p.rate+"%",background:barColor,borderRadius:5}}/></div>
@@ -1182,13 +1182,13 @@ function ParcelReportPage({parcels,accounts,user}){
                   <td style={{...tdS,textAlign:"center"}}>📊</td>
                   <td style={{...tdS,fontSize:13}}>รวมทั้งหมด</td>
                   <td style={{...tdS,textAlign:"center",fontSize:14}}>{total}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#10b981"}}>{(byStatus["ยืนยันรับ"]||0)+(byStatus["ส่งแล้ว"]||0)}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#f59e0b"}}>{byStatus["รอเช็ค"]||0}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#10b981"}}>{byStatus["ติดต่อได้"]||0}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#ef4444"}}>{byStatus["ติดต่อไม่ได้"]||0}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#dc2626"}}>{(byStatus["ปฏิเสธ"]||0)+(byStatus["ตีกลับ"]||0)}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#0d9488"}}>{byStatus["เซ็นรับแล้ว"]||0}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#8b5cf6"}}>{byStatus["กำลังจัดส่ง"]||0}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{(byStatus["อยู่ในระบบขนส่ง"]||0)+(byStatus["รับพัสดุแล้ว"]||0)}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#f59e0b"}}>{(byStatus["สร้างรายการ"]||0)+(byStatus[""]||0)}</td>
+                  <td style={{...tdS,textAlign:"center",color:"#dc2626"}}>{(byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0)}</td>
                   <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:12,fontWeight:800,color:successRate>=50?"#10b981":"#f59e0b"}}>{successRate}%</span></td>
-                  <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:total>0&&pct((byStatus["ปฏิเสธ"]||0)+(byStatus["ตีกลับ"]||0),total)>=20?"#dc2626":"#94a3b8"}}>{pct((byStatus["ปฏิเสธ"]||0)+(byStatus["ตีกลับ"]||0),total)}%</span></td>
+                  <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:total>0&&pct((byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0),total)>=20?"#dc2626":"#94a3b8"}}>{pct((byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0),total)}%</span></td>
                   <td style={{...tdS,textAlign:"right",fontSize:14,color:"#059669"}}>฿{codConfirmed.toLocaleString()}</td>
                 </tr>
               </tbody>
