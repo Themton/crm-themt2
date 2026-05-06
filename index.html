@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v31";
+var APP_VERSION = "20260502v32";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -576,7 +576,7 @@ async function dbEditParcel(id,d){var body={date:d.date,tracking_no:d.tracking_n
 async function dbDeleteParcel(id){await sbFetch("parcel_checks?id=eq."+id,{method:"DELETE"});}
 
 /* ===== PARCEL CHECK PAGE ===== */
-var PARCEL_STATUSES=[{v:"รอเช็ค",c:"#f59e0b",bg:"#fef3c7"},{v:"ติดต่อได้",c:"#10b981",bg:"#d1fae5"},{v:"ติดต่อไม่ได้",c:"#ef4444",bg:"#fee2e2"},{v:"ยืนยันรับ",c:"#3b82f6",bg:"#dbeafe"},{v:"ปฏิเสธ",c:"#6b7280",bg:"#f3f4f6"},{v:"ส่งแล้ว",c:"#8b5cf6",bg:"#ede9fe"},{v:"ตีกลับ",c:"#dc2626",bg:"#fecaca"}];
+var PARCEL_STATUSES=[{v:"รอเช็ค",c:"#f59e0b",bg:"#fef3c7"},{v:"รับแล้ว",c:"#10b981",bg:"#d1fae5"},{v:"ตีกลับ",c:"#dc2626",bg:"#fecaca"}];
 function pStatusStyle(st){var f=PARCEL_STATUSES.find(function(s){return s.v===st;});return f?{color:f.c,background:f.bg}:{color:"#94a3b8",background:"#f1f5f9"};}
 
 function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,accounts,user,isAdmin,notify,allOrders,upsellOrders}){
