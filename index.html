@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v56";
+var APP_VERSION = "20260502v57";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -1449,7 +1449,7 @@ function App(){var _s=useState;
       if(flashSyncRunning)return;
       flashSyncRunning=true;
       try{
-        var pending=await sbFetch("parcel_checks?select=id,tracking_no,flash_status&flash_status=not.in.(เซ็นรับแล้ว,คืนสำเร็จ,ไม่พบข้อมูล)&tracking_no=like.TH*&order=id.desc",{range:"0-199"});
+        var pending=await sbFetch("parcel_checks?select=id,tracking_no,flash_status&flash_status=not.in.(เซ็นรับแล้ว,คืนสำเร็จ,ไม่พบข้อมูล)&tracking_no=like.TH*&order=id.desc",{range:"0-49"});
         if(!pending||pending.length===0){flashSyncRunning=false;return;}
         var updates={};
         for(var i=0;i<pending.length;i++){
@@ -1463,7 +1463,7 @@ function App(){var _s=useState;
             if(!updates[newSt])updates[newSt]=[];
             updates[newSt].push(pending[i].id);
           }
-          await new Promise(function(r){setTimeout(r,300);});
+          await new Promise(function(r){setTimeout(r,1000);});
         }
         var totalOk=0;
         for(var st in updates){
