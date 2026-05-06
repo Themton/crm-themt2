@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v33";
+var APP_VERSION = "20260502v34";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -898,8 +898,11 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}><span style={{padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:600,background:"#f0f9ff",color:"#0369a1",border:"1px solid #bae6fd"}}>{p.telesale}</span></td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:700,color:"#059669",textAlign:"right"}}>฿{(Number(p.cod)||0).toLocaleString()}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",textAlign:"center"}}>
-              <div style={{display:"flex",gap:3,justifyContent:"center",alignItems:"center",flexWrap:"wrap"}}>
-                {PARCEL_STATUSES.map(function(s){var active=p.status===s.v;return<button key={s.v} onClick={function(){if(!active)quickStatus(p.id,s.v);}} style={{padding:"4px 10px",borderRadius:14,border:active?"2px solid "+s.c:"1.5px solid #e2e8f0",background:active?s.bg:"#fff",color:active?s.c:"#94a3b8",fontSize:10,fontWeight:active?800:600,cursor:active?"default":"pointer",fontFamily:"inherit",transition:"all .15s"}}>{s.v}</button>;})}
+              <div style={{display:"flex",gap:4,justifyContent:"center",alignItems:"center"}}>
+                <select value={p.status||""} onChange={function(e){quickStatus(p.id,e.target.value||" ");}} style={{padding:"5px 10px",borderRadius:14,border:"2px solid "+(pStatusStyle(p.status).color||"#e2e8f0"),fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",color:pStatusStyle(p.status).color||"#94a3b8",background:pStatusStyle(p.status).background||"#f8fafc",appearance:"none",WebkitAppearance:"none",paddingRight:20,backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 6px center"}}>
+                  <option value="" style={{color:"#94a3b8"}}>ว่างเปล่า</option>
+                  {PARCEL_STATUSES.map(function(s){return<option key={s.v} value={s.v} style={{color:s.c,fontWeight:700}}>{s.v}</option>;})}
+                </select>
                 <button onClick={function(){openEdit(p);}} style={{padding:"3px 6px",border:"none",background:"transparent",cursor:"pointer",fontSize:13}} title="แก้ไข">✏️</button>
                 <button onClick={function(){handleDel(p.id);}} style={{padding:"3px 6px",border:"none",background:"transparent",cursor:"pointer",fontSize:13}} title="ลบ">🗑️</button>
               </div>
