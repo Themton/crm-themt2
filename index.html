@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v42";
+var APP_VERSION = "20260502v43";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -610,7 +610,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
 
   var filtered=(parcels||[]).filter(function(p){
     var ms=!search||String(p.tracking_no||"").indexOf(search)>=0||String(p.customer_name||"").indexOf(search)>=0||String(p.phone||"").indexOf(search)>=0;
-    var mst=filterStatus==="ทั้งหมด"||filterStatus==="ว่างเปล่า"?(!p.status&&filterStatus==="ว่างเปล่า")||(filterStatus==="ทั้งหมด"):p.status===filterStatus;
+    var mst=filterStatus==="ทั้งหมด"||filterStatus==="ว่างเปล่า"?(!p.flash_status&&filterStatus==="ว่างเปล่า")||(filterStatus==="ทั้งหมด"):p.flash_status===filterStatus;
     var mt=filterTele==="ทั้งหมด"||p.telesale===filterTele;
     var md=true;
     if(filterDateMode!=="all"){
@@ -624,7 +624,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     return ms&&mst&&mt&&md;
   });
 
-  var summary={total:filtered.length,confirmed:filtered.filter(function(p){return p.status==="ยืนยันรับ";}).length,pending:filtered.filter(function(p){return p.status==="รอเช็ค";}).length,returned:filtered.filter(function(p){return p.status==="ตีกลับ";}).length,totalCOD:filtered.filter(function(p){return p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
+  var summary={total:filtered.length,confirmed:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว";}).length,pending:filtered.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว";}).length,returned:filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ";}).length,totalCOD:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
 
   // --- Import logic (lazy — คำนวณตอนเปิด modal เท่านั้น) ---
   var[importData,setImportData]=_s([]);
@@ -774,9 +774,9 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     {/* Summary */}
     <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
       <div style={{...cardS,borderLeft:"4px solid #3b82f6"}}><div style={cardLabel}>ทั้งหมด</div><div style={{...cardVal,color:"#1e293b"}}>{summary.total}</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #10b981"}}><div style={cardLabel}>ยืนยันรับ</div><div style={{...cardVal,color:"#10b981"}}>{summary.confirmed}</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #f59e0b"}}><div style={cardLabel}>รอเช็ค</div><div style={{...cardVal,color:"#f59e0b"}}>{summary.pending}</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #ef4444"}}><div style={cardLabel}>ตีกลับ</div><div style={{...cardVal,color:"#ef4444"}}>{summary.returned}</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #10b981"}}><div style={cardLabel}>เซ็นรับแล้ว</div><div style={{...cardVal,color:"#10b981"}}>{summary.confirmed}</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #f59e0b"}}><div style={cardLabel}>รอจัดส่ง</div><div style={{...cardVal,color:"#f59e0b"}}>{summary.pending}</div></div>
+      <div style={{...cardS,borderLeft:"4px solid #ef4444"}}><div style={cardLabel}>ส่งคืน/ตีกลับ</div><div style={{...cardVal,color:"#ef4444"}}>{summary.returned}</div></div>
       <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={cardLabel}>ยอด COD</div><div style={{...cardVal,color:"#8b5cf6"}}>฿{summary.totalCOD.toLocaleString()}</div></div>
     </div>
 
@@ -807,7 +807,13 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
       <input placeholder="🔍 ค้นหา เลขพัสดุ/ชื่อ/เบอร์..." value={search} onChange={function(e){setSearch(e.target.value);setCurrentPage(1);}} style={{flex:"1 1 200px",padding:"10px 14px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,outline:"none",background:"#fff",fontFamily:"inherit"}}/>
       <select value={filterStatus} onChange={function(e){setFilterStatus(e.target.value);setCurrentPage(1);}} style={{padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,background:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
         <option>ทั้งหมด</option>
-        {PARCEL_STATUSES.map(function(s){return<option key={s.v}>{s.v}</option>;})}
+        <option>สร้างรายการ</option>
+        <option>รับพัสดุแล้ว</option>
+        <option>อยู่ในระบบขนส่ง</option>
+        <option>กำลังจัดส่ง</option>
+        <option>เซ็นรับแล้ว</option>
+        <option>ส่งคืน</option>
+        <option>คืนสำเร็จ</option>
         <option>ว่างเปล่า</option>
       </select>
       <select value={filterTele} onChange={function(e){setFilterTele(e.target.value);setCurrentPage(1);}} style={{padding:"10px 12px",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:13,background:"#fff",cursor:"pointer",fontFamily:"inherit"}}>
@@ -827,13 +833,12 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>ชื่อลูกค้า</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>เบอร์โทร</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>วันเช็ค</th>
-          <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>สถานะ</th>
-          <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0284c7",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>Flash</th>
+          <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0284c7",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>สถานะ Flash</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>TeleSale</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"right",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>COD</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"center",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>จัดการ</th>
         </tr></thead>
-        <tbody>{filtered.length===0?<tr><td colSpan={11} style={{textAlign:"center",padding:40,color:"#94a3b8",fontSize:14}}>ไม่พบข้อมูล</td></tr>:filtered.slice((currentPage-1)*pageSize,currentPage*pageSize).map(function(p,i){
+        <tbody>{filtered.length===0?<tr><td colSpan={9} style={{textAlign:"center",padding:40,color:"#94a3b8",fontSize:14}}>ไม่พบข้อมูล</td></tr>:filtered.slice((currentPage-1)*pageSize,currentPage*pageSize).map(function(p,i){
           var idx=(currentPage-1)*pageSize+i;
           var bg=i%2===0?"#fff":"#f8fafc";
           return<tr key={p.id} style={{background:bg}}>
@@ -843,16 +848,11 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:600}}>{p.customer_name}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{p.phone}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate(p.check_date)}</td>
-            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}><span style={{padding:"3px 10px",borderRadius:20,fontSize:11,fontWeight:700,...pStatusStyle(p.status)}}>{p.status||"ว่างเปล่า"}</span></td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{p.flash_status?<span style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:700,color:(FLASH_STATUS_STYLES[p.flash_status]||{}).c||"#94a3b8",background:(FLASH_STATUS_STYLES[p.flash_status]||{}).bg||"#f1f5f9"}}>{p.flash_status}</span>:<span style={{fontSize:10,color:"#cbd5e1"}}>-</span>}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}><span style={{padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:600,background:"#f0f9ff",color:"#0369a1",border:"1px solid #bae6fd"}}>{p.telesale}</span></td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:700,color:"#059669",textAlign:"right"}}>฿{(Number(p.cod)||0).toLocaleString()}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",textAlign:"center"}}>
               <div style={{display:"flex",gap:4,justifyContent:"center",alignItems:"center"}}>
-                <select value={p.status||""} onChange={function(e){quickStatus(p.id,e.target.value||" ");}} style={{padding:"5px 10px",borderRadius:14,border:"2px solid "+(pStatusStyle(p.status).color||"#e2e8f0"),fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",color:pStatusStyle(p.status).color||"#94a3b8",background:pStatusStyle(p.status).background||"#f8fafc",appearance:"none",WebkitAppearance:"none",paddingRight:20,backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E\")",backgroundRepeat:"no-repeat",backgroundPosition:"right 6px center"}}>
-                  <option value="" style={{color:"#94a3b8"}}>ว่างเปล่า</option>
-                  {PARCEL_STATUSES.map(function(s){return<option key={s.v} value={s.v} style={{color:s.c,fontWeight:700}}>{s.v}</option>;})}
-                </select>
                 <button onClick={function(){openEdit(p);}} style={{padding:"3px 6px",border:"none",background:"transparent",cursor:"pointer",fontSize:13}} title="แก้ไข">✏️</button>
                 <button onClick={function(){handleDel(p.id);}} style={{padding:"3px 6px",border:"none",background:"transparent",cursor:"pointer",fontSize:13}} title="ลบ">🗑️</button>
               </div>
