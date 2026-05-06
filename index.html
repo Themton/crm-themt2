@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v45";
+var APP_VERSION = "20260502v46";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -783,7 +783,24 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
       <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={cardLabel}>ยอด COD</div><div style={{...cardVal,color:"#8b5cf6"}}>฿{summary.totalCOD.toLocaleString()}</div></div>
     </div>
 
-      {flashProgress&&<div style={{background:"linear-gradient(135deg,#eff6ff,#dbeafe)",borderRadius:10,padding:"10px 16px",marginBottom:12,border:"1px solid #93c5fd",display:"flex",alignItems:"center",gap:8}}>
+    {/* แจ้งเตือนอัตราตีกลับ */}
+    {summary.total>0&&summary.returned>0&&(function(){
+      var returnRate=Math.round(summary.returned/summary.total*100);
+      var returnCOD=filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+      return<div style={{background:"linear-gradient(135deg,#fef2f2,#fff1f2)",borderRadius:12,padding:"14px 20px",marginBottom:16,border:"2px solid #fca5a5",display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+        <div style={{fontSize:28}}>⚠️</div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:15,fontWeight:800,color:"#dc2626"}}>อัตราตีกลับ {returnRate}%</div>
+          <div style={{fontSize:12,color:"#64748b",marginTop:2}}>ส่งคืน/ตีกลับ <b style={{color:"#dc2626"}}>{summary.returned}</b> จาก {summary.total} รายการ · COD สูญเสีย <b style={{color:"#dc2626"}}>฿{returnCOD.toLocaleString()}</b></div>
+        </div>
+        <div style={{textAlign:"center",padding:"8px 16px",borderRadius:10,background:"#dc2626",color:"#fff"}}>
+          <div style={{fontSize:22,fontWeight:800}}>{returnRate}%</div>
+          <div style={{fontSize:9,fontWeight:600}}>ตีกลับ</div>
+        </div>
+      </div>;
+    })()}
+
+    {flashProgress&&<div style={{background:"linear-gradient(135deg,#eff6ff,#dbeafe)",borderRadius:10,padding:"10px 16px",marginBottom:12,border:"1px solid #93c5fd",display:"flex",alignItems:"center",gap:8}}>
       <div style={{width:16,height:16,borderRadius:"50%",border:"2px solid #0284c7",borderTopColor:"transparent",animation:"spin 1s linear infinite"}}/>
       <span style={{fontSize:13,fontWeight:600,color:"#0c4a6e"}}>{flashProgress}</span>
     </div>}
