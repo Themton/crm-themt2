@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v39";
+var APP_VERSION = "20260502v40";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -674,7 +674,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
       return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ";
     });
     if(candidates.length===0)return;
-    var batch=candidates.slice(0,50);
+    var batch=candidates.slice(0,100);
     flashAutoRef.current=true;
     (async function(){
       var ok=0;
@@ -690,7 +690,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
             }
           }
         }catch(e){}
-        await new Promise(function(r){setTimeout(r,300);});
+        await new Promise(function(r){setTimeout(r,200);});
       }
       if(ok>0)setFlashAutoCount(function(c){return c+ok;});
       flashAutoRef.current=false;
@@ -700,7 +700,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     // รันครั้งแรกหลังโหลด 5 วินาที
     var first=setTimeout(runFlashSync,3000);
     // แล้ววนทุก 3 นาที
-    var iv=setInterval(runFlashSync,60000);
+    var iv=setInterval(runFlashSync,30000);
     return function(){clearTimeout(first);clearInterval(iv);};
   },[parcels]);
   async function syncFlashStatus(){
