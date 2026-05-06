@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v28";
+var APP_VERSION = "20260502v29";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -814,10 +814,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
         <button disabled={syncing||pullCounts.recent===0} onClick={function(){pullParcels("7days");}} style={{padding:"7px 16px",borderRadius:8,border:"1.5px solid "+(pullCounts.recent>0?"#d97706":"#e2e8f0"),background:"#fff",color:pullCounts.recent>0?"#d97706":"#94a3b8",fontWeight:600,fontSize:12,cursor:pullCounts.recent>0?"pointer":"default",fontFamily:"inherit"}}>📥 ดึง 7 วัน ({pullCounts.recent})</button>
         <span style={{color:"#64748b"}}>✅ ในระบบ: <b style={{color:"#059669"}}>{pullCounts.total}</b></span>
         {pullCounts.today===0&&pullCounts.recent===0&&<span style={{color:"#10b981",fontWeight:600}}>✅ ดึงครบแล้ว</span>}
-        <span style={{borderLeft:"1px solid #e2e8f0",height:20}}/>
-        <button disabled={flashSyncing} onClick={syncFlashStatus} style={{padding:"7px 16px",borderRadius:8,border:"none",background:flashSyncing?"#94a3b8":"linear-gradient(135deg,#0ea5e9,#0284c7)",color:"#fff",fontWeight:700,fontSize:12,cursor:flashSyncing?"default":"pointer",fontFamily:"inherit"}}>{flashSyncing?"⏳ กำลังซิงค์...":"🔄 ซิงค์ Flash"}</button>
-        {flashAutoCount>0&&<span style={{fontSize:10,color:"#0284c7",fontWeight:600}}>auto +{flashAutoCount}</span>}
-        <span style={{fontSize:9,color:"#94a3b8"}}>⚡auto ทุก 3 นาที</span>
+        {flashAutoCount>0&&<><span style={{borderLeft:"1px solid #e2e8f0",height:20}}/><span style={{fontSize:10,color:"#0284c7",fontWeight:600}}>🔄 Flash auto +{flashAutoCount}</span></>}
       </>:<span style={{color:"#94a3b8"}}>⏳ กำลังตรวจสอบ...</span>}
     </div>
 
