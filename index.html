@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v47";
+var APP_VERSION = "20260502v48";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -617,7 +617,8 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     var mt=filterTele==="ทั้งหมด"||p.telesale===filterTele;
     var md=true;
     if(filterDateMode!=="all"){
-      var d=p.date||"";
+      var d=(p.created_at||"").substring(0,10);
+      if(!d)d=p.date||"";
       if(filterDateMode==="today")md=d===todayVal;
       else if(filterDateMode==="yesterday"){var yd=new Date();yd.setDate(yd.getDate()-1);md=d===yd.toISOString().slice(0,10);}
       else if(filterDateMode==="7days")md=d>=sevenDaysAgo();
@@ -864,7 +865,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           var bg=i%2===0?"#fff":"#f8fafc";
           return<tr key={p.id} style={{background:bg}}>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{idx+1}</td>
-            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate(p.date)}</td>
+            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate((p.created_at||"").substring(0,10)||p.date)}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"#1e40af",letterSpacing:.5}}>{p.tracking_no}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:600}}>{p.customer_name}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{p.phone}</td>
