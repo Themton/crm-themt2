@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v36";
+var APP_VERSION = "20260502v37";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -96,15 +96,15 @@ async function flashCreateOrder(order){
 async function flashPrintLabel(pno){return await flashAPI("/open/v1/orders/"+pno+"/pre_print",{},"application/pdf");}
 async function flashGetTracking(pno){return await flashAPI("/open/v1/orders/"+pno+"/routes",{});}
 function flashStateText(state){
-  if(state===1)return"เซ็นรับแล้ว";
-  if(state===2)return"กำลังจัดส่ง";
-  if(state===3)return"อยู่ในระบบขนส่ง";
+  if(state===1)return"รับพัสดุแล้ว";
+  if(state===2)return"อยู่ในระบบขนส่ง";
+  if(state===3)return"กำลังจัดส่ง";
   if(state===4)return"ส่งคืน";
-  if(state===5)return"รับพัสดุแล้ว";
+  if(state===5)return"เซ็นรับแล้ว";
   if(state===6)return"คืนสำเร็จ";
   return"";
 }
-var FLASH_STATUS_STYLES={"เซ็นรับแล้ว":{c:"#10b981",bg:"#d1fae5"},"กำลังจัดส่ง":{c:"#8b5cf6",bg:"#ede9fe"},"อยู่ในระบบขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"ส่งคืน":{c:"#dc2626",bg:"#fecaca"},"รับพัสดุแล้ว":{c:"#10b981",bg:"#d1fae5"},"คืนสำเร็จ":{c:"#dc2626",bg:"#fecaca"}};
+var FLASH_STATUS_STYLES={"สร้างรายการ":{c:"#6b7280",bg:"#f3f4f6"},"รับพัสดุแล้ว":{c:"#10b981",bg:"#d1fae5"},"อยู่ในระบบขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังจัดส่ง":{c:"#8b5cf6",bg:"#ede9fe"},"เซ็นรับแล้ว":{c:"#059669",bg:"#a7f3d0"},"ส่งคืน":{c:"#dc2626",bg:"#fecaca"},"คืนสำเร็จ":{c:"#dc2626",bg:"#fecaca"}};
 // สร้างใบปะหน้าเอง 100x75mm — รองรับหลายใบ
 function printCustomLabels(orders,pnos){
   var srcInfo=FLASH_SRC;var now=new Date();var dateStr=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
