@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v50";
+var APP_VERSION = "20260502v51";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -571,7 +571,7 @@ async function dbGetParcels(){try{var all=[];var page=0;var pageSize=1000;while(
 async function dbGetParcelTrackings(){try{var all=[];var page=0;var ps=1000;while(true){var f=page*ps;var data=await sbFetch("parcel_checks?select=tracking_no",{range:f+"-"+(f+ps-1)});if(!data||data.length===0)break;all=all.concat(data);if(data.length<ps)break;page++;}return all.map(function(r){return r.tracking_no;});}catch(e){return[];}}
 async function dbAddParcel(d){var row={date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status||"รอเช็ค",telesale:d.telesale||"",cod:Number(d.cod)||0,created_at:new Date().toISOString()};await sbFetch("parcel_checks",{method:"POST",body:row,prefer:"return=representation"});return row;}
 async function dbAddParcelBatch(rows){if(!rows||rows.length===0)return 0;var batchSize=50;var ok=0;for(var i=0;i<rows.length;i+=batchSize){var batch=rows.slice(i,i+batchSize).map(function(d){return{date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status||"รอเช็ค",telesale:d.telesale||"",cod:Number(d.cod)||0,created_at:new Date().toISOString()};});try{await sbFetch("parcel_checks",{method:"POST",body:batch,prefer:"return=representation"});ok+=batch.length;}catch(e){console.error("Batch insert error:",e);}}return ok;}
-async function autoAddParcelCheck(order,pno){try{await sbFetch("parcel_checks",{method:"POST",body:{date:getDate(order.Timestamp)||todayStr(),tracking_no:pno,customer_name:order.Name||"",phone:String(order.MobileNo||""),check_date:"",status:"รอเช็ค",flash_status:"สร้างรายการ",telesale:order.SalesPerson||"",cod:Number(order.COD)||0,created_at:new Date().toISOString()},prefer:"return=representation"});}catch(e){console.error("autoAddParcelCheck:",e);}}
+async function autoAddParcelCheck(order,pno){try{await sbFetch("parcel_checks",{method:"POST",body:{date:todayStr(),tracking_no:pno,customer_name:order.Name||"",phone:String(order.MobileNo||""),check_date:"",status:"รอเช็ค",flash_status:"สร้างรายการ",telesale:order.SalesPerson||"",cod:Number(order.COD)||0,created_at:new Date().toISOString()},prefer:"return=representation"});}catch(e){console.error("autoAddParcelCheck:",e);}}
 async function dbEditParcel(id,d){var body={date:d.date,tracking_no:d.tracking_no,customer_name:d.customer_name,phone:d.phone,check_date:d.check_date||"",status:d.status,telesale:d.telesale||"",cod:Number(d.cod)||0};await sbFetch("parcel_checks?id=eq."+id,{method:"PATCH",body:body});}
 async function dbDeleteParcel(id){await sbFetch("parcel_checks?id=eq."+id,{method:"DELETE"});}
 
@@ -617,9 +617,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     var mt=filterTele==="ทั้งหมด"||p.telesale===filterTele;
     var md=true;
     if(filterDateMode!=="all"){
-      var d="";
-      if(p.created_at){var ct=new Date(p.created_at);d=ct.getFullYear()+"-"+String(ct.getMonth()+1).padStart(2,"0")+"-"+String(ct.getDate()).padStart(2,"0");}
-      if(!d)d=p.date||"";
+      var d=p.date||"";
       if(filterDateMode==="today")md=d===todayVal;
       else if(filterDateMode==="yesterday"){var yd=new Date();yd.setDate(yd.getDate()-1);md=d===yd.getFullYear()+"-"+String(yd.getMonth()+1).padStart(2,"0")+"-"+String(yd.getDate()).padStart(2,"0");}
       else if(filterDateMode==="7days")md=d>=sevenDaysAgo();
@@ -866,7 +864,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           var bg=i%2===0?"#fff":"#f8fafc";
           return<tr key={p.id} style={{background:bg}}>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{idx+1}</td>
-            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{(function(){if(p.created_at){var ct=new Date(p.created_at);return fmtDate(ct.getFullYear()+"-"+String(ct.getMonth()+1).padStart(2,"0")+"-"+String(ct.getDate()).padStart(2,"0"));}return fmtDate(p.date);})()}</td>
+            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate(p.date)}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"#1e40af",letterSpacing:.5}}>{p.tracking_no}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:600}}>{p.customer_name}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{p.phone}</td>
