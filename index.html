@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v55";
+var APP_VERSION = "20260502v56";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -1445,35 +1445,40 @@ function App(){var _s=useState;
 
     // Flash auto-sync — ทำงานเบื้องหลังตลอด ไม่ต้องเปิดหน้าเช็คพัสดุ
     var flashSyncRunning=false;
-    function runFlashAutoSync(){
+    async function runFlashAutoSync(){
       if(flashSyncRunning)return;
-      var pp=parcels;if(!pp||pp.length===0)return;
-      var candidates=pp.filter(function(p){return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ"&&p.flash_status!=="ไม่พบข้อมูล";});
-      if(candidates.length===0)return;
-      var batch=candidates.slice(0,200);
       flashSyncRunning=true;
-      (async function(){
-        var ok=0;
-        for(var i=0;i<batch.length;i++){
-          var id=batch[i].id;var newSt="ไม่พบข้อมูล";
+      try{
+        var pending=await sbFetch("parcel_checks?select=id,tracking_no,flash_status&flash_status=not.in.(เซ็นรับแล้ว,คืนสำเร็จ,ไม่พบข้อมูล)&tracking_no=like.TH*&order=id.desc",{range:"0-199"});
+        if(!pending||pending.length===0){flashSyncRunning=false;return;}
+        var updates={};
+        for(var i=0;i<pending.length;i++){
+          var newSt=null;
           try{
-            var res=await flashGetTracking(batch[i].tracking_no);
+            var res=await flashGetTracking(pending[i].tracking_no);
             if(res&&res.code===1&&res.data){var nf=flashStateText(res.data.state);if(nf)newSt=nf;}
+            else if(res)newSt="ไม่พบข้อมูล";
           }catch(e){}
-          if(newSt!==batch[i].flash_status){
-            try{
-              await sbFetch("parcel_checks?id=eq."+id,{method:"PATCH",body:{flash_status:newSt}});
-              setParcels(function(prev){return prev.map(function(x){return x.id===id?{...x,flash_status:newSt}:x;});});
-              ok++;
-            }catch(e){}
+          if(newSt&&newSt!==pending[i].flash_status){
+            if(!updates[newSt])updates[newSt]=[];
+            updates[newSt].push(pending[i].id);
           }
           await new Promise(function(r){setTimeout(r,300);});
         }
-        flashSyncRunning=false;
-      })();
+        var totalOk=0;
+        for(var st in updates){
+          var ids=updates[st];
+          for(var j=0;j<ids.length;j+=50){
+            var chunk=ids.slice(j,j+50);
+            try{await sbFetch("parcel_checks?id=in.("+chunk.join(",")+")",{method:"PATCH",body:{flash_status:st}});totalOk+=chunk.length;}catch(e){}
+          }
+        }
+        if(totalOk>0)loadParcels();
+      }catch(e){}
+      flashSyncRunning=false;
     }
-    var flashFirst=setTimeout(runFlashAutoSync,5000);
-    var flashInterval=setInterval(runFlashAutoSync,30000);
+    var flashFirst=setTimeout(runFlashAutoSync,3000);
+    var flashInterval=setInterval(runFlashAutoSync,60000);
     // Sync Flash status หลังโหลดข้อมูลครั้งแรก
     // Flash sync ถูกปิด
     // Flash sync ถูกปิด — ไม่ซิงค์สถานะ Flash อัตโนมัติ
