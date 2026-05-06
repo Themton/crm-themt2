@@ -9,7 +9,7 @@
 <title>SYSTEM TELESALE THE MT</title>
 <script>
 // Version check — บังคับรีเฟรชถ้าเป็นเวอร์ชันเก่า
-var APP_VERSION = "20260502v53";
+var APP_VERSION = "20260502v54";
 var lastVer = localStorage.getItem("app_ver");
 if(lastVer && lastVer !== APP_VERSION){
   localStorage.setItem("app_ver", APP_VERSION);
@@ -1441,6 +1441,7 @@ function App(){var _s=useState;
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
     // Auto-refresh ทุก 15 วินาที
     var interval=setInterval(function(){loadOrders();loadUpsell();},60000);
+    var parcelInterval=setInterval(function(){loadParcels();},30000);
 
     // Flash auto-sync — ทำงานเบื้องหลังตลอด ไม่ต้องเปิดหน้าเช็คพัสดุ
     var flashSyncRunning=false;
@@ -1475,7 +1476,7 @@ function App(){var _s=useState;
     // Sync Flash status หลังโหลดข้อมูลครั้งแรก
     // Flash sync ถูกปิด
     // Flash sync ถูกปิด — ไม่ซิงค์สถานะ Flash อัตโนมัติ
-    return function(){clearInterval(interval);clearTimeout(flashFirst);clearInterval(flashInterval);};
+    return function(){clearInterval(interval);clearInterval(parcelInterval);clearTimeout(flashFirst);clearInterval(flashInterval);};
   }},[sbOk]);
   function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"orders";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
   function doLogout(){localStorage.removeItem("ps_user");localStorage.removeItem("ps_page");window.location.reload();}
