@@ -68,10 +68,10 @@ async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.non
       if(!res.ok)throw new Error("Worker error: "+res.status);
       if(accept==="application/pdf")return res;
       return await res.json();
-    }catch(e){console.error("Worker error:",e);throw e;}
+    }catch(e){console.error("Worker error, falling back to proxies:",e);}
   }
   // Fallback: ใช้ proxy ฟรี
-  var proxies=["https://api.allorigins.win/raw?url=","https://thingproxy.freeboard.io/fetch/","https://corsproxy.io/?"];
+  var proxies=["https://corsproxy.io/?","https://api.allorigins.win/raw?url=","https://thingproxy.freeboard.io/fetch/"];
   for(var px=0;px<proxies.length;px++){
     try{var res2=await fetch(proxies[px]+encodeURIComponent(url),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded","Accept":accept||"application/json"},body:body});if(!res2.ok)continue;if(accept==="application/pdf")return res2;return await res2.json();}
     catch(e){await new Promise(function(r){setTimeout(r,500);});}
