@@ -60,15 +60,16 @@ var FLASH_SRC=(_savedSrc&&_savedSrc.province)?_savedSrc:_defaultSrc;
 var FLASH_PDF_PROXY = localStorage.getItem("flash_pdf_proxy") || "";
 async function flashSign(params){var keys=Object.keys(params).filter(function(k){return k!=="sign"&&params[k]!==undefined&&params[k]!==""&&params[k]!==null;}).sort();var stringA=keys.map(function(k){return k+"="+params[k];}).join("&");var stringSignTemp=stringA+"&key="+FLASH_KEY;var enc=new TextEncoder().encode(stringSignTemp);var hash=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,"0");}).join("").toUpperCase();}
 var FLASH_WORKER=localStorage.getItem("flash_worker")||"https://flash-proxy.themtja.workers.dev";
+var _workerDead=false;
 async function flashAPI(path,params,accept){params.mchId=FLASH_MCH_ID;params.nonceStr=String(Date.now());params.sign=await flashSign(params);var body=Object.keys(params).map(function(k){return encodeURIComponent(k)+"="+encodeURIComponent(params[k]);}).join("&");var url=FLASH_BASE+path;
-  // ใช้ Cloudflare Worker (ถ้ามี)
-  if(FLASH_WORKER){
+  // ใช้ Cloudflare Worker (ถ้ามี และยังไม่พัง)
+  if(FLASH_WORKER&&!_workerDead){
     try{
       var res=await fetch(FLASH_WORKER,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:url,method:"POST",body:body,contentType:"application/x-www-form-urlencoded"})});
-      if(!res.ok)throw new Error("Worker error: "+res.status);
+      if(!res.ok){_workerDead=true;throw new Error("Worker error: "+res.status);}
       if(accept==="application/pdf")return res;
-      return await res.json();
-    }catch(e){console.error("Worker error, falling back to proxies:",e);}
+      var jj=await res.json();if(jj&&jj.error){_workerDead=true;throw new Error(jj.error);}return jj;
+    }catch(e){_workerDead=true;console.error("Worker dead, skipping for session:",e);}
   }
   // Fallback: ใช้ proxy ฟรี
   var proxies=["https://corsproxy.io/?","https://api.allorigins.win/raw?url=","https://thingproxy.freeboard.io/fetch/"];
@@ -673,7 +674,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     var toSync=myParcels.filter(function(p){return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ"&&p.flash_status!=="ไม่พบข้อมูล";});
     if(toSync.length===0){if(!silent)notify("ไม่มีพัสดุที่ต้องซิงค์","warning");return;}
     setFlashSyncing(true);var updated=0;var errors=0;
-    var batch=toSync.slice(0,30);
+    var batch=toSync.slice(0,50);
     for(var i=0;i<batch.length;i++){
       var p=batch[i];
       if(!silent)setFlashProgress("🔄 "+(i+1)+"/"+batch.length+" — "+p.tracking_no);
@@ -688,19 +689,23 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           }
         }
       }catch(e){errors++;}
-      if(i%10===9)await new Promise(function(r){setTimeout(r,500);});
+      if(i%5===4)await new Promise(function(r){setTimeout(r,300);});
     }
     setFlashSyncing(false);setFlashProgress("");
     if(!silent&&updated>0)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+updated+" รายการ"+(errors>0?" (❌ "+errors+" ผิดพลาด)":""));
   }
 
-  // Auto-sync Flash status เมื่อเปิดหน้า
+  // Auto-sync Flash status เมื่อเปิดหน้า + ทุก 3 นาที
   var autoSyncDone=useRef(false);
   useEffect(function(){
     if(myParcels.length>0&&!autoSyncDone.current){
       autoSyncDone.current=true;
       syncFlashStatus(true);
     }
+    var iv=setInterval(function(){
+      if(myParcels.length>0)syncFlashStatus(true);
+    },180000);
+    return function(){clearInterval(iv);};
   },[myParcels.length]);
 
   var importList=importData.filter(function(o){
