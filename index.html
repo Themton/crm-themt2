@@ -97,12 +97,13 @@ async function flashCreateOrder(order){
 async function flashPrintLabel(pno){return await flashAPI("/open/v1/orders/"+pno+"/pre_print",{},"application/pdf");}
 async function flashGetTracking(pno){return await flashAPI("/open/v1/orders/"+pno+"/routes",{});}
 function flashStateText(state){
-  if(state===1)return"รับพัสดุแล้ว";
-  if(state===2)return"อยู่ในระบบขนส่ง";
-  if(state===3)return"กำลังจัดส่ง";
-  if(state===4)return"ส่งคืน";
-  if(state===5)return"เซ็นรับแล้ว";
-  if(state===6)return"คืนสำเร็จ";
+  var s=Number(state);
+  if(s===1)return"รับพัสดุแล้ว";
+  if(s===2)return"อยู่ในระบบขนส่ง";
+  if(s===3)return"กำลังจัดส่ง";
+  if(s===4)return"ส่งคืน";
+  if(s===5)return"เซ็นรับแล้ว";
+  if(s===6)return"คืนสำเร็จ";
   return"";
 }
 var FLASH_STATUS_STYLES={"สร้างรายการ":{c:"#6b7280",bg:"#f3f4f6"},"รับพัสดุแล้ว":{c:"#10b981",bg:"#d1fae5"},"อยู่ในระบบขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังจัดส่ง":{c:"#8b5cf6",bg:"#ede9fe"},"เซ็นรับแล้ว":{c:"#0d9488",bg:"#ccfbf1"},"ส่งคืน":{c:"#ea580c",bg:"#fed7aa"},"คืนสำเร็จ":{c:"#dc2626",bg:"#fecaca"},"ไม่พบข้อมูล":{c:"#9ca3af",bg:"#f3f4f6"}};
