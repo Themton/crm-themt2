@@ -781,6 +781,14 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
       <div style={{...cardS,borderLeft:"4px solid #f59e0b"}}><div style={cardLabel}>รอจัดส่ง</div><div style={{...cardVal,color:"#f59e0b"}}>{summary.pending}</div></div>
       <div style={{...cardS,borderLeft:"4px solid #ef4444"}}><div style={cardLabel}>ส่งคืน/ตีกลับ</div><div style={{...cardVal,color:"#ef4444"}}>{summary.returned}</div></div>
       <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={cardLabel}>ยอด COD</div><div style={{...cardVal,color:"#8b5cf6"}}>฿{summary.totalCOD.toLocaleString()}</div></div>
+      {summary.total>0&&(function(){var rr=Math.round(summary.returned/summary.total*100);var rrColor=rr>=20?"#dc2626":rr>=10?"#f59e0b":"#10b981";var rrBg=rr>=20?"#fef2f2":rr>=10?"#fefce8":"#f0fdf4";var rrBorder=rr>=20?"#ef4444":rr>=10?"#f59e0b":"#10b981";return<div style={{...cardS,borderLeft:"4px solid "+rrBorder,background:rrBg,minWidth:140}}>
+        <div style={cardLabel}>อัตราตีกลับ</div>
+        <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+          <div style={{fontSize:28,fontWeight:800,color:rrColor}}>{rr}%</div>
+          <div style={{fontSize:11,color:"#64748b"}}>{summary.returned}/{summary.total}</div>
+        </div>
+        <div style={{width:"100%",height:6,background:"#e2e8f0",borderRadius:4,marginTop:6,overflow:"hidden"}}><div style={{height:"100%",width:rr+"%",background:rrColor,borderRadius:4}}/></div>
+      </div>;})()}
     </div>
 
     {/* แจ้งเตือนอัตราตีกลับ */}
