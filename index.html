@@ -669,21 +669,25 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
   // --- Flash Sync ---
   var[flashSyncing,setFlashSyncing]=_s(false);
   var[flashProgress,setFlashProgress]=_s("");
+  var syncingRef=useRef(false);
 
   async function syncFlashStatus(silent){
+    if(syncingRef.current)return;
+    syncingRef.current=true;
     setFlashSyncing(true);
     try{
       var res=await fetch(FLASH_WORKER+"/sync");
       var data=await res.json();
       if(!silent)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+data.updated+" รายการ (เช็ค "+data.checked+")");
-      if(data.updated>0||data.skipped>0)onRefresh();
+      onRefresh();
     }catch(e){
       if(!silent)notify("❌ sync ผิดพลาด: "+e.message,"warning");
     }
+    syncingRef.current=false;
     setFlashSyncing(false);setFlashProgress("");
   }
 
-  // Real-time sync: เปิดหน้า + ทุก 60 วินาที
+  // Real-time sync: เปิดหน้า + ทุก 3 นาที (Worker ใช้เวลา ~100 วิ/รอบ)
   var autoSyncDone=useRef(false);
   useEffect(function(){
     if(myParcels.length>0&&!autoSyncDone.current){
@@ -692,7 +696,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     }
     var iv=setInterval(function(){
       syncFlashStatus(true);
-    },60000);
+    },180000);
     return function(){clearInterval(iv);};
   },[myParcels.length]);
 
