@@ -1507,7 +1507,7 @@ function App(){var _s=useState;
     // Flash sync ถูกปิด — ไม่ซิงค์สถานะ Flash อัตโนมัติ
     return function(){clearInterval(interval);clearInterval(parcelInterval);clearTimeout(flashFirst);clearInterval(flashInterval);};
   }},[sbOk]);
-  function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"orders";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
+  function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"dashboard";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
   function doLogout(){localStorage.removeItem("ps_user");localStorage.removeItem("ps_page");window.location.reload();}
   if(!sbOk)return<SetupScreen onSave={function(url,key){localStorage.setItem("sb_url",url);localStorage.setItem("sb_key",key);SUPABASE_URL=url;SUPABASE_KEY=key;sbReady=true;setSbOk(true);}}/>;
   if(!user)return<LoginScreen accounts={accounts} onLogin={doLogin} onReload={loadAccounts} onSetup={function(){setSbOk(false);}}/>;
@@ -1568,7 +1568,7 @@ function App(){var _s=useState;
   var navItems=[];
   if(isShipping){navItems=[{id:"shipping",icon:"🚚",label:"การจัดส่ง"},{id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"}];}
   else if(isAccounting){navItems=[{id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"},{id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"},{id:"report",icon:"📊",label:"รายงาน"}];}
-  else{navItems.push({id:"orders",icon:"📋",label:"ออเดอร์"});if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});if(isAdmin)navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"parcel_check",icon:"✅",label:"เช็คพัสดุ"});if(isAdmin)navItems.push({id:"parcel_report",icon:"👑",label:"รายงานหัวหน้า"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin||canUpsell)navItems.push({id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"});navItems.push({id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"});navItems.push({id:"customer_search",icon:"👤",label:"ค้นหาลูกค้า"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});}
+  else{navItems.push({id:"dashboard",icon:"🏠",label:"Dashboard"});navItems.push({id:"orders",icon:"📋",label:"ออเดอร์"});if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});if(isAdmin)navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"parcel_check",icon:"✅",label:"เช็คพัสดุ"});if(isAdmin)navItems.push({id:"parcel_report",icon:"👑",label:"รายงานหัวหน้า"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin||canUpsell)navItems.push({id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"});navItems.push({id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"});navItems.push({id:"customer_search",icon:"👤",label:"ค้นหาลูกค้า"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});}
   // Default page สำหรับ shipping role
   useEffect(function(){if(isShipping&&page!=="shipping")setPage("shipping");if(isAccounting&&page!=="export_tracking")setPage("export_tracking");},[isShipping,isAccounting]);
   var roleLabel=isAdmin?"แอดมิน":isShipping?"จัดส่ง":isAccounting?"บัญชี":"พนักงาน";
@@ -1584,7 +1584,7 @@ function App(){var _s=useState;
       {statusProgress.fail>0&&<div style={{fontSize:12,color:"#ef4444",fontWeight:700,marginTop:8}}>❌ ล้มเหลว {statusProgress.fail} รายการ</div>}
     </div></div>}
     <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:roleColor}}>{roleLabel}</span></div></div><nav style={S.nav}>{navItems.map(function(item){if(item.link)return<a key={item.id} href={item.link} style={{...S.navItem,textDecoration:"none",fontWeight:800,color:"#93c5fd",background:"rgba(59,130,246,.1)"}}><span style={{fontSize:16}}>{item.icon}</span> {item.label} →</a>;return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><div style={{marginBottom:8}}><div style={{fontSize:10,color:"#fbbf24",fontWeight:600,marginBottom:4}}>📱 ค้นหาเลขพัสดุ</div><input placeholder="ใส่เบอร์โทร..." value={sidePhoneSearch} onChange={function(e){setSidePhoneSearch(e.target.value.replace(/[^0-9]/g,""));}} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.1)",color:"#fde68a",fontSize:12,boxSizing:"border-box",outline:"none"}}/>{sidePhoneSearch.length>=3&&function(){var found=allOrders.concat(upsellOrders).filter(function(o){return phoneMatch(o.MobileNo,sidePhoneSearch);});return<div style={{marginTop:6,maxHeight:200,overflow:"auto",borderRadius:8,background:"rgba(0,0,0,.3)"}}>{found.length===0?<div style={{padding:8,fontSize:10,color:"#94a3b8",textAlign:"center"}}>ไม่พบ</div>:found.map(function(o,i){return<div key={i} style={{padding:"6px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:10}}><div style={{fontWeight:700,color:"#fde68a"}}>{o.Name} <span style={{color:"#94a3b8"}}>{o.MobileNo}</span></div>{o.TrackingNo?<span onClick={function(){copyTrack(o.TrackingNo);}} style={{color:"#93c5fd",fontWeight:700,fontSize:10,cursor:"pointer"}} title="คลิกเพื่อคัดลอก">{o.TrackingNo} 📋</span>:<span style={{color:"#64748b",fontSize:9}}>ยังไม่มีเลข</span>}</div>;})}</div>;}()}</div><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();loadParcels();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
-    <main style={S.main}>{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices} accounts={accounts}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport} accounts={accounts}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="customer_search"&&<CustomerSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin} onEdit={editOrder} onRefresh={function(){loadOrders();loadUpsell();}}/>}{page==="parcel_check"&&<ParcelCheckPage parcels={parcels} setParcels={setParcels} onRefresh={loadParcels} accounts={accounts} user={user} isAdmin={isAdmin} notify={notify} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="parcel_report"&&isAdmin&&<ParcelReportPage parcels={parcels} accounts={accounts} user={user}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
+    <main style={S.main}>{page==="dashboard"&&<DashboardPage user={user} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} parcels={parcels} accounts={accounts} setPage={setPage}/>}{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices} accounts={accounts}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport} accounts={accounts}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="customer_search"&&<CustomerSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin} onEdit={editOrder} onRefresh={function(){loadOrders();loadUpsell();}}/>}{page==="parcel_check"&&<ParcelCheckPage parcels={parcels} setParcels={setParcels} onRefresh={loadParcels} accounts={accounts} user={user} isAdmin={isAdmin} notify={notify} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="parcel_report"&&isAdmin&&<ParcelReportPage parcels={parcels} accounts={accounts} user={user}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
 
 /* ===== SETUP (Supabase URL+Key) ===== */
 function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useState("");var[testing,setTesting]=useState(false);var[error,setError]=useState("");
@@ -1593,6 +1593,102 @@ function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useS
 
 /* ===== LOGIN ===== */
 function LoginScreen({accounts,onLogin,onReload,onSetup}){var[username,setUsername]=useState("");var[password,setPassword]=useState("");var[error,setError]=useState("");var[showPw,setShowPw]=useState(false);var ref=useRef(null);function shake(){if(ref.current){ref.current.classList.remove("shake");void ref.current.offsetWidth;ref.current.classList.add("shake");}}function go(){if(!username||!password){setError("กรอก Email และ Password");shake();return;}var acc=accounts.find(function(a){return a.username===username;});if(!acc){setError("ไม่พบ Email");shake();return;}if(!acc.active){setError("บัญชีถูกระงับ");shake();return;}if(String(acc.password)!==String(password)){setError("Password ไม่ถูก");shake();return;}onLogin(acc);}return<div style={S.loginBg}><div ref={ref} style={S.loginCard}><div style={{textAlign:"center",marginBottom:30}}><img src="LOGO_THEMT.png" alt="" style={{width:80,height:80,objectFit:"contain",marginBottom:8}}/><h1 style={{fontSize:22,fontWeight:800}}>THE MT TELESALE</h1><p style={{fontSize:11,color:"#10b981",marginTop:4}}>⚡ Supabase</p></div><div style={{marginBottom:14}}><label style={S.fLabel}>Email</label><input value={username} onChange={function(e){setUsername(e.target.value);setError("");}} onKeyDown={function(e){if(e.key==="Enter")document.getElementById("pw")?.focus();}} type="email" style={{...S.pInput,padding:"12px 16px"}}/></div><div style={{marginBottom:18}}><label style={S.fLabel}>Password</label><div style={{position:"relative"}}><input id="pw" type={showPw?"text":"password"} value={password} onChange={function(e){setPassword(e.target.value);setError("");}} onKeyDown={function(e){if(e.key==="Enter")go();}} style={{...S.pInput,padding:"12px 16px",paddingRight:40}}/><button onClick={function(){setShowPw(!showPw);}} type="button" style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#94a3b8",padding:4}}>{showPw?"🙈":"👁"}</button></div></div>{error&&<div style={{background:"#fef2f2",color:"#dc2626",padding:10,borderRadius:10,fontSize:13,marginBottom:12}}>❌ {error}</div>}<button onClick={go} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontSize:16,fontWeight:700,cursor:"pointer",marginBottom:12}}>เข้าสู่ระบบ</button><div style={{display:"flex",gap:8,justifyContent:"center"}}><button onClick={onReload} style={{...S.sm,background:"#f1f5f9",color:"#64748b"}}>🔄 โหลดบัญชี</button><button onClick={onSetup} style={{...S.sm,background:"#f1f5f9",color:"#64748b"}}>⚙️ เปลี่ยน Supabase</button></div></div></div>;}
+function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,setPage}){
+  var nick=extractNickname(user.displayName,user.nickname);
+  var todayVal=new Date().toISOString().slice(0,10);
+  var myOrders=isAdmin?allOrders:(allOrders||[]).filter(function(o){return o.AccountEmail===user.username;});
+  var myUpsell=isAdmin?upsellOrders:(upsellOrders||[]).filter(function(o){return o.AccountEmail===user.username;});
+  var todayOrders=myOrders.filter(function(o){return getDate(o.Timestamp)===todayVal;});
+  var todayUpsell=myUpsell.filter(function(o){return getDate(o.Timestamp)===todayVal;});
+  var myParcels=isAdmin?(parcels||[]):(parcels||[]).filter(function(p){return p.telesale===nick;});
+  var todaySales=todayOrders.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
+  var todayCOD=todayOrders.reduce(function(s,o){return s+(Number(o.COD)||0);},0);
+  var totalParcels=myParcels.length;
+  var delivered=myParcels.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
+  var returned=myParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).length;
+  var inTransit=myParcels.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
+  var returnRate=totalParcels>0?Math.round(returned/totalParcels*100):0;
+  var returnCOD=myParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+
+  var hour=new Date().getHours();
+  var greeting=hour<12?"สวัสดีตอนเช้า":hour<17?"สวัสดีตอนบ่าย":"สวัสดีตอนเย็น";
+
+  var cS={background:"#fff",borderRadius:14,padding:"20px 24px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,.04)"};
+  var qBtn={padding:"14px 20px",borderRadius:12,border:"none",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:8,flex:1,justifyContent:"center",minWidth:140};
+
+  return<div>
+    <div style={{marginBottom:24}}>
+      <h1 style={{fontSize:26,fontWeight:800,color:"#1e293b",margin:0}}>{greeting} 👋</h1>
+      <div style={{fontSize:16,color:"#64748b",marginTop:4}}>{user.displayName} ({nick}){isAdmin?" — แอดมิน":""}</div>
+    </div>
+
+    {returnRate>0&&<div style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)",borderRadius:14,padding:"20px 24px",marginBottom:20,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:"0 4px 16px rgba(220,38,38,.3)"}}>
+      <div style={{fontSize:40}}>🚨</div>
+      <div style={{flex:1}}>
+        <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>อัตราตีกลับ {returnRate}%</div>
+        <div style={{fontSize:13,color:"#fecaca",marginTop:4}}>ตีกลับ <b style={{color:"#fff"}}>{returned}</b> จาก {totalParcels} รายการ · COD สูญเสีย <b style={{color:"#fef08a"}}>฿{returnCOD.toLocaleString()}</b></div>
+      </div>
+      <div style={{textAlign:"center",padding:"12px 20px",borderRadius:12,background:"rgba(255,255,255,.2)"}}>
+        <div style={{fontSize:32,fontWeight:900,color:"#fff"}}>{returnRate}%</div>
+        <div style={{fontSize:10,fontWeight:700,color:"#fecaca"}}>ตีกลับ</div>
+      </div>
+    </div>}
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:24}}>
+      <div style={{...cS,borderLeft:"4px solid #d97706"}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>ออเดอร์วันนี้</div>
+        <div style={{fontSize:32,fontWeight:800,color:"#d97706"}}>{todayOrders.length}</div>
+        <div style={{fontSize:12,color:"#64748b"}}>ยอดขาย ฿{todaySales.toLocaleString()}</div>
+      </div>
+      <div style={{...cS,borderLeft:"4px solid #ea580c"}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>Upsell วันนี้</div>
+        <div style={{fontSize:32,fontWeight:800,color:"#ea580c"}}>{todayUpsell.length}</div>
+      </div>
+      <div style={{...cS,borderLeft:"4px solid #3b82f6"}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>พัสดุทั้งหมด</div>
+        <div style={{fontSize:32,fontWeight:800,color:"#3b82f6"}}>{totalParcels}</div>
+      </div>
+      <div style={{...cS,borderLeft:"4px solid #10b981"}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>ลูกค้ารับของแล้ว</div>
+        <div style={{fontSize:32,fontWeight:800,color:"#10b981"}}>{delivered}</div>
+      </div>
+      <div style={{...cS,borderLeft:"4px solid #8b5cf6"}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>กำลังจัดส่ง</div>
+        <div style={{fontSize:32,fontWeight:800,color:"#8b5cf6"}}>{inTransit}</div>
+      </div>
+      <div style={{...cS,borderLeft:"4px solid "+(returnRate>=10?"#dc2626":"#f59e0b")}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>ตีกลับ</div>
+        <div style={{fontSize:32,fontWeight:800,color:returnRate>=10?"#dc2626":"#f59e0b"}}>{returned}</div>
+        <div style={{fontSize:12,color:returnRate>=10?"#dc2626":"#64748b",fontWeight:700}}>{returnRate}%</div>
+      </div>
+    </div>
+
+    <div style={{...cS,marginBottom:24}}>
+      <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:14}}>📊 สถานะพัสดุ</div>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{
+        [["สร้างรายการ","#6b7280"],["รับเข้าระบบ","#10b981"],["อยู่ในระบบขนส่ง","#3b82f6"],["การนำจ่าย","#8b5cf6"],["ลูกค้ารับของ","#0d9488"],["ติดต่อผู้รับไม่ได้","#d97706"],["จัดส่งไม่สำเร็จ","#dc2626"],["ตีกลับ","#dc2626"],["คืนต้นทาง","#ea580c"]].map(function(s){
+          var count=myParcels.filter(function(p){return p.flash_status===s[0];}).length;
+          if(count===0)return null;
+          return<div key={s[0]} style={{padding:"8px 14px",borderRadius:10,background:s[1]+"15",border:"1px solid "+s[1]+"30",display:"flex",alignItems:"center",gap:6}}>
+            <span style={{fontSize:11,color:s[1],fontWeight:600}}>{s[0]}</span>
+            <span style={{fontSize:14,fontWeight:800,color:s[1]}}>{count}</span>
+          </div>;
+        })
+      }</div>
+    </div>
+
+    <div style={{marginBottom:24}}>
+      <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:14}}>⚡ ลัดไปยัง</div>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        <button onClick={function(){setPage("orders");}} style={{...qBtn,background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff"}}>📋 ออเดอร์</button>
+        <button onClick={function(){setPage("parcel_check");}} style={{...qBtn,background:"linear-gradient(135deg,#3b82f6,#2563eb)",color:"#fff"}}>✅ เช็คพัสดุ</button>
+        <button onClick={function(){setPage("customer_search");}} style={{...qBtn,background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff"}}>👤 ค้นหาลูกค้า</button>
+        <button onClick={function(){setPage("tracking_search");}} style={{...qBtn,background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"#fff"}}>🔍 ค้นหาเลขพัสดุ</button>
+      </div>
+    </div>
+  </div>;
+}
+
 function OrdersPage({orders,dateFrom,dateTo,setDateFrom,setDateTo,showForm,setShowForm,onAdd,onDel,onEdit,onUploadSlip,onUpdateStatus,onExport,user,viewOrder,setViewOrder,isAdmin,accounts,allOrders,upsellOrders}){
   var[search,setSearch]=useState("");var[pg,setPg]=useState(1);var perPage=50;var[statusFilter,setStatusFilter]=useState("ALL");var[selected,setSelected]=useState({});
   function toggleSelect(oid){setSelected(function(p){var n={};for(var k in p)n[k]=p[k];if(n[oid])delete n[oid];else n[oid]=true;return n;});}
