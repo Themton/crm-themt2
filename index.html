@@ -1601,14 +1601,17 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
   var todayOrders=myOrders.filter(function(o){return getDate(o.Timestamp)===todayVal;});
   var todayUpsell=myUpsell.filter(function(o){return getDate(o.Timestamp)===todayVal;});
   var myParcels=isAdmin?(parcels||[]):(parcels||[]).filter(function(p){return p.telesale===nick;});
+  var currentMonth=todayVal.substring(0,7);
+  var monthParcels=myParcels.filter(function(p){return(p.date||"").substring(0,7)===currentMonth;});
   var todaySales=todayOrders.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
   var todayCOD=todayOrders.reduce(function(s,o){return s+(Number(o.COD)||0);},0);
-  var totalParcels=myParcels.length;
-  var delivered=myParcels.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
-  var returned=myParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).length;
-  var inTransit=myParcels.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
+  var totalParcels=monthParcels.length;
+  var delivered=monthParcels.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
+  var returned=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).length;
+  var inTransit=monthParcels.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
   var returnRate=totalParcels>0?Math.round(returned/totalParcels*100):0;
-  var returnCOD=myParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+  var returnCOD=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+  var monthName=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"][new Date().getMonth()];
 
   var hour=new Date().getHours();
   var greeting=hour<12?"สวัสดีตอนเช้า":hour<17?"สวัสดีตอนบ่าย":"สวัสดีตอนเย็น";
@@ -1625,7 +1628,7 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
     {returnRate>0&&<div style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)",borderRadius:14,padding:"20px 24px",marginBottom:20,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:"0 4px 16px rgba(220,38,38,.3)"}}>
       <div style={{fontSize:40}}>🚨</div>
       <div style={{flex:1}}>
-        <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>อัตราตีกลับ {returnRate}%</div>
+        <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>อัตราตีกลับ {returnRate}% — เดือน{monthName}</div>
         <div style={{fontSize:13,color:"#fecaca",marginTop:4}}>ตีกลับ <b style={{color:"#fff"}}>{returned}</b> จาก {totalParcels} รายการ · COD สูญเสีย <b style={{color:"#fef08a"}}>฿{returnCOD.toLocaleString()}</b></div>
       </div>
       <div style={{textAlign:"center",padding:"12px 20px",borderRadius:12,background:"rgba(255,255,255,.2)"}}>
@@ -1664,10 +1667,10 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
     </div>
 
     <div style={{...cS,marginBottom:24}}>
-      <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:14}}>📊 สถานะพัสดุ</div>
+      <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:14}}>📊 สถานะพัสดุ — เดือน{monthName} ({totalParcels} รายการ)</div>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>{
         [["สร้างรายการ","#6b7280"],["รับเข้าระบบ","#10b981"],["อยู่ในระบบขนส่ง","#3b82f6"],["การนำจ่าย","#8b5cf6"],["ลูกค้ารับของ","#0d9488"],["ติดต่อผู้รับไม่ได้","#d97706"],["จัดส่งไม่สำเร็จ","#dc2626"],["ตีกลับ","#dc2626"],["คืนต้นทาง","#ea580c"]].map(function(s){
-          var count=myParcels.filter(function(p){return p.flash_status===s[0];}).length;
+          var count=monthParcels.filter(function(p){return p.flash_status===s[0];}).length;
           if(count===0)return null;
           return<div key={s[0]} style={{padding:"8px 14px",borderRadius:10,background:s[1]+"15",border:"1px solid "+s[1]+"30",display:"flex",alignItems:"center",gap:6}}>
             <span style={{fontSize:11,color:s[1],fontWeight:600}}>{s[0]}</span>
