@@ -681,8 +681,6 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
       if(!silent)setFlashProgress("🔄 "+(i+1)+"/"+batch.length+" — "+p.tracking_no);
       try{
         var res=await flashGetTracking(p.tracking_no);
-        console.log("Flash sync ["+p.tracking_no+"]:",JSON.stringify(res));
-        if(i===0&&!silent)notify("Debug: "+JSON.stringify(res).substring(0,200),"warning");
         var codeOk=res&&(res.code===1||res.code==="1"||res.code===true);
         if(codeOk&&res.data){
           var newFlash=flashStateText(res.data.state);
@@ -692,7 +690,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
             updated++;
           }
         }
-      }catch(e){errors++;console.error("Flash sync error:",e);}
+      }catch(e){errors++;}
       if(i%5===4)await new Promise(function(r){setTimeout(r,300);});
     }
     setFlashSyncing(false);setFlashProgress("");
