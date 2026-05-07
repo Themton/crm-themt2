@@ -667,13 +667,14 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
   var[flashSyncing,setFlashSyncing]=_s(false);
   var[flashProgress,setFlashProgress]=_s("");
 
-  async function syncFlashStatus(){
-    var toSync=filtered.filter(function(p){return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ";});
-    if(toSync.length===0){notify("ไม่มีพัสดุที่ต้องซิงค์","warning");return;}
+  async function syncFlashStatus(silent){
+    var toSync=myParcels.filter(function(p){return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ"&&p.flash_status!=="ไม่พบข้อมูล";});
+    if(toSync.length===0){if(!silent)notify("ไม่มีพัสดุที่ต้องซิงค์","warning");return;}
     setFlashSyncing(true);var updated=0;var errors=0;
-    for(var i=0;i<toSync.length;i++){
-      var p=toSync[i];
-      setFlashProgress("🔄 "+(i+1)+"/"+toSync.length+" — "+p.tracking_no);
+    var batch=toSync.slice(0,30);
+    for(var i=0;i<batch.length;i++){
+      var p=batch[i];
+      if(!silent)setFlashProgress("🔄 "+(i+1)+"/"+batch.length+" — "+p.tracking_no);
       try{
         var res=await flashGetTracking(p.tracking_no);
         if(res&&res.code===1&&res.data){
@@ -688,8 +689,17 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
       if(i%10===9)await new Promise(function(r){setTimeout(r,500);});
     }
     setFlashSyncing(false);setFlashProgress("");
-    notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+updated+" รายการ"+(errors>0?" (❌ "+errors+" ผิดพลาด)":""));
+    if(!silent&&updated>0)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+updated+" รายการ"+(errors>0?" (❌ "+errors+" ผิดพลาด)":""));
   }
+
+  // Auto-sync Flash status เมื่อเปิดหน้า
+  var autoSyncDone=useRef(false);
+  useEffect(function(){
+    if(myParcels.length>0&&!autoSyncDone.current){
+      autoSyncDone.current=true;
+      syncFlashStatus(true);
+    }
+  },[myParcels.length]);
 
   var importList=importData.filter(function(o){
     var d=getDate(o.Timestamp);
@@ -771,7 +781,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
       <h2 style={{fontSize:20,fontWeight:800,color:"#1e293b"}}>📦 เช็คพัสดุ</h2>
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-        <button disabled={flashSyncing} onClick={syncFlashStatus} style={{padding:"10px 20px",borderRadius:10,border:"none",background:flashSyncing?"#94a3b8":"linear-gradient(135deg,#3b82f6,#2563eb)",color:"#fff",fontWeight:700,fontSize:14,cursor:flashSyncing?"not-allowed":"pointer",boxShadow:"0 2px 8px rgba(37,99,235,.3)"}}>{flashSyncing?"⏳ กำลังซิงค์...":"🔄 ซิงค์ Flash"}</button>
+        {isAdmin&&<button disabled={flashSyncing} onClick={function(){syncFlashStatus(false);}} style={{padding:"10px 20px",borderRadius:10,border:"none",background:flashSyncing?"#94a3b8":"linear-gradient(135deg,#3b82f6,#2563eb)",color:"#fff",fontWeight:700,fontSize:14,cursor:flashSyncing?"not-allowed":"pointer",boxShadow:"0 2px 8px rgba(37,99,235,.3)"}}>{flashSyncing?"⏳ กำลังซิงค์...":"🔄 ซิงค์ Flash"}</button>}
         <button onClick={openAdd} style={{padding:"10px 20px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(217,119,6,.3)"}}>+ เพิ่มพัสดุ</button>
         <button onClick={openImport} style={{padding:"10px 20px",borderRadius:10,border:"2px solid #d97706",background:"transparent",color:"#d97706",fontWeight:700,fontSize:14,cursor:"pointer"}}>📥 ดึงพัสดุของฉัน</button>
       </div>
