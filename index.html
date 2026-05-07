@@ -1003,445 +1003,127 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
 /* ===== PARCEL REPORT — หน้าหัวหน้า ===== */
 function ParcelReportPage({parcels,accounts,user}){
   var _s=useState;
-  var[dateFrom,setDateFrom]=_s(monthStart());
-  var[dateTo,setDateTo]=_s(todayStr());
-  var[selPerson,setSelPerson]=_s("ALL");
-  var[selStatus,setSelStatus]=_s("ALL");
-  var[expandPerson,setExpandPerson]=_s(null);
-  var[flashSync,setFlashSync]=_s(null);
+  var[period,setPeriod]=_s("month");
+  var todayVal=todayStr();
+  var thisMonth=todayVal.substring(0,7);
+  var prevM=prevMonthStart().substring(0,7);
+  var monthNames=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  var curMonthName=monthNames[new Date().getMonth()];
 
-  // ดึงสถานะ Flash Sync ทุก 30 วินาที
-  useEffect(function(){
-    function fetchSync(){
-      fetch("https://flash-proxy.themtja.workers.dev/status").then(function(r){return r.json();}).then(function(d){setFlashSync(d);}).catch(function(){});}
-    fetchSync();
-    var iv=setInterval(fetchSync,30000);
-    return function(){clearInterval(iv);};
-  },[]);
-
-  var teleNames=[];var nickMap={};
+  var nickToName={};
   (accounts||[]).forEach(function(a){
     var nick=extractNickname(a.displayName,a.nickname);
-    if(nick&&teleNames.indexOf(nick)<0)teleNames.push(nick);
-    if(a.nickname)nickMap[a.displayName]=a.nickname;
+    if(nick)nickToName[nick]=extractRealName(a.displayName);
   });
 
-  // กรองตามวันที่ + คน (ไม่กรองสถานะ — ใช้แสดงจำนวนปุ่ม)
-  var preFiltered=(parcels||[]).filter(function(p){
-    var d=p.date||"";
-    if(!d||d.length<10||d[4]!=="-")return false;
-    var ymd=d.substring(0,10);
-    if(ymd<dateFrom||ymd>dateTo)return false;
-    if(selPerson!=="ALL"&&p.telesale!==selPerson)return false;
+  var all=(parcels||[]).filter(function(p){
+    var d=(p.date||"").substring(0,7);
+    if(period==="month")return d===thisMonth;
+    if(period==="prev")return d===prevM;
     return true;
   });
-  // กรองตามวันที่ + คน + สถานะ Flash
-  var FLASH_STATS=["สร้างรายการ","รับพัสดุแล้ว","อยู่ในระบบขนส่ง","กำลังจัดส่ง","เซ็นรับแล้ว","ส่งคืน","คืนสำเร็จ"];
-  var filtered=selStatus==="ALL"?preFiltered:selStatus===""?preFiltered.filter(function(p){return!p.flash_status;}):preFiltered.filter(function(p){return p.flash_status===selStatus;});
 
-  // --- สรุปรวม ---
-  var total=filtered.length;
-  var byStatus={};FLASH_STATS.forEach(function(s){byStatus[s]=0;});byStatus[""]=0;
-  var byStatusAll={};FLASH_STATS.forEach(function(s){byStatusAll[s]=0;});byStatusAll[""]=0;
-  var totalCOD=0;var codConfirmed=0;
-  filtered.forEach(function(p){
-    var st=p.flash_status||"";
-    if(byStatus[st]!==undefined)byStatus[st]++;else byStatus[""]++;
-    var cod=Number(p.cod)||0;totalCOD+=cod;
-    if(p.flash_status==="เซ็นรับแล้ว")codConfirmed+=cod;
-  });
-  preFiltered.forEach(function(p){var st=p.flash_status||"";if(byStatusAll[st]!==undefined)byStatusAll[st]++;else byStatusAll[""]++;});
-  var successRate=total>0?Math.round((byStatus["เซ็นรับแล้ว"]||0)/total*100):0;
-  var deliveryRate=total>0?Math.round(((byStatus["เซ็นรับแล้ว"]||0)+(byStatus["กำลังจัดส่ง"]||0))/total*100):0;
+  var total=all.length;
+  var delivered=all.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
+  var returned=all.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).length;
+  var deliveredCOD=all.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+  var returnRate=total>0?Math.round(returned/total*100):0;
+  var deliverRate=total>0?Math.round(delivered/total*100):0;
 
-  // --- สรุปแต่ละคน ---
-  var personMap={};
-  filtered.forEach(function(p){
+  // สรุปรายคน
+  var pm={};
+  all.forEach(function(p){
     var t=p.telesale||"ไม่ระบุ";
-    if(!personMap[t])personMap[t]={name:t,total:0,confirmed:0,delivering:0,inTransit:0,returned:0,pending:0,cod:0,codOk:0};
-    var pm=personMap[t];pm.total++;pm.cod+=Number(p.cod)||0;
-    if(p.flash_status==="เซ็นรับแล้ว"){pm.confirmed++;pm.codOk+=Number(p.cod)||0;}
-    if(p.flash_status==="กำลังจัดส่ง")pm.delivering++;
-    if(p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="รับพัสดุแล้ว")pm.inTransit++;
-    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ")pm.returned++;
-    if(!p.flash_status||p.flash_status==="สร้างรายการ")pm.pending++;
+    if(!pm[t])pm[t]={name:t,realName:nickToName[t]||"",total:0,delivered:0,returned:0,cod:0};
+    pm[t].total++;
+    if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ"){pm[t].delivered++;pm[t].cod+=Number(p.cod)||0;}
+    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ")pm[t].returned++;
   });
-  var personList=Object.values(personMap).sort(function(a,b){return b.total-a.total;});
-
-  // --- รายวัน ---
-  var dayMap={};
-  filtered.forEach(function(p){
-    var d=p.date||"?";
-    if(!dayMap[d])dayMap[d]={date:d,total:0,confirmed:0,pending:0,cod:0};
-    dayMap[d].total++;
-    if(p.flash_status==="เซ็นรับแล้ว"){dayMap[d].confirmed++;dayMap[d].cod+=Number(p.cod)||0;}
-    if(!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว")dayMap[d].pending++;
+  var persons=Object.values(pm).sort(function(a,b){
+    var ra=a.total>0?a.delivered/a.total:0;
+    var rb=b.total>0?b.delivered/b.total:0;
+    return rb-ra;
   });
-  var dayList=Object.values(dayMap).sort(function(a,b){return b.date>a.date?1:-1;});
 
-  function fmtDate(d){if(!d||d==="?")return"-";try{var dt=new Date(d);return dt.toLocaleDateString("th-TH",{day:"2-digit",month:"short"});}catch(e){return d;}}
-  function pct(n,t){return t>0?Math.round(n/t*100):0;}
-
-  var cardS={background:"#fff",borderRadius:12,padding:"16px 20px",boxShadow:"0 1px 3px rgba(0,0,0,.06)"};
-  var thS={padding:"10px 12px",textAlign:"left",fontSize:11,fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",background:"#f8fafc",whiteSpace:"nowrap"};
-  var tdS={padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontSize:12};
+  var periodLabel=period==="month"?"เดือน"+curMonthName:period==="prev"?"เดือนก่อน":"ทั้งหมด";
+  var pBtn=function(k,l){return{padding:"10px 20px",borderRadius:10,border:period===k?"2px solid #d97706":"1px solid #e2e8f0",background:period===k?"#fef3c7":"#fff",color:period===k?"#92400e":"#64748b",fontSize:14,fontWeight:700,cursor:"pointer"};};
 
   return<div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
-      <h2 style={{fontSize:20,fontWeight:800,color:"#1e293b"}}>👑 รายงานหัวหน้า — เช็คพัสดุ</h2>
+    <h2 style={{fontSize:22,fontWeight:800,color:"#1e293b",marginBottom:20}}>👑 รายงานหัวหน้า</h2>
+
+    <div style={{display:"flex",gap:10,marginBottom:24}}>
+      <button onClick={function(){setPeriod("month");}} style={pBtn("month")}>เดือนนี้</button>
+      <button onClick={function(){setPeriod("prev");}} style={pBtn("prev")}>เดือนก่อน</button>
+      <button onClick={function(){setPeriod("all");}} style={pBtn("all")}>ทั้งหมด</button>
     </div>
 
-    {/* Flash Sync Status */}
-    {flashSync&&<div style={{background:flashSync.remaining>0?"linear-gradient(135deg,#eff6ff,#dbeafe)":"linear-gradient(135deg,#f0fdf4,#dcfce7)",borderRadius:10,padding:"12px 18px",marginBottom:16,border:"1px solid "+(flashSync.remaining>0?"#93c5fd":"#86efac"),display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
-      {flashSync.remaining>0?<>
-        <div style={{width:18,height:18,borderRadius:"50%",border:"2.5px solid #3b82f6",borderTopColor:"transparent",animation:"spin 1s linear infinite"}}/>
-        <div style={{flex:1}}>
-          <div style={{fontSize:14,fontWeight:700,color:"#1e40af"}}>🔄 Flash Sync กำลังทำงาน</div>
-          <div style={{fontSize:12,color:"#64748b",marginTop:2}}>เหลือ <b style={{color:"#d97706"}}>{flashSync.remaining}</b> รายการ · ซิงค์แล้ว <b style={{color:"#059669"}}>{flashSync.synced||0}</b> รายการ · ทุก 5 นาที</div>
-          {flashSync.newest_pending&&<div style={{fontSize:11,color:"#64748b",marginTop:2}}>📅 รอซิงค์: <b>{flashSync.oldest_pending}</b> ถึง <b>{flashSync.newest_pending}</b></div>}
-        </div>
-        <div style={{textAlign:"center",padding:"6px 14px",borderRadius:8,background:"#3b82f6",color:"#fff"}}>
-          <div style={{fontSize:18,fontWeight:800}}>{flashSync.remaining}</div>
-          <div style={{fontSize:8,fontWeight:600}}>รอซิงค์</div>
-        </div>
-      </>:<>
-        <div style={{fontSize:20}}>✅</div>
-        <div>
-          <div style={{fontSize:14,fontWeight:700,color:"#059669"}}>Flash Sync เสร็จสมบูรณ์</div>
-          <div style={{fontSize:12,color:"#64748b"}}>ซิงค์แล้ว <b style={{color:"#059669"}}>{flashSync.synced||0}</b> รายการ · สถานะพัสดุทุกตัวอัพเดตแล้ว</div>
-        </div>
-      </>}
+    {returnRate>0&&<div style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)",borderRadius:14,padding:20,marginBottom:20,display:"flex",alignItems:"center",gap:16,color:"#fff"}}>
+      <div style={{fontSize:40}}>🚨</div>
+      <div style={{flex:1}}>
+        <div style={{fontSize:18,fontWeight:800}}>อัตราตีกลับ {returnRate}% — {periodLabel}</div>
+        <div style={{fontSize:13,color:"#fecaca",marginTop:4}}>ตีกลับ {returned} จาก {total} รายการ</div>
+      </div>
+      <div style={{fontSize:36,fontWeight:900}}>{returnRate}%</div>
     </div>}
 
-    {/* ตัวกรอง */}
-    <div style={{background:"#fff",borderRadius:10,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
-      <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:10}}>
-        <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>จาก</span>
-        <input type="date" value={dateFrom} onChange={function(e){setDateFrom(e.target.value);}} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13}}/>
-        <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>ถึง</span>
-        <input type="date" value={dateTo} onChange={function(e){setDateTo(e.target.value);}} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:13}}/>
-        <button onClick={function(){setDateFrom(todayStr());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===todayStr()&&dateTo===todayStr())}>วันนี้</button>
-        <button onClick={function(){var y=new Date();y.setDate(y.getDate()-1);var ys=y.getFullYear()+"-"+String(y.getMonth()+1).padStart(2,"0")+"-"+String(y.getDate()).padStart(2,"0");setDateFrom(ys);setDateTo(ys);}} style={dateBtnStyle(false)}>เมื่อวาน</button>
-        <button onClick={function(){setDateFrom(sevenDaysAgo());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===sevenDaysAgo()&&dateTo===todayStr())}>7 วัน</button>
-        <button onClick={function(){setDateFrom(monthStart());setDateTo(todayStr());}} style={dateBtnStyle(dateFrom===monthStart()&&dateTo===todayStr())}>เดือนนี้</button>
-        <button onClick={function(){setDateFrom(prevMonthStart());setDateTo(prevMonthEnd());}} style={dateBtnStyle(dateFrom===prevMonthStart()&&dateTo===prevMonthEnd())}>เดือนก่อน</button>
-        <button onClick={function(){setDateFrom("2020-01-01");setDateTo(todayStr());}} style={dateBtnStyle(dateFrom==="2020-01-01"&&dateTo===todayStr())}>ทั้งหมด</button>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:24}}>
+      <div style={{background:"#fff",borderRadius:14,padding:20,borderLeft:"4px solid #3b82f6"}}>
+        <div style={{fontSize:12,color:"#94a3b8"}}>พัสดุทั้งหมด</div>
+        <div style={{fontSize:36,fontWeight:800,color:"#1e293b"}}>{total}</div>
       </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-        <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>TeleSale:</span>
-        <button onClick={function(){setSelPerson("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selPerson==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selPerson==="ALL"?"#fef3c7":"#fff",color:selPerson==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทุกคน</button>
-        {teleNames.map(function(n){var active=selPerson===n;var pm=personMap[n];return<button key={n} onClick={function(){setSelPerson(n);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid #d97706":"1px solid #e2e8f0",background:active?"#fef3c7":"#fff",color:active?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{n} {pm?<span style={{fontSize:10,color:"#94a3b8"}}>({pm.total})</span>:""}</button>;})}
+      <div style={{background:"#fff",borderRadius:14,padding:20,borderLeft:"4px solid #10b981"}}>
+        <div style={{fontSize:12,color:"#94a3b8"}}>ลูกค้ารับของ</div>
+        <div style={{fontSize:36,fontWeight:800,color:"#10b981"}}>{delivered} <span style={{fontSize:16,color:"#64748b"}}>{deliverRate}%</span></div>
       </div>
-      <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",marginTop:10}}>
-        <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>สถานะ:</span>
-        <button onClick={function(){setSelStatus("ALL");}} style={{padding:"6px 14px",borderRadius:8,border:selStatus==="ALL"?"2px solid #d97706":"1px solid #e2e8f0",background:selStatus==="ALL"?"#fef3c7":"#fff",color:selStatus==="ALL"?"#92400e":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ทั้งหมด</button>
-        {FLASH_STATS.map(function(sv){var active=selStatus===sv;var count=byStatusAll[sv]||0;var st=FLASH_STATUS_STYLES[sv]||{c:"#94a3b8",bg:"#f1f5f9"};return<button key={sv} onClick={function(){setSelStatus(sv);}} style={{padding:"6px 14px",borderRadius:8,border:active?"2px solid "+st.c:"1px solid #e2e8f0",background:active?st.bg:"#fff",color:active?st.c:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:st.c}}>{sv}</span> <span style={{fontSize:10,color:"#94a3b8"}}>({count})</span></button>;})}
-        <button onClick={function(){setSelStatus("");}} style={{padding:"6px 14px",borderRadius:8,border:selStatus===""?"2px solid #cbd5e1":"1px solid #e2e8f0",background:selStatus===""?"#f1f5f9":"#fff",color:selStatus===""?"#475569":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}><span style={{color:"#94a3b8"}}>ว่างเปล่า</span> <span style={{fontSize:10,color:"#94a3b8"}}>({byStatusAll[""]||0})</span></button>
+      <div style={{background:"#fff",borderRadius:14,padding:20,borderLeft:"4px solid #ef4444"}}>
+        <div style={{fontSize:12,color:"#94a3b8"}}>ตีกลับ</div>
+        <div style={{fontSize:36,fontWeight:800,color:"#ef4444"}}>{returned} <span style={{fontSize:16,color:"#64748b"}}>{returnRate}%</span></div>
+      </div>
+      <div style={{background:"#fff",borderRadius:14,padding:20,borderLeft:"4px solid #059669"}}>
+        <div style={{fontSize:12,color:"#94a3b8"}}>COD รับแล้ว</div>
+        <div style={{fontSize:28,fontWeight:800,color:"#059669"}}>฿{deliveredCOD.toLocaleString()}</div>
       </div>
     </div>
 
-    {/* สรุปภาพรวม */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:16}}>
-      <div style={{...cardS,borderLeft:"4px solid #3b82f6"}}><div style={{fontSize:28,fontWeight:800,color:"#1e293b"}}>{total}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>พัสดุทั้งหมด</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #10b981"}}><div style={{fontSize:28,fontWeight:800,color:"#10b981"}}>{successRate}%</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>อัตราเซ็นรับ</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #0ea5e9"}}><div style={{fontSize:28,fontWeight:800,color:"#0ea5e9"}}>{deliveryRate}%</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>อัตราจัดส่ง</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={{fontSize:28,fontWeight:800,color:"#8b5cf6"}}>฿{codConfirmed.toLocaleString()}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>COD เซ็นรับแล้ว</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #f59e0b"}}><div style={{fontSize:28,fontWeight:800,color:"#f59e0b"}}>{(byStatus["สร้างรายการ"]||0)+(byStatus["รับพัสดุแล้ว"]||0)}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>รอจัดส่ง</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #ef4444"}}><div style={{fontSize:28,fontWeight:800,color:"#ef4444"}}>{(byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0)}</div><div style={{fontSize:11,color:"#64748b",fontWeight:600}}>ส่งคืน+ตีกลับ</div></div>
-    </div>
-
-    {/* กราฟสถานะ */}
-    <div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
-      <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>📊 สัดส่วนสถานะ</div>
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {FLASH_STATS.map(function(sv){
-          var count=byStatus[sv]||0;var w=total>0?Math.max(count/total*100,count>0?2:0):0;
-          var st=FLASH_STATUS_STYLES[sv]||{c:"#94a3b8",bg:"#f1f5f9"};
-          return<div key={sv} style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:100,fontSize:12,fontWeight:600,color:st.c,textAlign:"right"}}>{sv}</div>
-            <div style={{flex:1,height:24,background:"#f1f5f9",borderRadius:6,overflow:"hidden",position:"relative"}}>
-              <div style={{height:"100%",width:w+"%",background:st.c,borderRadius:6,transition:"width .4s"}}/>
-              {count>0&&<span style={{position:"absolute",left:w>15?(w/2)+"%":"calc("+w+"% + 6px)",top:"50%",transform:w>15?"translate(-50%,-50%)":"translateY(-50%)",fontSize:11,fontWeight:700,color:w>15?"#fff":st.c}}>{count} ({Math.round(w)}%)</span>}
-            </div>
-          </div>;
-        })}
-      </div>
-    </div>
-
-    {/* จัดอันดับพนักงาน */}
-    {personList.length>0&&(function(){
-      var ranked=personList.slice().map(function(p){var rate=pct(p.confirmed,p.total);var failRate=pct(p.returned,p.total);return{...p,rate:rate,failRate:failRate};}).sort(function(a,b){return b.rate-a.rate||b.codOk-a.codOk;});
-      var best=ranked[0];var worst=ranked[ranked.length-1];
-      var rankIcons=["🏆","🥈","🥉"];
-      var getRankBg=function(i,len){if(i===0)return"linear-gradient(135deg,#fef3c7,#fde68a)";if(i===1)return"linear-gradient(135deg,#f1f5f9,#e2e8f0)";if(i===2)return"linear-gradient(135deg,#fed7aa,#fdba74)";if(i>=len-1&&len>2)return"linear-gradient(135deg,#fee2e2,#fecaca)";return"#fff";};
-
-      return<div style={{marginBottom:16}}>
-        {/* Podium Top 3 */}
-        {ranked.length>=2&&<div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap",justifyContent:"center"}}>
-          {ranked.slice(0,Math.min(3,ranked.length)).map(function(p,i){
-            var ringColor=i===0?"#f59e0b":i===1?"#94a3b8":"#f97316";
-            return<div key={p.name} style={{flex:"1 1 200px",maxWidth:260,background:getRankBg(i,ranked.length),borderRadius:16,padding:20,textAlign:"center",border:"2px solid "+(i===0?"#fbbf24":i===1?"#d1d5db":"#fdba74"),boxShadow:i===0?"0 4px 20px rgba(251,191,36,.3)":"0 1px 4px rgba(0,0,0,.06)",position:"relative"}}>
-              <div style={{fontSize:40,marginBottom:4}}>{rankIcons[i]}</div>
-              <div style={{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:2}}>อันดับ {i+1}</div>
-              <div style={{fontSize:18,fontWeight:800,color:"#1e293b",marginBottom:8}}>{p.name}</div>
-              <div style={{display:"inline-block",padding:"6px 16px",borderRadius:20,background:p.rate>=70?"#d1fae5":p.rate>=40?"#fef3c7":"#fee2e2",marginBottom:8}}>
-                <span style={{fontSize:22,fontWeight:800,color:p.rate>=70?"#059669":p.rate>=40?"#d97706":"#dc2626"}}>{p.rate}%</span>
-                <span style={{fontSize:11,color:"#64748b",marginLeft:4}}>เซ็นรับ</span>
-              </div>
-              <div style={{display:"flex",justifyContent:"center",gap:12,fontSize:11,color:"#475569"}}>
-                <span>พัสดุ <b>{p.total}</b></span>
-                <span style={{color:"#0d9488"}}>✅ {p.confirmed}</span>
-                <span style={{color:"#dc2626"}}>❌ {p.returned}</span>
-              </div>
-              <div style={{fontSize:13,fontWeight:700,color:"#059669",marginTop:6}}>COD ฿{p.codOk.toLocaleString()}</div>
-            </div>;
-          })}
-        </div>}
-
-        {/* คนที่แย่ที่สุด — แสดงเมื่อมี ≥3 คนและคนสุดท้ายไม่ใช่คนแรก */}
-        {ranked.length>=3&&worst.name!==best.name&&<div style={{background:"linear-gradient(135deg,#fef2f2,#fff1f2)",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #fecaca",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
-          <div style={{fontSize:32}}>⚠️</div>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:700,color:"#dc2626",marginBottom:4}}>ต้องปรับปรุง — อันดับสุดท้าย</div>
-            <div style={{fontSize:18,fontWeight:800,color:"#1e293b"}}>{worst.name}</div>
-            <div style={{fontSize:12,color:"#64748b",marginTop:4}}>เซ็นรับ <b style={{color:"#dc2626"}}>{worst.rate}%</b> · พัสดุ {worst.total} · ส่งคืน {worst.returned} ({worst.failRate}%) · COD ฿{worst.codOk.toLocaleString()}</div>
-          </div>
-        </div>}
-
-        {/* ตารางอันดับเต็ม */}
-        <div style={{background:"#fff",borderRadius:12,padding:16,border:"1px solid #e2e8f0"}}>
-          <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>🏅 อันดับผลงาน (เรียงจากดีสุด → แย่สุด)</div>
-          <div style={{overflow:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",minWidth:860}}>
-              <thead><tr>
-                <th style={{...thS,textAlign:"center",width:50}}>อันดับ</th>
-                <th style={thS}>TeleSale</th>
-                <th style={{...thS,textAlign:"center"}}>ทั้งหมด</th>
-                <th style={{...thS,textAlign:"center",color:"#0d9488"}}>เซ็นรับ</th>
-                <th style={{...thS,textAlign:"center",color:"#8b5cf6"}}>กำลังส่ง</th>
-                <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>ในระบบ</th>
-                <th style={{...thS,textAlign:"center",color:"#f59e0b"}}>รอส่ง</th>
-                <th style={{...thS,textAlign:"center",color:"#dc2626"}}>ส่งคืน</th>
-                <th style={{...thS,textAlign:"center",width:120}}>% เซ็นรับ</th>
-                <th style={{...thS,textAlign:"center",width:100}}>% ส่งคืน</th>
-                <th style={{...thS,textAlign:"right"}}>COD เซ็นรับ</th>
-              </tr></thead>
-              <tbody>
-                {ranked.map(function(p,i){
-                  var isLast=i===ranked.length-1&&ranked.length>2;
-                  var barColor=p.rate>=70?"#10b981":p.rate>=40?"#f59e0b":"#ef4444";
-                  var failColor=p.failRate>=30?"#dc2626":p.failRate>=15?"#f59e0b":"#94a3b8";
-                  var rowBg=i===0?"#fefce8":isLast?"#fef2f2":i%2===0?"#fff":"#f8fafc";
-                  return<tr key={p.name} style={{background:rowBg}}>
-                    <td style={{...tdS,textAlign:"center",fontSize:16}}>{rankIcons[i]||<span style={{fontSize:13,fontWeight:700,color:isLast?"#dc2626":"#64748b"}}>{i+1}</span>}</td>
-                    <td style={{...tdS,fontWeight:700,fontSize:13,color:isLast?"#dc2626":"#1e293b"}}>{p.name} {isLast&&ranked.length>2?<span style={{fontSize:10,color:"#dc2626",fontWeight:600}}>⚠️</span>:""}</td>
-                    <td style={{...tdS,textAlign:"center",fontWeight:700}}>{p.total}</td>
-                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:p.confirmed>0?"#0d9488":"#e2e8f0"}}>{p.confirmed||"-"}</td>
-                    <td style={{...tdS,textAlign:"center",color:p.delivering>0?"#8b5cf6":"#e2e8f0"}}>{p.delivering||"-"}</td>
-                    <td style={{...tdS,textAlign:"center",color:p.inTransit>0?"#3b82f6":"#e2e8f0"}}>{p.inTransit||"-"}</td>
-                    <td style={{...tdS,textAlign:"center",color:p.pending>0?"#f59e0b":"#e2e8f0"}}>{p.pending||"-"}</td>
-                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:p.returned>0?"#dc2626":"#e2e8f0"}}>{p.returned||"-"}</td>
-                    <td style={{...tdS,textAlign:"center"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
-                        <div style={{width:56,height:10,background:"#f1f5f9",borderRadius:5,overflow:"hidden"}}><div style={{height:"100%",width:p.rate+"%",background:barColor,borderRadius:5}}/></div>
-                        <span style={{fontSize:12,fontWeight:800,color:barColor,minWidth:32}}>{p.rate}%</span>
-                      </div>
-                    </td>
-                    <td style={{...tdS,textAlign:"center"}}>
-                      <span style={{fontSize:11,fontWeight:700,color:failColor}}>{p.failRate}%</span>
-                    </td>
-                    <td style={{...tdS,textAlign:"right",fontWeight:700,color:"#059669"}}>฿{p.codOk.toLocaleString()}</td>
-                  </tr>;
-                })}
-                {/* แถวรวม */}
-                <tr style={{background:"#fffbeb",fontWeight:800}}>
-                  <td style={{...tdS,textAlign:"center"}}>📊</td>
-                  <td style={{...tdS,fontSize:13}}>รวมทั้งหมด</td>
-                  <td style={{...tdS,textAlign:"center",fontSize:14}}>{total}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#0d9488"}}>{byStatus["เซ็นรับแล้ว"]||0}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#8b5cf6"}}>{byStatus["กำลังจัดส่ง"]||0}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{(byStatus["อยู่ในระบบขนส่ง"]||0)+(byStatus["รับพัสดุแล้ว"]||0)}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#f59e0b"}}>{(byStatus["สร้างรายการ"]||0)+(byStatus[""]||0)}</td>
-                  <td style={{...tdS,textAlign:"center",color:"#dc2626"}}>{(byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0)}</td>
-                  <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:12,fontWeight:800,color:successRate>=50?"#10b981":"#f59e0b"}}>{successRate}%</span></td>
-                  <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:total>0&&pct((byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0),total)>=20?"#dc2626":"#94a3b8"}}>{pct((byStatus["ส่งคืน"]||0)+(byStatus["คืนสำเร็จ"]||0),total)}%</span></td>
-                  <td style={{...tdS,textAlign:"right",fontSize:14,color:"#059669"}}>฿{codConfirmed.toLocaleString()}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>;
-    })()}
-
-    {/* กราฟแท่งรายวัน */}
-    {dayList.length>1&&<div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
-      <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>📅 เช็คพัสดุรายวัน</div>
-      <div style={{display:"flex",alignItems:"flex-end",gap:4,height:180,padding:"0 4px"}}>
-        {(function(){var maxT=Math.max.apply(null,dayList.map(function(d){return d.total;}))||1;return dayList.slice().sort(function(a,b){return a.date>b.date?1:-1;}).map(function(d){
-          var h=Math.max(d.total/maxT*150,4);
-          var hOk=d.total>0?Math.round(d.confirmed/d.total*h):0;
-          return<div key={d.date} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:0}}>
-            <span style={{fontSize:9,fontWeight:700,color:"#1e293b"}}>{d.total}</span>
-            <div style={{width:"100%",maxWidth:36,borderRadius:"4px 4px 0 0",overflow:"hidden",height:h,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
-              <div style={{height:hOk,background:"linear-gradient(180deg,#34d399,#10b981)"}}/>
-              <div style={{height:h-hOk,background:"linear-gradient(180deg,#fde68a,#fbbf24)"}}/>
-            </div>
-            <span style={{fontSize:8,color:"#94a3b8",whiteSpace:"nowrap"}}>{d.date.substring(5)}</span>
-          </div>;
-        });})()}
-      </div>
-      <div style={{display:"flex",gap:16,justifyContent:"center",marginTop:8}}>
-        <span style={{fontSize:10,color:"#10b981",fontWeight:600}}>🟩 ยืนยัน+ส่งแล้ว</span>
-        <span style={{fontSize:10,color:"#fbbf24",fontWeight:600}}>🟨 อื่นๆ</span>
-      </div>
-    </div>}
-
-    {/* ตารางสรุปรายวัน */}
-    {dayList.length>0&&<div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
-      <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>📋 สรุปรายวัน</div>
+    {persons.length>0&&<div style={{background:"#fff",borderRadius:14,padding:20}}>
+      <div style={{fontSize:16,fontWeight:700,color:"#1e293b",marginBottom:16}}>📊 ผลงานพนักงาน — {periodLabel}</div>
       <div style={{overflow:"auto"}}>
-        <table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}>
-          <thead><tr>
-            <th style={thS}>วันที่</th>
-            <th style={{...thS,textAlign:"center"}}>เช็คทั้งหมด</th>
-            <th style={{...thS,textAlign:"center",color:"#10b981"}}>ยืนยัน+ส่ง</th>
-            <th style={{...thS,textAlign:"center",color:"#f59e0b"}}>รอเช็ค</th>
-            <th style={{...thS,textAlign:"center"}}>% สำเร็จ</th>
-            <th style={{...thS,textAlign:"right"}}>COD</th>
+        <table style={{width:"100%",borderCollapse:"collapse"}}>
+          <thead><tr style={{borderBottom:"2px solid #e2e8f0"}}>
+            <th style={{padding:"12px",textAlign:"left",fontSize:12,color:"#94a3b8"}}>อันดับ</th>
+            <th style={{padding:"12px",textAlign:"left",fontSize:12,color:"#94a3b8"}}>ชื่อเล่น</th>
+            <th style={{padding:"12px",textAlign:"left",fontSize:12,color:"#94a3b8"}}>ชื่อจริง</th>
+            <th style={{padding:"12px",textAlign:"center",fontSize:12,color:"#94a3b8"}}>พัสดุ</th>
+            <th style={{padding:"12px",textAlign:"center",fontSize:12,color:"#10b981"}}>รับของ</th>
+            <th style={{padding:"12px",textAlign:"center",fontSize:12,color:"#ef4444"}}>ตีกลับ</th>
+            <th style={{padding:"12px",textAlign:"center",fontSize:12,color:"#94a3b8"}}>% รับของ</th>
+            <th style={{padding:"12px",textAlign:"center",fontSize:12,color:"#ef4444"}}>% ตีกลับ</th>
+            <th style={{padding:"12px",textAlign:"right",fontSize:12,color:"#94a3b8"}}>COD</th>
           </tr></thead>
-          <tbody>{dayList.map(function(d,i){
-            var r=pct(d.confirmed,d.total);
-            return<tr key={d.date} style={{background:i%2===0?"#fff":"#f8fafc"}}>
-              <td style={{...tdS,fontWeight:600}}>{fmtDate(d.date)} <span style={{fontSize:10,color:"#94a3b8"}}>{d.date}</span></td>
-              <td style={{...tdS,textAlign:"center",fontWeight:700}}>{d.total}</td>
-              <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#10b981"}}>{d.confirmed}</td>
-              <td style={{...tdS,textAlign:"center",color:"#f59e0b"}}>{d.pending}</td>
-              <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:r>=60?"#10b981":r>=30?"#f59e0b":"#ef4444"}}>{r}%</span></td>
-              <td style={{...tdS,textAlign:"right",fontWeight:700,color:"#059669"}}>฿{d.cod.toLocaleString()}</td>
+          <tbody>{persons.map(function(p,i){
+            var rate=p.total>0?Math.round(p.delivered/p.total*100):0;
+            var fail=p.total>0?Math.round(p.returned/p.total*100):0;
+            var icon=i===0?"🏆":i===1?"🥈":i===2?"🥉":"";
+            var isLast=i===persons.length-1&&persons.length>2;
+            return<tr key={p.name} style={{borderBottom:"1px solid #f1f5f9",background:isLast?"#fef2f2":""}}>
+              <td style={{padding:"14px 12px",fontSize:16}}>{icon||<span style={{fontSize:13,color:"#94a3b8"}}>{i+1}</span>}</td>
+              <td style={{padding:"14px 12px",fontWeight:700,fontSize:14,color:isLast?"#dc2626":"#1e293b"}}>{p.name}</td>
+              <td style={{padding:"14px 12px",fontSize:13,color:"#64748b"}}>{p.realName}</td>
+              <td style={{padding:"14px 12px",textAlign:"center",fontWeight:700,fontSize:15}}>{p.total}</td>
+              <td style={{padding:"14px 12px",textAlign:"center",fontWeight:700,color:"#10b981",fontSize:15}}>{p.delivered}</td>
+              <td style={{padding:"14px 12px",textAlign:"center",fontWeight:700,color:p.returned>0?"#ef4444":"#d1d5db",fontSize:15}}>{p.returned||"-"}</td>
+              <td style={{padding:"14px 12px",textAlign:"center"}}>
+                <span style={{padding:"4px 12px",borderRadius:20,fontWeight:800,fontSize:14,background:rate>=70?"#d1fae5":rate>=40?"#fef3c7":"#fecaca",color:rate>=70?"#059669":rate>=40?"#d97706":"#dc2626"}}>{rate}%</span>
+              </td>
+              <td style={{padding:"14px 12px",textAlign:"center"}}>
+                <span style={{fontWeight:700,fontSize:14,color:fail>=20?"#dc2626":fail>=10?"#f59e0b":"#94a3b8"}}>{fail}%</span>
+              </td>
+              <td style={{padding:"14px 12px",textAlign:"right",fontWeight:700,color:"#059669",fontSize:14}}>฿{p.cod.toLocaleString()}</td>
             </tr>;
           })}</tbody>
         </table>
       </div>
     </div>}
-
-    {/* เปรียบเทียบเดือนนี้ vs เดือนก่อน */}
-    {(function(){
-      var thisM=monthStart().substring(0,7);var pm=prevMonthStart().substring(0,7);
-      var allP=parcels||[];
-      function mStats(m){
-        var list=allP.filter(function(p){return(p.date||"").substring(0,7)===m;});
-        var t=list.length;var conf=0;var pend=0;var fail=0;var cod=0;var codOk=0;
-        list.forEach(function(p){
-          var c=Number(p.cod)||0;cod+=c;
-          if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว"){conf++;codOk+=c;}
-          if(p.status==="รอเช็ค")pend++;
-          if(p.status==="ตีกลับ"||p.status==="ปฏิเสธ")fail++;
-        });
-        var pm2={};list.forEach(function(p){
-          var t2=p.telesale||"ไม่ระบุ";if(!pm2[t2])pm2[t2]={name:t2,total:0,confirmed:0,cod:0};
-          pm2[t2].total++;if(p.status==="ยืนยันรับ"||p.status==="ส่งแล้ว"){pm2[t2].confirmed++;pm2[t2].cod+=Number(p.cod)||0;}
-        });
-        return{total:t,confirmed:conf,pending:pend,fail:fail,cod:cod,codOk:codOk,rate:t>0?Math.round(conf/t*100):0,persons:Object.values(pm2)};
-      }
-      var cur=mStats(thisM);var prev=mStats(pm);
-      var thMN=["","ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
-      var curLabel=thMN[parseInt(thisM.split("-")[1])]+" "+thisM.split("-")[0];
-      var prevLabel=thMN[parseInt(pm.split("-")[1])]+" "+pm.split("-")[0];
-
-      var rows=[
-        {label:"พัสดุทั้งหมด",cur:cur.total,prev:prev.total,fmt:function(v){return v;}},
-        {label:"ยืนยัน+ส่งแล้ว",cur:cur.confirmed,prev:prev.confirmed,fmt:function(v){return v;},good:true},
-        {label:"% ยืนยัน",cur:cur.rate,prev:prev.rate,fmt:function(v){return v+"%";},pct:true},
-        {label:"รอเช็ค",cur:cur.pending,prev:prev.pending,fmt:function(v){return v;},bad:true},
-        {label:"ปฏิเสธ+ตีกลับ",cur:cur.fail,prev:prev.fail,fmt:function(v){return v;},bad:true},
-        {label:"COD ยืนยัน",cur:cur.codOk,prev:prev.codOk,fmt:function(v){return"฿"+v.toLocaleString();},money:true},
-      ];
-
-      return<div style={{background:"#fff",borderRadius:12,padding:16,marginBottom:16,border:"1px solid #e2e8f0"}}>
-        <div style={{fontSize:14,fontWeight:700,marginBottom:14}}>📊 เปรียบเทียบ {curLabel} vs {prevLabel}</div>
-
-        {/* Summary Visual */}
-        <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-          <div style={{flex:"1 1 200px",background:diff(cur.rate,prev.rate)>=0?"#f0fdf4":"#fef2f2",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(diff(cur.rate,prev.rate)>=0?"#bbf7d0":"#fecaca")}}>
-            <div style={{fontSize:11,color:"#64748b",fontWeight:600}}>% ยืนยัน</div>
-            <div style={{fontSize:24,fontWeight:800,color:diff(cur.rate,prev.rate)>=0?"#059669":"#dc2626"}}>{cur.rate}%</div>
-            <div style={{fontSize:12,fontWeight:700,color:diff(cur.rate,prev.rate)>=0?"#10b981":"#ef4444"}}>{diff(cur.rate,prev.rate)>0?"🔺 +":"🔻 "}{diff(cur.rate,prev.rate)}% จาก {prev.rate}%</div>
-          </div>
-          <div style={{flex:"1 1 200px",background:diff(cur.codOk,prev.codOk)>=0?"#f0fdf4":"#fef2f2",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(diff(cur.codOk,prev.codOk)>=0?"#bbf7d0":"#fecaca")}}>
-            <div style={{fontSize:11,color:"#64748b",fontWeight:600}}>COD ยืนยัน</div>
-            <div style={{fontSize:24,fontWeight:800,color:diff(cur.codOk,prev.codOk)>=0?"#059669":"#dc2626"}}>฿{cur.codOk.toLocaleString()}</div>
-            <div style={{fontSize:12,fontWeight:700,color:diff(cur.codOk,prev.codOk)>=0?"#10b981":"#ef4444"}}>{diff(cur.codOk,prev.codOk)>=0?"🔺 +฿":"🔻 ฿"}{Math.abs(diff(cur.codOk,prev.codOk)).toLocaleString()}</div>
-          </div>
-          <div style={{flex:"1 1 200px",background:diff(cur.total,prev.total)>=0?"#eff6ff":"#fef2f2",borderRadius:10,padding:14,textAlign:"center",border:"1px solid "+(diff(cur.total,prev.total)>=0?"#bfdbfe":"#fecaca")}}>
-            <div style={{fontSize:11,color:"#64748b",fontWeight:600}}>พัสดุเช็ค</div>
-            <div style={{fontSize:24,fontWeight:800,color:"#1e293b"}}>{cur.total}</div>
-            <div style={{fontSize:12,fontWeight:700,color:diff(cur.total,prev.total)>=0?"#3b82f6":"#ef4444"}}>{diff(cur.total,prev.total)>=0?"🔺 +":"🔻 "}{diff(cur.total,prev.total)} จาก {prev.total}</div>
-          </div>
-        </div>
-
-        {/* ตารางเปรียบเทียบ */}
-        <div style={{overflow:"auto",marginBottom:16}}>
-          <table style={{width:"100%",borderCollapse:"collapse",minWidth:460}}>
-            <thead><tr>
-              <th style={thS}>รายการ</th>
-              <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>{prevLabel}</th>
-              <th style={{...thS,textAlign:"center",color:"#d97706"}}>{curLabel}</th>
-              <th style={{...thS,textAlign:"center"}}>เปลี่ยนแปลง</th>
-            </tr></thead>
-            <tbody>{rows.map(function(r,i){
-              var d=r.cur-r.prev;var isGood=r.bad?(d<=0):(d>=0);if(r.pct)isGood=d>=0;
-              var cc=d===0?"#94a3b8":isGood?"#10b981":"#ef4444";
-              var ci=d===0?"➖":isGood?"🔺":"🔻";
-              var ct=r.money?(d>=0?"+฿":"฿")+Math.abs(d).toLocaleString():r.pct?(d>=0?"+":"")+d+"%":(d>=0?"+":"")+d;
-              return<tr key={i} style={{background:i%2===0?"#fff":"#f8fafc"}}>
-                <td style={{...tdS,fontWeight:600}}>{r.label}</td>
-                <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{r.fmt(r.prev)}</td>
-                <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#d97706"}}>{r.fmt(r.cur)}</td>
-                <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:12,fontWeight:700,color:cc}}>{ci} {ct}</span></td>
-              </tr>;
-            })}</tbody>
-          </table>
-        </div>
-
-        {/* เปรียบเทียบรายคน */}
-        {(cur.persons.length>0||prev.persons.length>0)&&<div>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:10}}>👥 เปรียบเทียบรายคน</div>
-          <div style={{overflow:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",minWidth:580}}>
-              <thead><tr>
-                <th style={thS}>TeleSale</th>
-                <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>เช็ค ({prevLabel})</th>
-                <th style={{...thS,textAlign:"center",color:"#d97706"}}>เช็ค ({curLabel})</th>
-                <th style={{...thS,textAlign:"center"}}>+/-</th>
-                <th style={{...thS,textAlign:"center",color:"#3b82f6"}}>ยืนยัน ({prevLabel})</th>
-                <th style={{...thS,textAlign:"center",color:"#d97706"}}>ยืนยัน ({curLabel})</th>
-                <th style={{...thS,textAlign:"center"}}>+/-</th>
-              </tr></thead>
-              <tbody>{(function(){
-                var allN={};cur.persons.forEach(function(p){allN[p.name]=true;});prev.persons.forEach(function(p){allN[p.name]=true;});
-                return Object.keys(allN).sort().map(function(n,i){
-                  var c2=cur.persons.find(function(p){return p.name===n;})||{total:0,confirmed:0};
-                  var p2=prev.persons.find(function(p){return p.name===n;})||{total:0,confirmed:0};
-                  var dT=c2.total-p2.total;var dC=c2.confirmed-p2.confirmed;
-                  return<tr key={n} style={{background:i%2===0?"#fff":"#f8fafc"}}>
-                    <td style={{...tdS,fontWeight:700}}>{n}</td>
-                    <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{p2.total}</td>
-                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#d97706"}}>{c2.total}</td>
-                    <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:dT===0?"#94a3b8":dT>0?"#10b981":"#ef4444"}}>{dT>0?"+":""}{dT}</span></td>
-                    <td style={{...tdS,textAlign:"center",color:"#3b82f6"}}>{p2.confirmed}</td>
-                    <td style={{...tdS,textAlign:"center",fontWeight:700,color:"#d97706"}}>{c2.confirmed}</td>
-                    <td style={{...tdS,textAlign:"center"}}><span style={{fontSize:11,fontWeight:700,color:dC===0?"#94a3b8":dC>0?"#10b981":"#ef4444"}}>{dC>0?"+":""}{dC}</span></td>
-                  </tr>;
-                });
-              })()}</tbody>
-            </table>
-          </div>
-        </div>}
-      </div>;
-
-      function diff(a,b){return a-b;}
-    })()}
   </div>;
 }
 
