@@ -105,7 +105,7 @@ function flashStateText(state){
   if(s===6)return"คืนสำเร็จ";
   return"";
 }
-var FLASH_STATUS_STYLES={"สร้างรายการ":{c:"#6b7280",bg:"#f3f4f6"},"รับพัสดุแล้ว":{c:"#10b981",bg:"#d1fae5"},"อยู่ในระบบขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังจัดส่ง":{c:"#8b5cf6",bg:"#ede9fe"},"เซ็นรับแล้ว":{c:"#0d9488",bg:"#ccfbf1"},"ส่งคืน":{c:"#ea580c",bg:"#fed7aa"},"คืนสำเร็จ":{c:"#dc2626",bg:"#fecaca"},"ไม่พบข้อมูล":{c:"#9ca3af",bg:"#f3f4f6"}};
+var FLASH_STATUS_STYLES={"สร้างรายการ":{c:"#6b7280",bg:"#f3f4f6"},"รับพัสดุแล้ว":{c:"#10b981",bg:"#d1fae5"},"รับเข้าระบบ":{c:"#10b981",bg:"#d1fae5"},"อยู่ในระบบขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังจัดส่ง":{c:"#8b5cf6",bg:"#ede9fe"},"การนำจ่าย":{c:"#8b5cf6",bg:"#ede9fe"},"ติดต่อผู้รับไม่ได้":{c:"#d97706",bg:"#fef3c7"},"จัดส่งไม่สำเร็จ":{c:"#dc2626",bg:"#fecaca"},"เซ็นรับแล้ว":{c:"#0d9488",bg:"#ccfbf1"},"ลูกค้ารับของ":{c:"#0d9488",bg:"#ccfbf1"},"ส่งคืน":{c:"#ea580c",bg:"#fed7aa"},"คืนต้นทาง":{c:"#ea580c",bg:"#fed7aa"},"คืนสำเร็จ":{c:"#dc2626",bg:"#fecaca"},"ไม่พบข้อมูล":{c:"#9ca3af",bg:"#f3f4f6"}};
 // สร้างใบปะหน้าเอง 100x75mm — รองรับหลายใบ
 function printCustomLabels(orders,pnos){
   var srcInfo=FLASH_SRC;var now=new Date();var dateStr=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
@@ -630,7 +630,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     return ms&&mst&&mt&&md;
   });
 
-  var summary={total:filtered.length,confirmed:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว";}).length,pending:filtered.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว";}).length,returned:filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ";}).length,totalCOD:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
+  var summary={total:filtered.length,confirmed:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length,pending:filtered.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length,returned:filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ";}).length,totalCOD:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
 
   // --- Import logic (lazy — คำนวณตอนเปิด modal เท่านั้น) ---
   var[importData,setImportData]=_s([]);
