@@ -671,29 +671,16 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
   var[flashProgress,setFlashProgress]=_s("");
 
   async function syncFlashStatus(silent){
-    var toSync=myParcels.filter(function(p){return p.tracking_no&&p.tracking_no.startsWith("TH")&&p.flash_status!=="เซ็นรับแล้ว"&&p.flash_status!=="คืนสำเร็จ"&&p.flash_status!=="ไม่พบข้อมูล";});
-    if(toSync.length===0){if(!silent)notify("ไม่มีพัสดุที่ต้องซิงค์","warning");return;}
-    setFlashSyncing(true);var updated=0;var errors=0;
-    var batch=toSync.slice(0,50);
-    for(var i=0;i<batch.length;i++){
-      var p=batch[i];
-      if(!silent)setFlashProgress("🔄 "+(i+1)+"/"+batch.length+" — "+p.tracking_no);
-      try{
-        var res=await flashGetTracking(p.tracking_no);
-        var codeOk=res&&(res.code===1||res.code==="1"||res.code===true);
-        if(codeOk&&res.data){
-          var newFlash=flashStateText(res.data.state);
-          if(newFlash&&newFlash!==p.flash_status){
-            await sbFetch("parcel_checks?id=eq."+p.id,{method:"PATCH",body:{flash_status:newFlash}});
-            setParcels(function(prev){return prev.map(function(x){return x.id===p.id?{...x,flash_status:newFlash}:x;});});
-            updated++;
-          }
-        }
-      }catch(e){errors++;}
-      if(i%5===4)await new Promise(function(r){setTimeout(r,300);});
+    setFlashSyncing(true);
+    try{
+      var res=await fetch(FLASH_WORKER+"/sync");
+      var data=await res.json();
+      if(!silent)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+data.updated+" รายการ (เช็ค "+data.checked+", error "+data.errors+")");
+      if(data.updated>0||data.skipped>0)onRefresh();
+    }catch(e){
+      if(!silent)notify("❌ sync ผิดพลาด: "+e.message,"warning");
     }
     setFlashSyncing(false);setFlashProgress("");
-    if(!silent)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+updated+"/"+batch.length+" รายการ"+(errors>0?" (❌ "+errors+" ผิดพลาด)":""));
   }
 
   // Auto-sync Flash status เมื่อเปิดหน้า + ทุก 3 นาที
