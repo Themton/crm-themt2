@@ -1486,6 +1486,106 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
           </div>
         </div>
 
+      {/* 📊 กราฟแท่ง 7 วันล่าสุด + 💰 COD vs โอน */}
+      {(function(){
+        var last7=[];for(var i=6;i>=0;i--){var d=new Date();d.setDate(d.getDate()-i);last7.push(d.toISOString().slice(0,10));}
+        var dayData=last7.map(function(d){var dayO=allO.filter(function(o){return getDate(o.Timestamp)===d;});return{date:d,orders:dayO.length,sales:dayO.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0)};});
+        var maxD=Math.max.apply(null,dayData.map(function(d){return d.sales;}))||1;
+        var dayNames=["อา","จ","อ","พ","พฤ","ศ","ส"];
+        var monthCOD=monthO.reduce(function(s,o){var c=Number(o.COD)||0;return s+(c>0?c:0);},0);
+        var monthTransfer=monthO.reduce(function(s,o){var c=Number(o.COD)||0;return s+(c>0?0:(Number(o.SalePrice)||0));},0);
+        var codPct=monthSales>0?Math.round(monthCOD/monthSales*100):0;
+
+        return<div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:20,marginBottom:24}}>
+          <div style={{...cS}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:16}}>📊 ยอดขาย 7 วันล่าสุด</div>
+            <div style={{display:"flex",alignItems:"flex-end",gap:8,height:160}}>
+              {dayData.map(function(d){
+                var h=maxD>0?Math.max(d.sales/maxD*130,4):4;
+                var isBest=d.sales===maxD&&d.sales>0;
+                var dow=dayNames[new Date(d.date).getDay()];
+                return<div key={d.date} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"#d97706"}}>฿{d.sales>=1000?Math.round(d.sales/1000)+"k":d.sales}</div>
+                  <div style={{fontSize:8,color:"#3b82f6",fontWeight:600}}>{d.orders}</div>
+                  <div style={{width:"100%",maxWidth:40,height:h,borderRadius:"6px 6px 0 0",background:isBest?"linear-gradient(180deg,#f59e0b,#d97706)":"linear-gradient(180deg,#fde68a,#fbbf24)",position:"relative"}}>
+                    {isBest&&<div style={{position:"absolute",top:-16,left:"50%",transform:"translateX(-50%)",fontSize:11}}>🏆</div>}
+                  </div>
+                  <div style={{fontSize:9,fontWeight:700,color:"#475569"}}>{dow}</div>
+                  <div style={{fontSize:7,color:"#94a3b8"}}>{d.date.substring(5)}</div>
+                </div>;
+              })}
+            </div>
+          </div>
+
+          <div style={{...cS,textAlign:"center"}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:16}}>💰 COD vs โอน</div>
+            <svg viewBox="0 0 200 200" style={{width:140,height:140}}>
+              <circle cx="100" cy="100" r="80" fill="none" stroke="#f1f5f9" strokeWidth="24"/>
+              {monthSales>0&&codPct>0&&<circle cx="100" cy="100" r="80" fill="none" stroke="#ef4444" strokeWidth="24" strokeDasharray={codPct*5.03+" "+503} strokeDashoffset="126" strokeLinecap="round"/>}
+              {monthSales>0&&codPct<100&&<circle cx="100" cy="100" r="80" fill="none" stroke="#10b981" strokeWidth="24" strokeDasharray={(100-codPct)*5.03+" "+503} strokeDashoffset={126-codPct*5.03} strokeLinecap="round"/>}
+              <text x="100" y="96" textAnchor="middle" fill="#1e293b" fontSize="18" fontWeight="800">{codPct}%</text>
+              <text x="100" y="114" textAnchor="middle" fill="#94a3b8" fontSize="9">COD</text>
+            </svg>
+            <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:12,fontSize:12}}>
+              <div><span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:"#ef4444",marginRight:4}}/>COD <b style={{color:"#ef4444"}}>฿{monthCOD.toLocaleString()}</b></div>
+              <div><span style={{display:"inline-block",width:10,height:10,borderRadius:2,background:"#10b981",marginRight:4}}/>โอน <b style={{color:"#10b981"}}>฿{monthTransfer.toLocaleString()}</b></div>
+            </div>
+          </div>
+        </div>;
+      })()}
+
+      {/* ⚠️ พนักงานต้องปรับปรุง */}
+      {(function(){
+        var warning=Object.values(staffMap).filter(function(s){return s.name!=="?"&&s.parcels>0&&Math.round(s.returned/s.parcels*100)>=10;}).sort(function(a,b){return(b.returned/b.parcels)-(a.returned/a.parcels);});
+        if(!warning.length)return null;
+        return<div style={{background:"#fef2f2",borderRadius:14,padding:20,marginBottom:24,border:"2px solid #fecaca"}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#dc2626",marginBottom:12}}>⚠️ พนักงานที่ต้องปรับปรุง — ตีกลับเกิน 10%</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {warning.map(function(s){
+              var failRate=Math.round(s.returned/s.parcels*100);
+              var lostCOD=mP.filter(function(p){return p.telesale===s.name&&(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ");}).reduce(function(sum,p){return sum+(Number(p.cod)||0);},0);
+              return<div key={s.name} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:"#fff",borderRadius:10,border:"1px solid #fecaca"}}>
+                <div style={{fontSize:24}}>🚨</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14,color:"#1e293b"}}>{s.name} <span style={{fontSize:11,color:"#94a3b8",fontWeight:400}}>{s.realName}</span></div>
+                  <div style={{fontSize:12,color:"#64748b",marginTop:2}}>พัสดุ {s.parcels} · ตีกลับ <b style={{color:"#dc2626"}}>{s.returned}</b> · COD สูญเสีย <b style={{color:"#dc2626"}}>฿{lostCOD.toLocaleString()}</b></div>
+                </div>
+                <div style={{padding:"6px 14px",borderRadius:10,background:"#dc2626",color:"#fff",fontWeight:800,fontSize:16}}>{failRate}%</div>
+              </div>;
+            })}
+          </div>
+        </div>;
+      })()}
+
+      {/* 🔴 พัสดุที่ต้องติดตาม */}
+      {(function(){
+        var urgent=mP.filter(function(p){return p.flash_status==="ติดต่อผู้รับไม่ได้"||p.flash_status==="จัดส่งไม่สำเร็จ";});
+        if(!urgent.length)return null;
+        var byStatus={};urgent.forEach(function(p){var s=p.flash_status;if(!byStatus[s])byStatus[s]=[];byStatus[s].push(p);});
+        return<div style={{background:"#fff",borderRadius:14,padding:20,marginBottom:24,border:"2px solid #fde68a"}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#92400e",marginBottom:12}}>🔴 พัสดุที่ต้องติดตาม — {urgent.length} รายการ</div>
+          {Object.keys(byStatus).map(function(status){
+            var items=byStatus[status];
+            var stColor=status==="จัดส่งไม่สำเร็จ"?"#dc2626":"#d97706";
+            return<div key={status} style={{marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:stColor,marginBottom:6}}>{status==="จัดส่งไม่สำเร็จ"?"❌":"📞"} {status} ({items.length})</div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {items.slice(0,5).map(function(p){
+                  return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"#fefce8",borderRadius:8,border:"1px solid #fde68a",fontSize:12}}>
+                    <span style={{fontWeight:700,color:"#2563eb"}}>{p.tracking_no}</span>
+                    <span style={{color:"#64748b",flex:1}}>{p.customer_name||""}</span>
+                    <span style={{color:"#d97706",fontWeight:600}}>{p.telesale}</span>
+                    {p.cod&&Number(p.cod)>0&&<span style={{color:"#ef4444",fontWeight:700}}>COD ฿{Number(p.cod).toLocaleString()}</span>}
+                  </div>;
+                })}
+                {items.length>5&&<div style={{fontSize:11,color:"#94a3b8",textAlign:"center",padding:4}}>... และอีก {items.length-5} รายการ</div>}
+              </div>
+            </div>;
+          })}
+          <button onClick={function(){setPage("parcel_check");}} style={{marginTop:8,width:"100%",padding:10,borderRadius:10,border:"none",background:"#d97706",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>🔍 ดูทั้งหมดในหน้าเช็คพัสดุ</button>
+        </div>;
+      })()}
+
       <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
         <button onClick={function(){setPage("orders");}} style={{...qBtn,background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff"}}>📋 ออเดอร์</button>
         <button onClick={function(){setPage("parcel_check");}} style={{...qBtn,background:"linear-gradient(135deg,#3b82f6,#2563eb)",color:"#fff"}}>✅ เช็คพัสดุ</button>
