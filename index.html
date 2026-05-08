@@ -1061,7 +1061,7 @@ function ParcelReportPage({parcels,accounts,user}){
       <button onClick={function(){setPeriod("prev");}} style={pBtn("prev")}>เดือนก่อน</button>
       <button onClick={function(){setPeriod("all");}} style={pBtn("all")}>ทั้งหมด</button>
       <span style={{color:"#d1d5db"}}>|</span>
-      <button onClick={function(){setPeriod("custom");}} style={pBtn("custom")}>📅 ระบุวัน</button>
+      <button onClick={function(){setPeriod("custom");}} style={{padding:"10px 20px",borderRadius:10,border:period==="custom"?"2px solid #2563eb":"1px solid #e2e8f0",background:period==="custom"?"#2563eb":"#fff",color:period==="custom"?"#fff":"#64748b",fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:period==="custom"?"0 2px 8px rgba(37,99,235,.3)":"none"}}>📅 ระบุวัน</button>
     </div>
     {period==="custom"&&<div style={{display:"flex",gap:8,marginBottom:24,alignItems:"center",flexWrap:"wrap"}}>
       <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>จาก</span>
