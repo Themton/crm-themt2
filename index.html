@@ -2140,12 +2140,26 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     return{name:name,phone:phone,addr:addr,subDist:subDist,dist:dist,prov:prov,zip:zip};
   }
 
-  // Auto sync — ใช้จาก App แทน (ไม่ซ้ำ)
+  // Auto sync — เรียก Worker /sync
+  var[flashSyncing,setFlashSyncing]=useState(false);
+  var syncingRef2=useRef(false);
+  async function doFlashSync(silent){
+    if(syncingRef2.current)return;
+    syncingRef2.current=true;setFlashSyncing(true);
+    try{
+      var res=await fetch(FLASH_WORKER+"/sync");
+      var data=await res.json();
+      if(!silent)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+data.updated+" รายการ");
+      if(onRefresh)onRefresh();
+    }catch(e){}
+    syncingRef2.current=false;setFlashSyncing(false);
+  }
+  var autoSyncDone2=useRef(false);
   useEffect(function(){
-    return function(){};
-  },[autoSync]);
-
-  // Auto-sync handled by App component
+    if(!autoSyncDone2.current&&allItems.length>0){autoSyncDone2.current=true;doFlashSync(true);}
+    var iv=setInterval(function(){doFlashSync(true);},180000);
+    return function(){clearInterval(iv);};
+  },[allItems.length]);
   var[flashSettings,setFlashSettings]=useState(false);
 
   // รวม orders + upsell + กรองวันที่
@@ -2248,6 +2262,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
         </div>:phoneSearch.length>=3?<div style={{position:"absolute",top:"100%",left:0,marginTop:4,background:"#fff",borderRadius:8,border:"1px solid #e2e8f0",boxShadow:"0 10px 30px rgba(0,0,0,.15)",zIndex:999,padding:"12px 16px",fontSize:12,color:"#94a3b8"}}>ไม่พบเบอร์ {phoneSearch}</div>:null;}()}
       </div>
       {canManage&&<button onClick={function(){setFlashPanel(!flashPanel);}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #f59e0b",background:flashPanel?"#fef3c7":"#fff",color:"#92400e",fontSize:11,fontWeight:700,cursor:"pointer"}}>⚡ สร้างการจัดส่ง</button>}
+      <button disabled={flashSyncing} onClick={function(){doFlashSync(false);}} style={{padding:"6px 14px",borderRadius:6,border:"none",background:flashSyncing?"#94a3b8":"#3b82f6",color:"#fff",fontSize:11,fontWeight:700,cursor:flashSyncing?"not-allowed":"pointer"}}>{flashSyncing?"⏳ กำลังซิงค์...":"🔄 ซิงค์ Flash"}</button>
     </div>
 
     {/* ===== Status Tabs (admin only) ===== */}
