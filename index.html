@@ -1418,17 +1418,61 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
       <div style={{fontSize:16,color:"#64748b",marginTop:4}}>{user.displayName} ({nick}){isAdmin?" — แอดมิน":""}</div>
     </div>
 
-    {returnRate>0&&<div style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)",borderRadius:14,padding:"20px 24px",marginBottom:20,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:"0 4px 16px rgba(220,38,38,.3)"}}>
-      <div style={{fontSize:40}}>🚨</div>
-      <div style={{flex:1}}>
-        <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>อัตราตีกลับ {returnRate}% — เดือน{monthName}</div>
-        <div style={{fontSize:13,color:"#fecaca",marginTop:4}}>ตีกลับ <b style={{color:"#fff"}}>{returned}</b> จาก {totalParcels} รายการ · COD สูญเสีย <b style={{color:"#fef08a"}}>฿{returnCOD.toLocaleString()}</b></div>
-      </div>
-      <div style={{textAlign:"center",padding:"12px 20px",borderRadius:12,background:"rgba(255,255,255,.2)"}}>
-        <div style={{fontSize:32,fontWeight:900,color:"#fff"}}>{returnRate}%</div>
-        <div style={{fontSize:10,fontWeight:700,color:"#fecaca"}}>ตีกลับ</div>
-      </div>
-    </div>}
+    {returnRate>0&&(function(){
+      var returnedParcels=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";});
+      return<div style={{marginBottom:24}}>
+        {/* แถบเตือนหลัก */}
+        <div style={{background:"linear-gradient(135deg,#dc2626,#991b1b)",borderRadius:"16px 16px 0 0",padding:"24px 28px",color:"#fff"}}>
+          <div style={{display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+            <div style={{fontSize:48}}>⚠️</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:20,fontWeight:900}}>คุณมีพัสดุตีกลับ {returned} รายการ!</div>
+              <div style={{fontSize:14,color:"#fecaca",marginTop:6}}>อัตราตีกลับ <b style={{color:"#fff",fontSize:18}}>{returnRate}%</b> ในเดือน{monthName} — COD สูญเสีย <b style={{color:"#fef08a",fontSize:16}}>฿{returnCOD.toLocaleString()}</b></div>
+            </div>
+            <div style={{textAlign:"center",padding:"16px 24px",borderRadius:16,background:"rgba(0,0,0,.2)"}}>
+              <div style={{fontSize:42,fontWeight:900}}>{returnRate}%</div>
+              <div style={{fontSize:11,fontWeight:700,color:"#fecaca"}}>ตีกลับ</div>
+            </div>
+          </div>
+        </div>
+
+        {/* รายชื่อพัสดุที่ตีกลับ */}
+        <div style={{background:"#fef2f2",border:"2px solid #fecaca",borderTop:"none",padding:"16px 28px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#991b1b",marginBottom:10}}>📋 รายการที่ตีกลับ:</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {returnedParcels.slice(0,10).map(function(p){
+              return<div key={p.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #fecaca"}}>
+                <span style={{color:"#dc2626",fontSize:14}}>✕</span>
+                <span style={{fontWeight:700,fontSize:13,color:"#1e293b",flex:1}}>{p.tracking_no}</span>
+                <span style={{fontSize:12,color:"#64748b"}}>{p.customer_name||""}</span>
+                <span style={{fontSize:11,color:"#dc2626",fontWeight:600}}>{p.flash_status}</span>
+                {p.cod&&Number(p.cod)>0&&<span style={{fontSize:11,color:"#ef4444",fontWeight:700}}>COD ฿{Number(p.cod).toLocaleString()}</span>}
+              </div>;
+            })}
+            {returnedParcels.length>10&&<div style={{fontSize:12,color:"#dc2626",fontWeight:600,textAlign:"center"}}>... และอีก {returnedParcels.length-10} รายการ</div>}
+          </div>
+        </div>
+
+        {/* คำแนะนำ */}
+        <div style={{background:"#fffbeb",border:"2px solid #fde68a",borderTop:"none",borderRadius:"0 0 16px 16px",padding:"16px 28px"}}>
+          <div style={{fontSize:13,fontWeight:700,color:"#92400e",marginBottom:10}}>💡 วิธีลดอัตราตีกลับ:</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            {[
+              {icon:"📞",text:"โทรยืนยันลูกค้าก่อนส่ง"},
+              {icon:"📝",text:"ตรวจสอบชื่อ-ที่อยู่ให้ถูกต้อง"},
+              {icon:"🔢",text:"เช็คเบอร์โทรให้ครบ 10 หลัก"},
+              {icon:"📦",text:"แจ้งลูกค้าว่าส่งทาง Flash"}
+            ].map(function(tip,i){
+              return<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #fde68a"}}>
+                <span style={{fontSize:16}}>{tip.icon}</span>
+                <span style={{fontSize:12,fontWeight:600,color:"#92400e"}}>{tip.text}</span>
+              </div>;
+            })}
+          </div>
+          <button onClick={function(){setPage("parcel_check");}} style={{marginTop:12,width:"100%",padding:"12px",borderRadius:10,border:"none",background:"#dc2626",color:"#fff",fontWeight:800,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(220,38,38,.3)"}}>🔍 ตรวจสอบพัสดุตีกลับ</button>
+        </div>
+      </div>;
+    })()}
 
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,marginBottom:24}}>
       <div style={{...cS,borderLeft:"4px solid #d97706"}}>
