@@ -1389,33 +1389,165 @@ function LoginScreen({accounts,onLogin,onReload,onSetup}){var[username,setUserna
 function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,setPage}){
   var nick=extractNickname(user.displayName,user.nickname);
   var todayVal=new Date().toISOString().slice(0,10);
-  var myOrders=isAdmin?allOrders:(allOrders||[]).filter(function(o){return o.AccountEmail===user.username;});
-  var myUpsell=isAdmin?upsellOrders:(upsellOrders||[]).filter(function(o){return o.AccountEmail===user.username;});
+  var currentMonth=todayVal.substring(0,7);
+  var prevMonth=prevMonthStart().substring(0,7);
+  var monthNames=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+  var monthName=monthNames[new Date().getMonth()];
+  var hour=new Date().getHours();
+  var greeting=hour<12?"สวัสดีตอนเช้า":hour<17?"สวัสดีตอนบ่าย":"สวัสดีตอนเย็น";
+  var cS={background:"#fff",borderRadius:14,padding:"20px 24px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,.04)"};
+  var qBtn={padding:"14px 20px",borderRadius:12,border:"none",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:8,flex:1,justifyContent:"center",minWidth:140};
+
+  var nickToName={};
+  (accounts||[]).forEach(function(a){var n=extractNickname(a.displayName,a.nickname);if(n)nickToName[n]=extractRealName(a.displayName);});
+
+  // ===== ADMIN DASHBOARD =====
+  if(isAdmin){
+    var allO=allOrders||[];var allU=upsellOrders||[];var allP=parcels||[];
+    var todayO=allO.filter(function(o){return getDate(o.Timestamp)===todayVal;});
+    var todayU=allU.filter(function(o){return getDate(o.Timestamp)===todayVal;});
+    var todaySales=todayO.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
+    var todayUpsellSales=todayU.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
+    var todayCOD=todayO.reduce(function(s,o){var c=Number(o.COD)||0;return s+(c>0?c:0);},0);
+    var monthO=allO.filter(function(o){return getDate(o.Timestamp).substring(0,7)===currentMonth;});
+    var monthU=allU.filter(function(o){return getDate(o.Timestamp).substring(0,7)===currentMonth;});
+    var monthSales=monthO.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
+    var prevMO=allO.filter(function(o){return getDate(o.Timestamp).substring(0,7)===prevMonth;});
+    var prevMonthSales=prevMO.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
+    var salesDiff=monthSales-prevMonthSales;
+
+    // พัสดุเดือนนี้
+    var mP=allP.filter(function(p){return(p.date||"").substring(0,7)===currentMonth;});
+    var mTotal=mP.length;
+    var mDelivered=mP.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
+    var mReturned=mP.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).length;
+    var mInTransit=mP.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
+    var mReturnRate=mTotal>0?Math.round(mReturned/mTotal*100):0;
+    var mDeliverRate=mTotal>0?Math.round(mDelivered/mTotal*100):0;
+    var mReturnCOD=mP.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+
+    // สรุปรายคน
+    var staffMap={};
+    todayO.forEach(function(o){var p=o.SalesPerson||"?";if(!staffMap[p])staffMap[p]={name:p,realName:nickToName[p]||"",todayOrders:0,todaySales:0,monthOrders:0,parcels:0,delivered:0,returned:0};staffMap[p].todayOrders++;staffMap[p].todaySales+=Number(o.SalePrice)||0;});
+    monthO.forEach(function(o){var p=o.SalesPerson||"?";if(!staffMap[p])staffMap[p]={name:p,realName:nickToName[p]||"",todayOrders:0,todaySales:0,monthOrders:0,parcels:0,delivered:0,returned:0};staffMap[p].monthOrders++;});
+    mP.forEach(function(p){var t=p.telesale||"?";if(!staffMap[t])staffMap[t]={name:t,realName:nickToName[t]||"",todayOrders:0,todaySales:0,monthOrders:0,parcels:0,delivered:0,returned:0};staffMap[t].parcels++;
+      if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")staffMap[t].delivered++;
+      if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ")staffMap[t].returned++;
+    });
+    var staffList=Object.values(staffMap).filter(function(s){return s.name!=="?";}).sort(function(a,b){return b.todaySales-a.todaySales;});
+
+    // สถานะพัสดุ
+    var statuses=[["ลูกค้ารับของ","#10b981"],["อยู่ในระบบขนส่ง","#3b82f6"],["สร้างรายการ","#6b7280"],["การนำจ่าย","#8b5cf6"],["ตีกลับ","#ef4444"],["คืนต้นทาง","#ea580c"],["จัดส่งไม่สำเร็จ","#dc2626"],["ติดต่อผู้รับไม่ได้","#d97706"],["รับเข้าระบบ","#10b981"]];
+    var statusCounts=statuses.map(function(s){return{label:s[0],color:s[1],count:mP.filter(function(p){return p.flash_status===s[0];}).length};}).filter(function(s){return s.count>0;});
+
+    return<div>
+      <div style={{marginBottom:24}}>
+        <h1 style={{fontSize:26,fontWeight:800,color:"#1e293b",margin:0}}>{greeting} 👋</h1>
+        <div style={{fontSize:16,color:"#64748b",marginTop:4}}>{user.displayName} — <span style={{color:"#d97706",fontWeight:700}}>แอดมิน</span></div>
+      </div>
+
+      {mReturnRate>0&&<div style={{background:"linear-gradient(135deg,#dc2626,#991b1b)",borderRadius:14,padding:20,marginBottom:20,display:"flex",alignItems:"center",gap:16,color:"#fff"}}>
+        <div style={{fontSize:40}}>🚨</div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:18,fontWeight:800}}>อัตราตีกลับรวม {mReturnRate}% — เดือน{monthName}</div>
+          <div style={{fontSize:13,color:"#fecaca",marginTop:4}}>ตีกลับ {mReturned} จาก {mTotal} รายการ · COD สูญเสีย <b style={{color:"#fef08a"}}>฿{mReturnCOD.toLocaleString()}</b></div>
+        </div>
+        <div style={{fontSize:36,fontWeight:900}}>{mReturnRate}%</div>
+      </div>}
+
+      {/* สรุปวันนี้ */}
+      <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:10}}>📅 วันนี้</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:24}}>
+        <div style={{...cS,borderLeft:"4px solid #d97706"}}><div style={{fontSize:11,color:"#94a3b8"}}>ออเดอร์</div><div style={{fontSize:32,fontWeight:800,color:"#d97706"}}>{todayO.length}</div><div style={{fontSize:12,color:"#64748b"}}>฿{todaySales.toLocaleString()}</div></div>
+        <div style={{...cS,borderLeft:"4px solid #ea580c"}}><div style={{fontSize:11,color:"#94a3b8"}}>Upsell</div><div style={{fontSize:32,fontWeight:800,color:"#ea580c"}}>{todayU.length}</div><div style={{fontSize:12,color:"#64748b"}}>฿{todayUpsellSales.toLocaleString()}</div></div>
+        <div style={{...cS,borderLeft:"4px solid #ef4444"}}><div style={{fontSize:11,color:"#94a3b8"}}>COD วันนี้</div><div style={{fontSize:28,fontWeight:800,color:"#ef4444"}}>฿{todayCOD.toLocaleString()}</div></div>
+        <div style={{...cS,borderLeft:"4px solid #2563eb"}}><div style={{fontSize:11,color:"#94a3b8"}}>รวมวันนี้</div><div style={{fontSize:28,fontWeight:800,color:"#2563eb"}}>฿{(todaySales+todayUpsellSales).toLocaleString()}</div></div>
+      </div>
+
+      {/* สรุปเดือน */}
+      <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:10}}>📊 เดือน{monthName}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:24}}>
+        <div style={{...cS,borderLeft:"4px solid #d97706"}}><div style={{fontSize:11,color:"#94a3b8"}}>ออเดอร์เดือนนี้</div><div style={{fontSize:28,fontWeight:800,color:"#d97706"}}>{monthO.length}</div><div style={{fontSize:12,color:"#64748b"}}>฿{monthSales.toLocaleString()}</div></div>
+        <div style={{...cS,borderLeft:"4px solid #ea580c"}}><div style={{fontSize:11,color:"#94a3b8"}}>Upsell เดือนนี้</div><div style={{fontSize:28,fontWeight:800,color:"#ea580c"}}>{monthU.length}</div></div>
+        <div style={{...cS,borderLeft:"4px solid "+(salesDiff>=0?"#10b981":"#ef4444")}}><div style={{fontSize:11,color:"#94a3b8"}}>เทียบเดือนก่อน</div><div style={{fontSize:28,fontWeight:800,color:salesDiff>=0?"#10b981":"#ef4444"}}>{salesDiff>=0?"+":""}฿{salesDiff.toLocaleString()}</div><div style={{fontSize:11,color:"#64748b"}}>เดือนก่อน ฿{prevMonthSales.toLocaleString()}</div></div>
+        <div style={{...cS,borderLeft:"4px solid #3b82f6"}}><div style={{fontSize:11,color:"#94a3b8"}}>พัสดุเดือนนี้</div><div style={{fontSize:28,fontWeight:800,color:"#3b82f6"}}>{mTotal}</div><div style={{fontSize:12,color:"#10b981"}}>รับของ {mDelivered} ({mDeliverRate}%)</div></div>
+      </div>
+
+      {/* สถานะพัสดุ โดนัท + ตาราง */}
+      <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20,marginBottom:24}}>
+        <div style={{...cS}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:12}}>📊 สถานะพัสดุ</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {statusCounts.map(function(s){var w=mTotal>0?Math.max(s.count/mTotal*100,2):0;return<div key={s.label} style={{display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:8,height:8,borderRadius:2,background:s.color,flexShrink:0}}/>
+              <span style={{fontSize:11,color:"#64748b",flex:1}}>{s.label}</span>
+              <div style={{width:80,height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:w+"%",background:s.color,borderRadius:3}}/></div>
+              <span style={{fontSize:12,fontWeight:700,color:s.color,minWidth:28,textAlign:"right"}}>{s.count}</span>
+            </div>;})}
+          </div>
+        </div>
+
+        {/* ผลงานพนักงาน */}
+        <div style={{...cS}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:12}}>👥 ผลงานพนักงานวันนี้</div>
+          <div style={{overflow:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse"}}>
+              <thead><tr style={{borderBottom:"2px solid #e2e8f0"}}>
+                <th style={{padding:"8px",textAlign:"left",fontSize:11,color:"#94a3b8"}}></th>
+                <th style={{padding:"8px",textAlign:"left",fontSize:11,color:"#94a3b8"}}>ชื่อเล่น</th>
+                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#d97706"}}>วันนี้</th>
+                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#64748b"}}>เดือนนี้</th>
+                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#10b981"}}>รับของ</th>
+                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#ef4444"}}>ตีกลับ</th>
+                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#ef4444"}}>%ตีกลับ</th>
+                <th style={{padding:"8px",textAlign:"right",fontSize:11,color:"#94a3b8"}}>ยอดวันนี้</th>
+              </tr></thead>
+              <tbody>{staffList.map(function(s,i){
+                var failRate=s.parcels>0?Math.round(s.returned/s.parcels*100):0;
+                return<tr key={s.name} style={{borderBottom:"1px solid #f1f5f9",background:failRate>=20?"#fef2f2":""}}>
+                  <td style={{padding:"10px 8px",fontSize:14}}>{i===0?"🏆":i===1?"🥈":i===2?"🥉":""}</td>
+                  <td style={{padding:"10px 8px",fontWeight:700,fontSize:13}}>{s.name} <span style={{fontSize:10,color:"#94a3b8",fontWeight:400}}>{s.realName}</span></td>
+                  <td style={{padding:"10px 8px",textAlign:"center",fontWeight:800,color:"#d97706",fontSize:16}}>{s.todayOrders}</td>
+                  <td style={{padding:"10px 8px",textAlign:"center",color:"#64748b"}}>{s.monthOrders}</td>
+                  <td style={{padding:"10px 8px",textAlign:"center",fontWeight:700,color:"#10b981"}}>{s.delivered||"-"}</td>
+                  <td style={{padding:"10px 8px",textAlign:"center",fontWeight:700,color:s.returned>0?"#ef4444":"#d1d5db"}}>{s.returned||"-"}</td>
+                  <td style={{padding:"10px 8px",textAlign:"center"}}><span style={{padding:"2px 8px",borderRadius:10,fontSize:11,fontWeight:700,background:failRate>=20?"#fecaca":failRate>=10?"#fef3c7":"#f0fdf4",color:failRate>=20?"#dc2626":failRate>=10?"#d97706":"#10b981"}}>{failRate}%</span></td>
+                  <td style={{padding:"10px 8px",textAlign:"right",fontWeight:700,color:"#d97706"}}>฿{s.todaySales.toLocaleString()}</td>
+                </tr>;})}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
+        <button onClick={function(){setPage("orders");}} style={{...qBtn,background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff"}}>📋 ออเดอร์</button>
+        <button onClick={function(){setPage("parcel_check");}} style={{...qBtn,background:"linear-gradient(135deg,#3b82f6,#2563eb)",color:"#fff"}}>✅ เช็คพัสดุ</button>
+        <button onClick={function(){setPage("parcel_report");}} style={{...qBtn,background:"linear-gradient(135deg,#dc2626,#b91c1c)",color:"#fff"}}>👑 รายงานหัวหน้า</button>
+        <button onClick={function(){setPage("report");}} style={{...qBtn,background:"linear-gradient(135deg,#8b5cf6,#7c3aed)",color:"#fff"}}>📊 รายงาน</button>
+      </div>
+    </div>;
+  }
+
+  // ===== EMPLOYEE DASHBOARD =====
+  var myOrders=(allOrders||[]).filter(function(o){return o.AccountEmail===user.username;});
+  var myUpsell=(upsellOrders||[]).filter(function(o){return o.AccountEmail===user.username;});
   var todayOrders=myOrders.filter(function(o){return getDate(o.Timestamp)===todayVal;});
   var todayUpsell=myUpsell.filter(function(o){return getDate(o.Timestamp)===todayVal;});
-  var myParcels=isAdmin?(parcels||[]):(parcels||[]).filter(function(p){return p.telesale===nick;});
-  var currentMonth=todayVal.substring(0,7);
+  var myParcels=(parcels||[]).filter(function(p){return p.telesale===nick;});
   var monthParcels=myParcels.filter(function(p){return(p.date||"").substring(0,7)===currentMonth;});
-  var todaySales=todayOrders.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
-  var todayCOD=todayOrders.reduce(function(s,o){return s+(Number(o.COD)||0);},0);
+  var todaySales2=todayOrders.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
   var totalParcels=monthParcels.length;
   var delivered=monthParcels.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
   var returned=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).length;
   var inTransit=monthParcels.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
   var returnRate=totalParcels>0?Math.round(returned/totalParcels*100):0;
   var returnCOD=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
-  var monthName=["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"][new Date().getMonth()];
-
-  var hour=new Date().getHours();
-  var greeting=hour<12?"สวัสดีตอนเช้า":hour<17?"สวัสดีตอนบ่าย":"สวัสดีตอนเย็น";
-
-  var cS={background:"#fff",borderRadius:14,padding:"20px 24px",border:"1px solid #e2e8f0",boxShadow:"0 2px 8px rgba(0,0,0,.04)"};
-  var qBtn={padding:"14px 20px",borderRadius:12,border:"none",fontWeight:700,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",gap:8,flex:1,justifyContent:"center",minWidth:140};
 
   return<div>
     <div style={{marginBottom:24}}>
       <h1 style={{fontSize:26,fontWeight:800,color:"#1e293b",margin:0}}>{greeting} 👋</h1>
-      <div style={{fontSize:16,color:"#64748b",marginTop:4}}>{user.displayName} ({nick}){isAdmin?" — แอดมิน":""}</div>
+      <div style={{fontSize:16,color:"#64748b",marginTop:4}}>{user.displayName} ({nick})</div>
     </div>
 
     {returnRate>0&&(function(){
@@ -1478,7 +1610,7 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
       <div style={{...cS,borderLeft:"4px solid #d97706"}}>
         <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>ออเดอร์วันนี้</div>
         <div style={{fontSize:32,fontWeight:800,color:"#d97706"}}>{todayOrders.length}</div>
-        <div style={{fontSize:12,color:"#64748b"}}>ยอดขาย ฿{todaySales.toLocaleString()}</div>
+        <div style={{fontSize:12,color:"#64748b"}}>ยอดขาย ฿{todaySales2.toLocaleString()}</div>
       </div>
       <div style={{...cS,borderLeft:"4px solid #ea580c"}}>
         <div style={{fontSize:11,color:"#94a3b8",fontWeight:600}}>Upsell วันนี้</div>
