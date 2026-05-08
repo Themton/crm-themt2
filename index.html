@@ -1458,10 +1458,10 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
           <div style={{fontSize:13,fontWeight:700,color:"#92400e",marginBottom:10}}>💡 วิธีลดอัตราตีกลับ:</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
             {[
-              {icon:"📞",text:"โทรยืนยันลูกค้าก่อนส่ง"},
-              {icon:"📝",text:"ตรวจสอบชื่อ-ที่อยู่ให้ถูกต้อง"},
-              {icon:"🔢",text:"เช็คเบอร์โทรให้ครบ 10 หลัก"},
-              {icon:"📦",text:"แจ้งลูกค้าว่าส่งทาง Flash"}
+              {icon:"🏠",text:"ทวนที่อยู่จัดส่งกับลูกค้าให้ชัดเจน"},
+              {icon:"🔢",text:"เช็คเบอร์โทรให้ถูกต้องครบ 10 หลัก"},
+              {icon:"📦",text:"แจ้งชื่อสินค้า+ราคาให้ลูกค้ารับทราบ"},
+              {icon:"📅",text:"ถามลูกค้าว่าอยู่รับของช่วงไหน"}
             ].map(function(tip,i){
               return<div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #fde68a"}}>
                 <span style={{fontSize:16}}>{tip.icon}</span>
