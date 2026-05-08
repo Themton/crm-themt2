@@ -3194,6 +3194,69 @@ function HRDashboard({allOrders,upsellOrders,accounts,parcels,setPage}){
       </div>
     </div>
 
+    {/* 📈 เปรียบเทียบเดือนต่อเดือน */}
+    {(function(){
+      var prevM=prevMonthStart().substring(0,7);
+      var prevO=(allOrders||[]).filter(function(o){return getDate(o.Timestamp).substring(0,7)===prevM;});
+      var prevP=(parcels||[]).filter(function(p){return(p.date||"").substring(0,7)===prevM;});
+
+      // สรุปเดือนก่อนรายคน
+      var prev={};
+      prevO.forEach(function(o){var p=o.SalesPerson||"?";if(!prev[p])prev[p]={orders:0,sales:0,parcels:0,delivered:0,returned:0};prev[p].orders++;prev[p].sales+=Number(o.SalePrice)||0;});
+      prevP.forEach(function(p){var t=p.telesale||"?";if(!prev[t])prev[t]={orders:0,sales:0,parcels:0,delivered:0,returned:0};prev[t].parcels++;
+        if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")prev[t].delivered++;
+        if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ")prev[t].returned++;
+      });
+
+      var allNames={};persons.forEach(function(p){allNames[p.name]=true;});Object.keys(prev).forEach(function(n){if(n!=="?")allNames[n]=true;});
+      var compare=Object.keys(allNames).map(function(n){
+        var cur=pm[n]||{monthOrders:0,monthSales:0,parcels:0,delivered:0,returned:0};
+        var prv=prev[n]||{orders:0,sales:0,parcels:0,delivered:0,returned:0};
+        var diffOrders=cur.monthOrders-prv.orders;
+        var diffSales=cur.monthSales-prv.sales;
+        var curFail=cur.parcels>0?Math.round(cur.returned/cur.parcels*100):0;
+        var prvFail=prv.parcels>0?Math.round(prv.returned/prv.parcels*100):0;
+        var diffFail=curFail-prvFail;
+        return{name:n,realName:nickToName[n]||"",curOrders:cur.monthOrders,prvOrders:prv.orders,diffOrders:diffOrders,curSales:cur.monthSales,prvSales:prv.sales,diffSales:diffSales,curFail:curFail,prvFail:prvFail,diffFail:diffFail};
+      }).sort(function(a,b){return b.diffSales-a.diffSales;});
+
+      var prevMonthName=monthNames[(new Date().getMonth()-1+12)%12];
+
+      return<div style={{...cS,marginBottom:24}}>
+        <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:16}}>📈 เปรียบเทียบ {monthName} vs {prevMonthName}</div>
+        <div style={{overflow:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",minWidth:700}}>
+            <thead><tr style={{borderBottom:"2px solid #e2e8f0"}}>
+              <th style={{padding:"10px",textAlign:"left",fontSize:11,color:"#94a3b8"}}>พนักงาน</th>
+              <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#94a3b8"}}>{prevMonthName}</th>
+              <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#d97706"}}>{monthName}</th>
+              <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#94a3b8"}}>ออเดอร์ +/-</th>
+              <th style={{padding:"10px",textAlign:"right",fontSize:11,color:"#94a3b8"}}>ยอด {prevMonthName}</th>
+              <th style={{padding:"10px",textAlign:"right",fontSize:11,color:"#d97706"}}>ยอด {monthName}</th>
+              <th style={{padding:"10px",textAlign:"right",fontSize:11,color:"#94a3b8"}}>ยอด +/-</th>
+              <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#ef4444"}}>ตีกลับ {prevMonthName}</th>
+              <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#ef4444"}}>ตีกลับ {monthName}</th>
+              <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#94a3b8"}}>+/-</th>
+            </tr></thead>
+            <tbody>{compare.map(function(c,i){
+              return<tr key={c.name} style={{borderBottom:"1px solid #f1f5f9",background:c.diffSales<0?"#fef2f2":""}}>
+                <td style={{padding:"12px 10px"}}><span style={{fontWeight:700,fontSize:13}}>{c.name}</span> <span style={{fontSize:10,color:"#94a3b8"}}>{c.realName}</span></td>
+                <td style={{padding:"12px 10px",textAlign:"center",color:"#64748b"}}>{c.prvOrders}</td>
+                <td style={{padding:"12px 10px",textAlign:"center",fontWeight:700,color:"#d97706"}}>{c.curOrders}</td>
+                <td style={{padding:"12px 10px",textAlign:"center"}}><span style={{fontWeight:700,fontSize:12,color:c.diffOrders>0?"#10b981":c.diffOrders<0?"#ef4444":"#94a3b8"}}>{c.diffOrders>0?"▲ +":"▼ "}{c.diffOrders}</span></td>
+                <td style={{padding:"12px 10px",textAlign:"right",color:"#64748b"}}>฿{c.prvSales.toLocaleString()}</td>
+                <td style={{padding:"12px 10px",textAlign:"right",fontWeight:700,color:"#d97706"}}>฿{c.curSales.toLocaleString()}</td>
+                <td style={{padding:"12px 10px",textAlign:"right"}}><span style={{fontWeight:700,fontSize:12,color:c.diffSales>0?"#10b981":c.diffSales<0?"#ef4444":"#94a3b8"}}>{c.diffSales>=0?"+":""}฿{c.diffSales.toLocaleString()}</span></td>
+                <td style={{padding:"12px 10px",textAlign:"center",color:"#64748b"}}>{c.prvFail}%</td>
+                <td style={{padding:"12px 10px",textAlign:"center",fontWeight:700,color:c.curFail>=10?"#dc2626":"#64748b"}}>{c.curFail}%</td>
+                <td style={{padding:"12px 10px",textAlign:"center"}}><span style={{fontWeight:700,fontSize:12,color:c.diffFail<0?"#10b981":c.diffFail>0?"#ef4444":"#94a3b8"}}>{c.diffFail>0?"▲ +"+c.diffFail+"%":c.diffFail<0?"▼ "+c.diffFail+"%":"—"}</span></td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </div>;
+    })()}
+
     <button onClick={function(){setPage("hr_report");}} style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"linear-gradient(135deg,#f472b6,#be185d)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>📊 ดูรายละเอียดยอดขายรายคน</button>
   </div>;
 }
