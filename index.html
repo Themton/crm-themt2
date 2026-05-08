@@ -2415,38 +2415,28 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
 
       return<div style={{display:"grid",gridTemplateColumns:"1fr",gap:20,marginBottom:24}}>
 
-        {/* กราฟเส้น — เรียบง่าย */}
+        {/* กราฟแท่ง — เรียบง่าย */}
         <div style={{background:"#fff",borderRadius:18,padding:24,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-            <div style={{fontSize:16,fontWeight:700,color:"#1e293b"}}>📈 ยอดขายรายวัน</div>
-            <div style={{display:"flex",gap:16,fontSize:11}}>
-              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:16,height:3,borderRadius:2,background:"#d97706",display:"inline-block"}}/> ยอดขาย</span>
-              <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:16,height:3,borderRadius:2,background:"#3b82f6",display:"inline-block",borderTop:"2px dashed #3b82f6",height:0}}/> ออเดอร์</span>
+          <div style={{fontSize:16,fontWeight:700,color:"#1e293b",marginBottom:20}}>📊 ยอดขายรายวัน</div>
+          <div style={{overflowX:"auto"}}>
+            <div style={{display:"flex",alignItems:"flex-end",gap:sorted.length>15?2:6,minWidth:sorted.length*40,height:220,padding:"0 4px"}}>
+              {sorted.map(function(d){
+                var h=maxS>0?Math.max(d.sales/maxS*180,4):4;
+                var isBest=d.sales===maxS&&d.sales>0;
+                var dayNames=["อา","จ","อ","พ","พฤ","ศ","ส"];
+                var dow=dayNames[new Date(d.date).getDay()];
+                return<div key={d.date} style={{flex:sorted.length>20?"0 0 30px":"1",display:"flex",flexDirection:"column",alignItems:"center",gap:2,minWidth:28}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"#d97706",whiteSpace:"nowrap"}}>฿{d.sales>=1000?Math.round(d.sales/1000)+"k":d.sales}</div>
+                  <div style={{fontSize:8,color:"#3b82f6",fontWeight:600}}>{d.orders.length} รายการ</div>
+                  <div style={{width:"100%",maxWidth:sorted.length>15?24:36,height:h,borderRadius:"6px 6px 0 0",background:isBest?"linear-gradient(180deg,#f59e0b,#d97706)":"linear-gradient(180deg,#fde68a,#fbbf24)",transition:"height .3s",position:"relative"}}>
+                    {isBest&&<div style={{position:"absolute",top:-16,left:"50%",transform:"translateX(-50%)",fontSize:12}}>🏆</div>}
+                  </div>
+                  <div style={{fontSize:8,fontWeight:700,color:"#475569"}}>{d.date.substring(8)}/{d.date.substring(5,7)}</div>
+                  <div style={{fontSize:7,color:"#94a3b8"}}>{dow}</div>
+                </div>;
+              })}
             </div>
           </div>
-          <svg viewBox={"0 0 "+W+" "+H} style={{width:"100%",height:"auto"}}>
-            <defs>
-              <linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#d97706" stopOpacity="0.08"/><stop offset="100%" stopColor="#d97706" stopOpacity="0"/></linearGradient>
-            </defs>
-            {[0,0.25,0.5,0.75,1].map(function(s){var y=PT+cH-s*cH;return React.createElement("g",{key:s},
-              React.createElement("line",{x1:PL,y1:y,x2:W-PR,y2:y,stroke:"#f1f5f9",strokeWidth:1}),
-              React.createElement("text",{x:PL-10,y:y+4,textAnchor:"end",fill:"#94a3b8",fontSize:9},"฿"+Math.round(maxS*s/1000)+"k")
-            );})}
-            <path d={areaSales} fill="url(#areaFill)"/>
-            <path d={curveSales} fill="none" stroke="#d97706" strokeWidth="2" strokeLinejoin="round"/>
-            <path d={curveOrders} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="4,4" strokeLinejoin="round"/>
-            {sorted.map(function(d,i){
-              var showLabel=n<=30;
-              var salesVal=d.sales>=1000?Math.round(d.sales/1000)+"k":d.sales;
-              return React.createElement("g",{key:d.date},
-              React.createElement("line",{x1:px(i),y1:PT,x2:px(i),y2:PT+cH,stroke:"#f8fafc",strokeWidth:1}),
-              React.createElement("circle",{cx:px(i),cy:pyS(d.sales),r:3.5,fill:"#fff",stroke:"#d97706",strokeWidth:1.5}),
-              showLabel&&React.createElement("text",{x:px(i),y:pyS(d.sales)-12,textAnchor:"middle",fill:"#92400e",fontSize:7,fontWeight:700},"฿"+salesVal),
-              showLabel&&React.createElement("text",{x:px(i),y:pyS(d.sales)-4,textAnchor:"middle",fill:"#3b82f6",fontSize:6},d.orders.length+" ออเดอร์"),
-              React.createElement("text",{x:px(i),y:H-PB+14,textAnchor:"middle",fill:"#64748b",fontSize:7,fontWeight:600},d.date.substring(8)+"/"+d.date.substring(5,7)),
-              n<=15&&React.createElement("text",{x:px(i),y:H-PB+24,textAnchor:"middle",fill:"#94a3b8",fontSize:6},["อา","จ","อ","พ","พฤ","ศ","ส"][new Date(d.date).getDay()])
-            );})}
-          </svg>
         </div>
 
         {/* โดนัท + แท่ง */}
