@@ -2263,6 +2263,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   var isAdmin=user.role==="admin";
   var[tab,setTab]=useState("orders");
   var[period,setPeriod]=useState("today");
+  var[selPerson,setSelPerson]=useState("ALL");
   var[expandDate,setExpandDate]=useState(null);
   var[viewOrder,setViewOrder]=useState(null);
 
@@ -2279,7 +2280,12 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
   function filterByDate(list){return list.filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});}
   var fOrders=filterByDate(myOrders);
   var fUpsell=filterByDate(myUpsell);
-  var filtered=tab==="upsell"?fUpsell:tab==="all"?fOrders.concat(fUpsell):fOrders;
+  var preFiltered=tab==="upsell"?fUpsell:tab==="all"?fOrders.concat(fUpsell):fOrders;
+  var filtered=selPerson==="ALL"?preFiltered:preFiltered.filter(function(o){return o.SalesPerson===selPerson;});
+
+  // Staff list for filter
+  var staffNicks=[];
+  preFiltered.forEach(function(o){var p=o.SalesPerson;if(p&&staffNicks.indexOf(p)<0)staffNicks.push(p);});
 
   var totalSales=filtered.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
   var totalCOD=filtered.reduce(function(s,o){var c=Number(o.COD)||0;return s+(c>0?c:0);},0);
@@ -2318,13 +2324,19 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       </div>
     </div>
 
-    <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+    <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
       <button onClick={function(){setPeriod("today");}} style={pBtn("today")}>วันนี้</button>
       <button onClick={function(){setPeriod("7d");}} style={pBtn("7d")}>7 วัน</button>
       <button onClick={function(){setPeriod("month");}} style={pBtn("month")}>เดือนนี้</button>
       <button onClick={function(){setPeriod("prev");}} style={pBtn("prev")}>เดือนก่อน</button>
       <button onClick={function(){setPeriod("all");}} style={pBtn("all")}>ทั้งหมด</button>
     </div>
+
+    {isAdmin&&staffNicks.length>1&&<div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap",alignItems:"center"}}>
+      <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>👤</span>
+      <button onClick={function(){setSelPerson("ALL");}} style={{padding:"8px 16px",borderRadius:10,border:selPerson==="ALL"?"2px solid #3b82f6":"1px solid #e2e8f0",background:selPerson==="ALL"?"#dbeafe":"#fff",color:selPerson==="ALL"?"#1d4ed8":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>ทุกคน ({preFiltered.length})</button>
+      {staffNicks.sort().map(function(n){var cnt=preFiltered.filter(function(o){return o.SalesPerson===n;}).length;var active=selPerson===n;return<button key={n} onClick={function(){setSelPerson(n);}} style={{padding:"8px 16px",borderRadius:10,border:active?"2px solid #3b82f6":"1px solid #e2e8f0",background:active?"#dbeafe":"#fff",color:active?"#1d4ed8":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>{n} <span style={{fontSize:10,color:"#94a3b8"}}>({cnt})</span></button>;})}
+    </div>}
 
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:24}}>
       <div style={{background:"#fff",borderRadius:14,padding:20,borderLeft:"4px solid #d97706"}}>
