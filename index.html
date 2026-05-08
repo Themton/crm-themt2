@@ -1085,6 +1085,102 @@ function ParcelReportPage({parcels,accounts,user}){
       </div>
     </div>
 
+    {/* 📊 กราฟวงกลม + กราฟแท่ง */}
+    {total>0&&(function(){
+      // Status breakdown
+      var inTransit=all.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
+      var pending=all.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ";}).length;
+      var other=total-delivered-returned-inTransit-pending;
+      var slices=[
+        {label:"ลูกค้ารับของ",val:delivered,color:"#10b981"},
+        {label:"กำลังจัดส่ง",val:inTransit,color:"#3b82f6"},
+        {label:"รอจัดส่ง",val:pending,color:"#f59e0b"},
+        {label:"ตีกลับ",val:returned,color:"#ef4444"},
+        {label:"อื่นๆ",val:other>0?other:0,color:"#94a3b8"}
+      ].filter(function(s){return s.val>0;});
+
+      // Donut
+      var R=85,r2=58,cx2=100,cy2=100;
+      var cumul=0;
+      var arcs=slices.map(function(s){
+        var start=cumul/total;
+        cumul+=s.val;
+        var end=cumul/total;
+        var s1=start*Math.PI*2-Math.PI/2,e1=end*Math.PI*2-Math.PI/2;
+        var large=end-start>0.5?1:0;
+        var mid=(s1+e1)/2;
+        return{...s,start:start,end:end,d:"M"+(cx2+R*Math.cos(s1))+","+(cy2+R*Math.sin(s1))+"A"+R+","+R+" 0 "+large+" 1 "+(cx2+R*Math.cos(e1))+","+(cy2+R*Math.sin(e1)),
+          lx:cx2+(R+16)*Math.cos(mid),ly:cy2+(R+16)*Math.sin(mid)};
+      });
+
+      // Bar chart data
+      var maxP=persons.length>0?Math.max.apply(null,persons.map(function(p){return p.total;}))||1:1;
+      var barColors=["#f59e0b","#3b82f6","#8b5cf6","#10b981","#ef4444","#06b6d4","#ec4899","#f97316","#6366f1","#84cc16"];
+
+      return<div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,marginBottom:24}}>
+
+        {/* วงกลม — สถานะพัสดุ */}
+        <div style={{background:"#fff",borderRadius:18,padding:24,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:16}}>📊 สถานะพัสดุ — {periodLabel}</div>
+          <div style={{display:"flex",justifyContent:"center"}}>
+            <svg viewBox="0 0 200 200" style={{width:200,height:200}}>
+              <circle cx={cx2} cy={cy2} r={R} fill="none" stroke="#f1f5f9" strokeWidth={R-r2}/>
+              {arcs.map(function(a,i){return React.createElement("path",{key:i,d:a.d,fill:"none",stroke:a.color,strokeWidth:R-r2,strokeLinecap:"round"});})}
+              <text x={cx2} y={cy2-4} textAnchor="middle" fill="#1e293b" fontSize="28" fontWeight="800">{total}</text>
+              <text x={cx2} y={cy2+14} textAnchor="middle" fill="#94a3b8" fontSize="10">พัสดุทั้งหมด</text>
+            </svg>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:16}}>
+            {slices.map(function(s){
+              var pct=Math.round(s.val/total*100);
+              return<div key={s.label} style={{display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:12,height:12,borderRadius:3,background:s.color,flexShrink:0}}/>
+                <span style={{fontSize:13,fontWeight:600,color:"#1e293b",flex:1}}>{s.label}</span>
+                <span style={{fontSize:14,fontWeight:800,color:s.color}}>{s.val}</span>
+                <span style={{fontSize:11,color:"#94a3b8",minWidth:35,textAlign:"right"}}>{pct}%</span>
+              </div>;
+            })}
+          </div>
+        </div>
+
+        {/* แท่ง — เปรียบเทียบพนักงาน */}
+        <div style={{background:"#fff",borderRadius:18,padding:24,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:16}}>📊 เปรียบเทียบพนักงาน — {periodLabel}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {persons.map(function(p,i){
+              var rate=p.total>0?Math.round(p.delivered/p.total*100):0;
+              var failRate=p.total>0?Math.round(p.returned/p.total*100):0;
+              var wD=maxP>0?Math.max(p.delivered/maxP*100,0):0;
+              var wR=maxP>0?Math.max(p.returned/maxP*100,0):0;
+              var medals=["🏆","🥈","🥉"];
+              return<div key={p.name}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                  <span style={{fontSize:13,fontWeight:700}}>{medals[i]||""} {p.name}</span>
+                  <span style={{fontSize:12,color:"#64748b"}}>พัสดุ <b style={{color:"#1e293b"}}>{p.total}</b> · รับของ <b style={{color:"#10b981"}}>{rate}%</b>{p.returned>0?" · ตีกลับ ":""}
+                    {p.returned>0&&<b style={{color:"#ef4444"}}>{failRate}%</b>}
+                  </span>
+                </div>
+                <div style={{display:"flex",gap:3,height:20}}>
+                  <div style={{width:wD+"%",background:"linear-gradient(90deg,#34d399,#10b981)",borderRadius:"6px 0 0 6px",minWidth:p.delivered>0?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {p.delivered>0&&wD>12&&<span style={{fontSize:9,fontWeight:700,color:"#fff"}}>{p.delivered} รับ</span>}
+                  </div>
+                  <div style={{width:wR+"%",background:"linear-gradient(90deg,#f87171,#ef4444)",borderRadius:"0 6px 6px 0",minWidth:p.returned>0?4:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    {p.returned>0&&wR>8&&<span style={{fontSize:9,fontWeight:700,color:"#fff"}}>{p.returned}</span>}
+                  </div>
+                  {(p.total-p.delivered-p.returned)>0&&<div style={{width:Math.max((p.total-p.delivered-p.returned)/maxP*100,2)+"%",background:"#e2e8f0",borderRadius:6}}/>}
+                </div>
+              </div>;
+            })}
+          </div>
+          <div style={{display:"flex",gap:16,marginTop:14,fontSize:11,color:"#64748b"}}>
+            <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:12,height:8,borderRadius:2,background:"#10b981",display:"inline-block"}}/> ลูกค้ารับของ</span>
+            <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:12,height:8,borderRadius:2,background:"#ef4444",display:"inline-block"}}/> ตีกลับ</span>
+            <span style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:12,height:8,borderRadius:2,background:"#e2e8f0",display:"inline-block"}}/> อื่นๆ</span>
+          </div>
+        </div>
+      </div>;
+    })()}
+
     {persons.length>0&&<div style={{background:"#fff",borderRadius:14,padding:20}}>
       <div style={{fontSize:16,fontWeight:700,color:"#1e293b",marginBottom:16}}>📊 ผลงานพนักงาน — {periodLabel}</div>
       <div style={{overflow:"auto"}}>
