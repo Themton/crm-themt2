@@ -1473,10 +1473,9 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
         <div style={{...cS,borderLeft:"4px solid #3b82f6"}}><div style={{fontSize:11,color:"#94a3b8"}}>พัสดุเดือนนี้</div><div style={{fontSize:28,fontWeight:800,color:"#3b82f6"}}>{mTotal}</div><div style={{fontSize:12,color:"#10b981"}}>รับของ {mDelivered} ({mDeliverRate}%)</div></div>
       </div>
 
-      {/* สถานะพัสดุ โดนัท + ตาราง */}
-      <div style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20,marginBottom:24}}>
-        <div style={{...cS}}>
-          <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:12}}>📊 สถานะพัสดุ</div>
+      {/* สถานะพัสดุ */}
+      <div style={{...cS,marginBottom:24}}>
+          <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:12}}>📊 สถานะพัสดุ — เดือน{monthName}</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {statusCounts.map(function(s){var w=mTotal>0?Math.max(s.count/mTotal*100,2):0;return<div key={s.label} style={{display:"flex",alignItems:"center",gap:8}}>
               <div style={{width:8,height:8,borderRadius:2,background:s.color,flexShrink:0}}/>
@@ -1484,38 +1483,6 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
               <div style={{width:80,height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:w+"%",background:s.color,borderRadius:3}}/></div>
               <span style={{fontSize:12,fontWeight:700,color:s.color,minWidth:28,textAlign:"right"}}>{s.count}</span>
             </div>;})}
-          </div>
-        </div>
-
-        {/* ผลงานพนักงาน */}
-        <div style={{...cS}}>
-          <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:12}}>👥 ผลงานพนักงานวันนี้</div>
-          <div style={{overflow:"auto"}}>
-            <table style={{width:"100%",borderCollapse:"collapse"}}>
-              <thead><tr style={{borderBottom:"2px solid #e2e8f0"}}>
-                <th style={{padding:"8px",textAlign:"left",fontSize:11,color:"#94a3b8"}}></th>
-                <th style={{padding:"8px",textAlign:"left",fontSize:11,color:"#94a3b8"}}>ชื่อเล่น</th>
-                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#d97706"}}>วันนี้</th>
-                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#64748b"}}>เดือนนี้</th>
-                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#10b981"}}>รับของ</th>
-                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#ef4444"}}>ตีกลับ</th>
-                <th style={{padding:"8px",textAlign:"center",fontSize:11,color:"#ef4444"}}>%ตีกลับ</th>
-                <th style={{padding:"8px",textAlign:"right",fontSize:11,color:"#94a3b8"}}>ยอดวันนี้</th>
-              </tr></thead>
-              <tbody>{staffList.map(function(s,i){
-                var failRate=s.parcels>0?Math.round(s.returned/s.parcels*100):0;
-                return<tr key={s.name} style={{borderBottom:"1px solid #f1f5f9",background:failRate>=20?"#fef2f2":""}}>
-                  <td style={{padding:"10px 8px",fontSize:14}}>{i===0?"🏆":i===1?"🥈":i===2?"🥉":""}</td>
-                  <td style={{padding:"10px 8px",fontWeight:700,fontSize:13}}>{s.name} <span style={{fontSize:10,color:"#94a3b8",fontWeight:400}}>{s.realName}</span></td>
-                  <td style={{padding:"10px 8px",textAlign:"center",fontWeight:800,color:"#d97706",fontSize:16}}>{s.todayOrders}</td>
-                  <td style={{padding:"10px 8px",textAlign:"center",color:"#64748b"}}>{s.monthOrders}</td>
-                  <td style={{padding:"10px 8px",textAlign:"center",fontWeight:700,color:"#10b981"}}>{s.delivered||"-"}</td>
-                  <td style={{padding:"10px 8px",textAlign:"center",fontWeight:700,color:s.returned>0?"#ef4444":"#d1d5db"}}>{s.returned||"-"}</td>
-                  <td style={{padding:"10px 8px",textAlign:"center"}}><span style={{padding:"2px 8px",borderRadius:10,fontSize:11,fontWeight:700,background:failRate>=20?"#fecaca":failRate>=10?"#fef3c7":"#f0fdf4",color:failRate>=20?"#dc2626":failRate>=10?"#d97706":"#10b981"}}>{failRate}%</span></td>
-                  <td style={{padding:"10px 8px",textAlign:"right",fontWeight:700,color:"#d97706"}}>฿{s.todaySales.toLocaleString()}</td>
-                </tr>;})}
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
