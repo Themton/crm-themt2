@@ -616,7 +616,12 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
 
   var filtered=myParcels.filter(function(p){
     var ms=!search||String(p.tracking_no||"").indexOf(search)>=0||String(p.customer_name||"").indexOf(search)>=0||String(p.phone||"").indexOf(search)>=0;
-    var mst=filterStatus==="ทั้งหมด"||filterStatus==="ว่างเปล่า"?(!p.flash_status&&filterStatus==="ว่างเปล่า")||(filterStatus==="ทั้งหมด"):p.flash_status===filterStatus;
+    var mst=filterStatus==="ทั้งหมด"?true
+      :filterStatus==="ว่างเปล่า"?!p.flash_status
+      :filterStatus==="เซ็นรับแล้ว"?(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")
+      :filterStatus==="รอจัดส่ง"?(!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ")
+      :filterStatus==="ตีกลับ"?(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ตีกลับ")
+      :p.flash_status===filterStatus;
     var mt=filterTele==="ทั้งหมด"||p.telesale===filterTele;
     var md=true;
     if(filterDateMode!=="all"){
@@ -783,17 +788,23 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
         {isAdmin&&<button disabled={flashSyncing} onClick={function(){syncFlashStatus(false);}} style={{padding:"10px 20px",borderRadius:10,border:"none",background:flashSyncing?"#94a3b8":"linear-gradient(135deg,#3b82f6,#2563eb)",color:"#fff",fontWeight:700,fontSize:14,cursor:flashSyncing?"not-allowed":"pointer",boxShadow:"0 2px 8px rgba(37,99,235,.3)"}}>{flashSyncing?"⏳ กำลังซิงค์...":"🔄 ซิงค์ Flash"}</button>}
         <button onClick={openAdd} style={{padding:"10px 20px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#d97706,#f59e0b)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",boxShadow:"0 2px 8px rgba(217,119,6,.3)"}}>+ เพิ่มพัสดุ</button>
         <button onClick={openImport} style={{padding:"10px 20px",borderRadius:10,border:"2px solid #d97706",background:"transparent",color:"#d97706",fontWeight:700,fontSize:14,cursor:"pointer"}}>📥 ดึงพัสดุของฉัน</button>
+        <button onClick={function(){
+          var rows=[["เลขพัสดุ","วันที่","ชื่อลูกค้า","เบอร์โทร","สถานะ Flash","TeleSale","COD"]];
+          filtered.forEach(function(p){rows.push([p.tracking_no||"",p.date||"",p.customer_name||"",p.phone||"",p.flash_status||"",p.telesale||"",p.cod||""]);});
+          var csv="\uFEFF"+rows.map(function(r){return r.map(function(c){return'"'+String(c).replace(/"/g,'""')+'"';}).join(",");}).join("\n");
+          var blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="parcel_"+filterStatus.replace(/\//g,"-")+"_"+todayStr()+".csv";a.click();URL.revokeObjectURL(url);
+        }} style={{padding:"10px 20px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>📤 Export ({filtered.length})</button>
       </div>
     </div>
 
-    {/* Summary */}
+    {/* Summary — กดเพื่อกรอง */}
     <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-      <div style={{...cardS,borderLeft:"4px solid #3b82f6"}}><div style={cardLabel}>ทั้งหมด</div><div style={{...cardVal,color:"#1e293b"}}>{summary.total}</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #10b981"}}><div style={cardLabel}>เซ็นรับแล้ว</div><div style={{...cardVal,color:"#10b981"}}>{summary.confirmed}</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #f59e0b"}}><div style={cardLabel}>รอจัดส่ง</div><div style={{...cardVal,color:"#f59e0b"}}>{summary.pending}</div></div>
-      <div style={{...cardS,borderLeft:"4px solid #ef4444"}}><div style={cardLabel}>ส่งคืน/ตีกลับ</div><div style={{...cardVal,color:"#ef4444"}}>{summary.returned}</div></div>
+      <div onClick={function(){setFilterStatus("ทั้งหมด");setCurrentPage(1);}} style={{...cardS,borderLeft:"4px solid #3b82f6",cursor:"pointer",outline:filterStatus==="ทั้งหมด"?"3px solid #3b82f6":"none"}}><div style={cardLabel}>ทั้งหมด</div><div style={{...cardVal,color:"#1e293b"}}>{summary.total}</div></div>
+      <div onClick={function(){setFilterStatus("เซ็นรับแล้ว");setCurrentPage(1);}} style={{...cardS,borderLeft:"4px solid #10b981",cursor:"pointer",outline:filterStatus==="เซ็นรับแล้ว"?"3px solid #10b981":"none"}}><div style={cardLabel}>เซ็นรับแล้ว</div><div style={{...cardVal,color:"#10b981"}}>{summary.confirmed}</div></div>
+      <div onClick={function(){setFilterStatus("รอจัดส่ง");setCurrentPage(1);}} style={{...cardS,borderLeft:"4px solid #f59e0b",cursor:"pointer",outline:filterStatus==="รอจัดส่ง"?"3px solid #f59e0b":"none"}}><div style={cardLabel}>รอจัดส่ง</div><div style={{...cardVal,color:"#f59e0b"}}>{summary.pending}</div></div>
+      <div onClick={function(){setFilterStatus("ตีกลับ");setCurrentPage(1);}} style={{...cardS,borderLeft:"4px solid #ef4444",cursor:"pointer",outline:filterStatus==="ตีกลับ"?"3px solid #ef4444":"none"}}><div style={cardLabel}>ส่งคืน/ตีกลับ</div><div style={{...cardVal,color:"#ef4444"}}>{summary.returned}</div></div>
       <div style={{...cardS,borderLeft:"4px solid #8b5cf6"}}><div style={cardLabel}>ยอด COD</div><div style={{...cardVal,color:"#8b5cf6"}}>฿{summary.totalCOD.toLocaleString()}</div></div>
-      {summary.total>0&&(function(){var rr=Math.round(summary.returned/summary.total*100);var rrColor=rr>=20?"#dc2626":rr>=10?"#f59e0b":"#10b981";var rrBg=rr>=20?"#fef2f2":rr>=10?"#fefce8":"#f0fdf4";var rrBorder=rr>=20?"#ef4444":rr>=10?"#f59e0b":"#10b981";return<div style={{...cardS,borderLeft:"4px solid "+rrBorder,background:rrBg,minWidth:140}}>
+      {summary.total>0&&(function(){var rr=Math.round(summary.returned/summary.total*100);var rrColor=rr>=20?"#dc2626":rr>=10?"#f59e0b":"#10b981";var rrBg=rr>=20?"#fef2f2":rr>=10?"#fefce8":"#f0fdf4";var rrBorder=rr>=20?"#ef4444":rr>=10?"#f59e0b":"#10b981";return<div onClick={function(){setFilterStatus("ตีกลับ");setCurrentPage(1);}} style={{...cardS,borderLeft:"4px solid "+rrBorder,background:rrBg,minWidth:140,cursor:"pointer",outline:filterStatus==="ตีกลับ"?"3px solid "+rrBorder:"none"}}>
         <div style={cardLabel}>อัตราตีกลับ</div>
         <div style={{display:"flex",alignItems:"baseline",gap:4}}>
           <div style={{fontSize:28,fontWeight:800,color:rrColor}}>{rr}%</div>
