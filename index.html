@@ -1856,7 +1856,7 @@ function DetailModal({order,onClose,onDel,onEdit,onUploadSlip,isAdmin,onUpdateSt
   // parse [PREV:xxx] จาก Remark
   var rmRaw=String(o.Remark||"");var prevM=rmRaw.match(/\[PREV:(\d+)\]\s*/);var prevPr=prevM?Number(prevM[1]):0;var cleanRm=prevM?rmRaw.replace(prevM[0],""):rmRaw;var curPr=Number(o.SalePrice||0);var diffPr=prevPr>0?curPr-prevPr:0;
   return<div style={S.modalOverlay} onClick={onClose}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto"}} onClick={function(e){e.stopPropagation();}}>
-  <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div><div style={{fontSize:11,fontFamily:"'JetBrains Mono'",color:"#d97706",fontWeight:600}}>{o.OrderID}</div><div style={{fontSize:12,color:"#94a3b8"}}>{o.Timestamp} • {o.StaffName||o.SalesPerson}</div></div><button onClick={onClose} style={S.closeBtn}>✕</button></div>
+  <div style={{display:"flex",justifyContent:"space-between",marginBottom:16}}><div><div style={{fontSize:11,fontFamily:"'JetBrains Mono'",color:"#d97706",fontWeight:600}}>{o.OrderID}</div><div style={{fontSize:12,color:"#94a3b8"}}>{(function(){try{var d=new Date(o.Timestamp);return d.toLocaleString("th-TH",{timeZone:"Asia/Bangkok",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){return o.Timestamp;}})()}{o.StaffName?" • "+o.StaffName:""}{o.SalesPerson?" ("+o.SalesPerson+")":""}</div></div><button onClick={onClose} style={S.closeBtn}>✕</button></div>
   {editing?<div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{editInput("เบอร์โทร","MobileNo")}{editInput("ชื่อลูกค้า","Name")}</div>
     {editInput("ที่อยู่","Address")}
