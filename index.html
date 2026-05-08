@@ -2370,10 +2370,10 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       </table>
     </div>}
 
-    {/* 📈 กราฟเส้นยอดขายรายวัน */}
-    {days.length>1&&(function(){
+    {/* 📊 กราฟสวย — เส้น + โดนัท + แท่ง */}
+    {days.length>0&&(function(){
       var sorted=days.slice().sort(function(a,b){return a.date>b.date?1:-1;});
-      var W=700,H=260,PL=60,PR=20,PT=30,PB=50;
+      var W=700,H=280,PL=65,PR=20,PT=40,PB=55;
       var cW=W-PL-PR,cH=H-PT-PB;
       var maxS=Math.max.apply(null,sorted.map(function(d){return d.sales;}))||1;
       var maxO=Math.max.apply(null,sorted.map(function(d){return d.orders.length;}))||1;
@@ -2381,35 +2381,112 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       function px(i){return PL+(i/(n-1||1))*cW;}
       function pyS(v){return PT+cH-(v/maxS)*cH;}
       function pyO(v){return PT+cH-(v/maxO)*cH;}
-      var lineSales="M"+sorted.map(function(d,i){return px(i)+","+pyS(d.sales);}).join("L");
-      var lineOrders="M"+sorted.map(function(d,i){return px(i)+","+pyO(d.orders.length);}).join("L");
-      var areaSales=lineSales+"L"+px(n-1)+","+pyS(0)+"L"+px(0)+","+pyS(0)+"Z";
-      var ySteps=[0,0.25,0.5,0.75,1];
 
-      return<div style={{background:"#fff",borderRadius:14,padding:20,marginBottom:24}}>
-        <div style={{fontSize:16,fontWeight:700,color:"#1e293b",marginBottom:16}}>📈 กราฟยอดขายรายวัน</div>
-        <div style={{display:"flex",gap:20,marginBottom:12,fontSize:12}}>
-          <span style={{color:"#d97706",fontWeight:700}}>━ ยอดขาย (฿)</span>
-          <span style={{color:"#3b82f6",fontWeight:700}}>━ ออเดอร์ (จำนวน)</span>
+      // Smooth curve
+      function smooth(pts){if(pts.length<2)return"M"+pts.map(function(p){return p[0]+","+p[1];}).join("L");var d="M"+pts[0][0]+","+pts[0][1];for(var i=0;i<pts.length-1;i++){var x0=pts[i][0],y0=pts[i][1],x1=pts[i+1][0],y1=pts[i+1][1];var mx=(x0+x1)/2;d+=" C"+mx+","+y0+" "+mx+","+y1+" "+x1+","+y1;}return d;}
+      var ptsSales=sorted.map(function(d,i){return[px(i),pyS(d.sales)];});
+      var ptsOrders=sorted.map(function(d,i){return[px(i),pyO(d.orders.length)];});
+      var curveSales=smooth(ptsSales);
+      var curveOrders=smooth(ptsOrders);
+      var areaSales=curveSales+"L"+px(n-1)+","+(PT+cH)+"L"+px(0)+","+(PT+cH)+"Z";
+
+      // Donut chart data
+      var codPct=totalSales>0?Math.round(totalCOD/totalSales*100):0;
+      var transPct=100-codPct;
+      var R=80,r=55,cx2=100,cy2=100;
+      function arc(start,end,radius){var s=start*Math.PI*2-Math.PI/2,e=end*Math.PI*2-Math.PI/2;var large=end-start>0.5?1:0;return"M"+(cx2+radius*Math.cos(s))+","+(cy2+radius*Math.sin(s))+"A"+radius+","+radius+" 0 "+large+" 1 "+(cx2+radius*Math.cos(e))+","+(cy2+radius*Math.sin(e));}
+      var codEnd=totalSales>0?totalCOD/totalSales:0;
+
+      // Bar chart - top 5 employees
+      var top5=persons.slice(0,5);
+      var maxBar=top5[0]?top5[0].sales:1;
+
+      return<div style={{display:"grid",gridTemplateColumns:"1fr",gap:20,marginBottom:24}}>
+
+        {/* กราฟเส้น */}
+        <div style={{background:"linear-gradient(180deg,#1e293b 0%,#0f172a 100%)",borderRadius:18,padding:"24px 20px",boxShadow:"0 8px 30px rgba(0,0,0,.2)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontSize:16,fontWeight:800,color:"#f8fafc"}}>📈 ยอดขายรายวัน</div>
+            <div style={{display:"flex",gap:16,fontSize:11}}>
+              <span style={{color:"#fbbf24",fontWeight:700}}>● ยอดขาย</span>
+              <span style={{color:"#60a5fa",fontWeight:700}}>● ออเดอร์</span>
+            </div>
+          </div>
+          <svg viewBox={"0 0 "+W+" "+H} style={{width:"100%",height:"auto"}}>
+            <defs>
+              <linearGradient id="sGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fbbf24" stopOpacity="0.3"/><stop offset="100%" stopColor="#fbbf24" stopOpacity="0"/></linearGradient>
+              <linearGradient id="oGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#60a5fa" stopOpacity="0.15"/><stop offset="100%" stopColor="#60a5fa" stopOpacity="0"/></linearGradient>
+              <filter id="glow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            {[0,0.25,0.5,0.75,1].map(function(s){var y=PT+cH-s*cH;return React.createElement("g",{key:s},
+              React.createElement("line",{x1:PL,y1:y,x2:W-PR,y2:y,stroke:"#334155",strokeWidth:1,strokeDasharray:s===0?"":"4,4"}),
+              React.createElement("text",{x:PL-10,y:y+4,textAnchor:"end",fill:"#64748b",fontSize:9},"฿"+Math.round(maxS*s/1000)+"k")
+            );})}
+            <path d={areaSales} fill="url(#sGrad)"/>
+            <path d={curveSales} fill="none" stroke="#fbbf24" strokeWidth="3" strokeLinejoin="round" filter="url(#glow)"/>
+            <path d={curveOrders} fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinejoin="round" strokeDasharray="6,4"/>
+            {sorted.map(function(d,i){return React.createElement("g",{key:d.date},
+              React.createElement("circle",{cx:px(i),cy:pyS(d.sales),r:5,fill:"#fbbf24",stroke:"#1e293b",strokeWidth:2}),
+              React.createElement("circle",{cx:px(i),cy:pyO(d.orders.length),r:3.5,fill:"#60a5fa",stroke:"#1e293b",strokeWidth:2}),
+              n<=20&&React.createElement("text",{x:px(i),y:pyS(d.sales)-14,textAnchor:"middle",fill:"#fbbf24",fontSize:8,fontWeight:700},"฿"+(d.sales>=1000?Math.round(d.sales/1000)+"k":d.sales)),
+              n<=15&&React.createElement("text",{x:px(i),y:H-12,textAnchor:"middle",fill:"#64748b",fontSize:8},d.date.substring(5))
+            );})}
+          </svg>
         </div>
-        <svg viewBox={"0 0 "+W+" "+H} style={{width:"100%",height:"auto"}}>
-          {ySteps.map(function(s){var y=PT+cH-s*cH;return React.createElement("g",{key:s},
-            React.createElement("line",{x1:PL,y1:y,x2:W-PR,y2:y,stroke:"#f1f5f9",strokeWidth:1}),
-            React.createElement("text",{x:PL-8,y:y+4,textAnchor:"end",fill:"#94a3b8",fontSize:9},"฿"+(Math.round(maxS*s/1000))+"k")
-          );})}
-          <path d={areaSales} fill="url(#salesGrad)" opacity="0.15"/>
-          <defs><linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#d97706"/><stop offset="100%" stopColor="#d97706" stopOpacity="0"/>
-          </linearGradient></defs>
-          <path d={lineSales} fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinejoin="round"/>
-          <path d={lineOrders} fill="none" stroke="#3b82f6" strokeWidth="2" strokeDasharray="6,3" strokeLinejoin="round"/>
-          {sorted.map(function(d,i){return React.createElement("g",{key:d.date},
-            React.createElement("circle",{cx:px(i),cy:pyS(d.sales),r:4,fill:"#fff",stroke:"#d97706",strokeWidth:2}),
-            React.createElement("circle",{cx:px(i),cy:pyO(d.orders.length),r:3,fill:"#fff",stroke:"#3b82f6",strokeWidth:2}),
-            React.createElement("text",{x:px(i),y:pyS(d.sales)-10,textAnchor:"middle",fill:"#d97706",fontSize:8,fontWeight:700},"฿"+(d.sales>=1000?Math.round(d.sales/1000)+"k":d.sales)),
-            n<=15&&React.createElement("text",{x:px(i),y:H-PB+16,textAnchor:"middle",fill:"#94a3b8",fontSize:8,transform:"rotate(-45,"+px(i)+","+(H-PB+16)+")"},d.date.substring(5))
-          );})}
-        </svg>
+
+        {/* โดนัท + แท่ง */}
+        <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:20}}>
+
+          {/* โดนัทชาร์ต COD vs โอน */}
+          <div style={{background:"#fff",borderRadius:18,padding:24,textAlign:"center",boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:20}}>💰 สัดส่วนการชำระ</div>
+            <svg viewBox="0 0 200 200" style={{width:180,height:180}}>
+              <circle cx={cx2} cy={cy2} r={R} fill="none" stroke="#f1f5f9" strokeWidth={R-r}/>
+              {totalSales>0&&codEnd>0.01&&React.createElement("path",{d:arc(0,Math.min(codEnd,0.999),R),fill:"none",stroke:"#ef4444",strokeWidth:R-r,strokeLinecap:"round"})}
+              {totalSales>0&&codEnd<0.99&&React.createElement("path",{d:arc(codEnd,0.999,R),fill:"none",stroke:"#10b981",strokeWidth:R-r,strokeLinecap:"round"})}
+              <text x={cx2} y={cy2-6} textAnchor="middle" fill="#1e293b" fontSize="22" fontWeight="800">฿{totalSales>=1000000?(totalSales/1000000).toFixed(1)+"M":totalSales>=1000?Math.round(totalSales/1000)+"k":totalSales}</text>
+              <text x={cx2} y={cy2+12} textAnchor="middle" fill="#94a3b8" fontSize="10">ยอดขายรวม</text>
+            </svg>
+            <div style={{display:"flex",justifyContent:"center",gap:24,marginTop:12}}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <div style={{width:12,height:12,borderRadius:3,background:"#ef4444"}}/>
+                  <span style={{fontSize:13,fontWeight:700,color:"#ef4444"}}>COD {codPct}%</span>
+                </div>
+                <div style={{fontSize:12,color:"#64748b",marginTop:2}}>฿{totalCOD.toLocaleString()}</div>
+              </div>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                  <div style={{width:12,height:12,borderRadius:3,background:"#10b981"}}/>
+                  <span style={{fontSize:13,fontWeight:700,color:"#10b981"}}>โอน {transPct}%</span>
+                </div>
+                <div style={{fontSize:12,color:"#64748b",marginTop:2}}>฿{totalTransfer.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* แท่งแนวนอน พนักงาน */}
+          {top5.length>0&&<div style={{background:"#fff",borderRadius:18,padding:24,boxShadow:"0 2px 12px rgba(0,0,0,.06)"}}>
+            <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:20}}>🏆 Top พนักงาน</div>
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {top5.map(function(p,i){
+                var w=maxBar>0?Math.max(p.sales/maxBar*100,3):0;
+                var colors=["linear-gradient(90deg,#f59e0b,#d97706)","linear-gradient(90deg,#60a5fa,#3b82f6)","linear-gradient(90deg,#a78bfa,#7c3aed)","linear-gradient(90deg,#34d399,#059669)","linear-gradient(90deg,#fb923c,#ea580c)"];
+                var medals=["🏆","🥈","🥉","",""];
+                return<div key={p.name}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                    <span style={{fontSize:13,fontWeight:700}}>{medals[i]} {p.name}</span>
+                    <span style={{fontSize:13,fontWeight:800,color:"#d97706"}}>฿{p.sales.toLocaleString()}</span>
+                  </div>
+                  <div style={{height:22,background:"#f1f5f9",borderRadius:11,overflow:"hidden",position:"relative"}}>
+                    <div style={{height:"100%",width:w+"%",background:colors[i],borderRadius:11,transition:"width .6s ease"}}/>
+                    <span style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",fontSize:10,fontWeight:700,color:"#64748b"}}>{p.count} ออเดอร์</span>
+                  </div>
+                </div>;
+              })}
+            </div>
+          </div>}
+        </div>
       </div>;
     })()}
 
