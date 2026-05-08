@@ -1261,8 +1261,8 @@ function App(){var _s=useState;
   async function loadParcels(){try{var d=await dbGetParcels();setParcels(d||[]);}catch(e){console.error("loadParcels:",e);setParcels([]);}}
   function notify(msg,type){setNotif({msg:msg,type:type||"success"});setTimeout(function(){setNotif(null);},3500);}
   async function loadAccounts(){try{var d=await dbGetAccounts();setAccounts(d);var cur=userRef.current;if(cur){var match=d.find(function(a){return a.username===cur.username;});if(match&&(cur.nickname!==match.nickname||cur.displayName!==match.displayName)){var u2={...cur,nickname:match.nickname,displayName:match.displayName};userRef.current=u2;setUser(u2);localStorage.setItem("ps_user",JSON.stringify(u2));}}}catch(e){console.error(e);}}
-  async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var accs=(accounts&&accounts.length>0)?accounts:await dbGetAccounts();var em={};accs.forEach(function(a){em[a.username]=extractRealName(a.displayName);});setAllOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){notify("โหลดผิดพลาด","warning");}}
-  async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"?"ALL":u.username);var accs=(accounts&&accounts.length>0)?accounts:await dbGetAccounts();var em={};accs.forEach(function(a){em[a.username]=extractRealName(a.displayName);});setUpsellOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){}}
+  async function loadOrders(){var u=userRef.current;if(!u)return;try{var d=await dbGetOrders(u.role==="admin"||u.role==="shipping"||u.role==="accounting"||u.role==="hr"?"ALL":u.username);var accs=(accounts&&accounts.length>0)?accounts:await dbGetAccounts();var em={};accs.forEach(function(a){em[a.username]=extractRealName(a.displayName);});setAllOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){notify("โหลดผิดพลาด","warning");}}
+  async function loadUpsell(){var u=userRef.current;if(!u)return;try{var d=await dbGetUpsell(u.role==="admin"||u.role==="shipping"||u.role==="accounting"||u.role==="hr"?"ALL":u.username);var accs=(accounts&&accounts.length>0)?accounts:await dbGetAccounts();var em={};accs.forEach(function(a){em[a.username]=extractRealName(a.displayName);});setUpsellOrders(d.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};}));}catch(e){}}
   useEffect(function(){if(sbOk){loadAccounts();loadUpsellPrices();loadParcels();}},[sbOk]);
   useEffect(function(){if(accounts.length>0&&(allOrders.length>0||upsellOrders.length>0)){var em={};accounts.forEach(function(a){em[a.username]=a.displayName;});if(allOrders.length>0&&!allOrders[0].StaffName){setAllOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}if(upsellOrders.length>0&&!upsellOrders[0].StaffName){setUpsellOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}}},[accounts]);
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
@@ -1318,6 +1318,7 @@ function App(){var _s=useState;
   var isAdmin=user.role==="admin";
   var isShipping=user.role==="shipping";
   var isAccounting=user.role==="accounting";
+  var isHR=user.role==="hr";
   var dayOrders=allOrders.filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});
   async function addOrder(data){try{var res=await dbAddOrder({...data,SalesPerson:extractNickname(user.displayName,user.nickname),AccountEmail:user.username},data.upsell);setShowForm(false);notify("✅ "+res.orderId+(data.upsell?" → 🔥 Upsell":" → Orders"));if(!data.upsell)loadOrders();else loadUpsell();if(data.slipData)uploadSlip(res.orderId,data.slipData);}catch(e){setShowForm(false);notify(e.message||"ผิดพลาด","warning");}}
   async function delOrder(oid){setViewOrder(null);setAllOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});setUpsellOrders(function(p){return p.filter(function(o){return o.OrderID!==oid;});});try{await dbDeleteOrder(oid);notify("ลบสำเร็จ");loadOrders();loadUpsell();}catch(e){notify("ลบผิดพลาด","warning");loadOrders();loadUpsell();}}
@@ -1376,12 +1377,13 @@ function App(){var _s=useState;
   // Nav items ตาม role
   var navItems=[];
   if(isShipping){navItems=[{id:"shipping",icon:"🚚",label:"การจัดส่ง"},{id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"}];}
+  else if(isHR){navItems=[{id:"hr_report",icon:"📊",label:"ยอดขายรายคน"},{id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"}];}
   else if(isAccounting){navItems=[{id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"},{id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"},{id:"report",icon:"📊",label:"รายงาน"}];}
   else{navItems.push({id:"dashboard",icon:"🏠",label:"Dashboard"});navItems.push({id:"orders",icon:"📋",label:"ออเดอร์"});if(canUpsell)navItems.push({id:"upsell",icon:"🔥",label:"Upsell"});if(isAdmin)navItems.push({id:"shipping",icon:"🚚",label:"การจัดส่ง"});navItems.push({id:"parcel_check",icon:"✅",label:"เช็คพัสดุ"});if(isAdmin)navItems.push({id:"parcel_report",icon:"👑",label:"รายงานหัวหน้า"});navItems.push({id:"report",icon:"📊",label:"รายงาน"});if(isAdmin||canUpsell)navItems.push({id:"export_tracking",icon:"📦",label:"Export เลขพัสดุ"});navItems.push({id:"tracking_search",icon:"🔍",label:"ค้นหาเลขพัสดุ"});navItems.push({id:"customer_search",icon:"👤",label:"ค้นหาลูกค้า"});if(isAdmin)navItems.push({id:"team",icon:"👥",label:"พนักงาน"});}
   // Default page สำหรับ shipping role
-  useEffect(function(){if(isShipping&&page!=="shipping")setPage("shipping");if(isAccounting&&page!=="export_tracking")setPage("export_tracking");},[isShipping,isAccounting]);
-  var roleLabel=isAdmin?"แอดมิน":isShipping?"จัดส่ง":isAccounting?"บัญชี":"พนักงาน";
-  var roleColor=isAdmin?"#fbbf24":isShipping?"#38bdf8":isAccounting?"#a78bfa":"#fcd34d";
+  useEffect(function(){if(isShipping&&page!=="shipping")setPage("shipping");if(isAccounting&&page!=="export_tracking")setPage("export_tracking");if(isHR&&page!=="hr_report")setPage("hr_report");},[isShipping,isAccounting,isHR]);
+  var roleLabel=isAdmin?"แอดมิน":isShipping?"จัดส่ง":isAccounting?"บัญชี":isHR?"HR":"พนักงาน";
+  var roleColor=isAdmin?"#fbbf24":isShipping?"#38bdf8":isAccounting?"#a78bfa":isHR?"#f472b6":"#fcd34d";
   return(<div style={S.app}>{notif&&<div style={{...S.notif,background:notif.type==="success"?"linear-gradient(135deg,#10b981,#059669)":"linear-gradient(135deg,#f59e0b,#d97706)"}}>{notif.type==="success"?"✅":"⚠️"} {notif.msg}</div>}{slipProgress!==null&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:"#fff",borderRadius:20,padding:"36px 48px",textAlign:"center",minWidth:280}}><div style={{fontSize:40,marginBottom:8}}>{slipProgress>=100?"✅":"🧾"}</div><div style={{fontSize:16,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706"}}>{slipProgress>=100?"เสร็จสิ้น!":"อัพโหลดสลิป..."}</div><div style={{fontSize:28,fontWeight:800,color:slipProgress>=100?"#059669":"#d97706",margin:"8px 0"}}>{slipProgress}%</div><div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:slipProgress+"%",background:slipProgress>=100?"#10b981":"#d97706",borderRadius:4,transition:"width .3s"}}/></div></div></div>}
     {statusProgress&&<div style={{position:"fixed",inset:0,zIndex:9998,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{background:"#fff",borderRadius:20,padding:"36px 48px",textAlign:"center",minWidth:320}}>
       <div style={{fontSize:40,marginBottom:8}}>{statusProgress.finished?"✅":"🔄"}</div>
@@ -1393,7 +1395,7 @@ function App(){var _s=useState;
       {statusProgress.fail>0&&<div style={{fontSize:12,color:"#ef4444",fontWeight:700,marginTop:8}}>❌ ล้มเหลว {statusProgress.fail} รายการ</div>}
     </div></div>}
     <aside style={S.sidebar}><div style={S.sidebarHead}><img src="LOGO_THEMT.png" alt="THE MT" style={{width:40,height:40,objectFit:"contain"}}/><div><div style={{fontSize:18,fontWeight:800,color:"#fde68a"}}>THE MT</div><div style={{fontSize:9,color:"#fbbf24",letterSpacing:1}}>SUPABASE</div></div></div><div style={S.userCard}><div style={S.avatar}>{(user.displayName||"?")[0]}</div><div><div style={{fontWeight:700,fontSize:13}}>{user.displayName}</div><span style={{fontSize:10,color:roleColor}}>{roleLabel}</span></div></div><nav style={S.nav}>{navItems.map(function(item){if(item.link)return<a key={item.id} href={item.link} style={{...S.navItem,textDecoration:"none",fontWeight:800,color:"#93c5fd",background:"rgba(59,130,246,.1)"}}><span style={{fontSize:16}}>{item.icon}</span> {item.label} →</a>;return<button key={item.id} style={{...S.navItem,...(page===item.id?S.navActive:{})}} onClick={function(){setPage(item.id);}}><span style={{fontSize:16}}>{item.icon}</span> {item.label}</button>;})}</nav><div style={{padding:"10px 12px 6px"}}><div style={{marginBottom:8}}><div style={{fontSize:10,color:"#fbbf24",fontWeight:600,marginBottom:4}}>📱 ค้นหาเลขพัสดุ</div><input placeholder="ใส่เบอร์โทร..." value={sidePhoneSearch} onChange={function(e){setSidePhoneSearch(e.target.value.replace(/[^0-9]/g,""));}} style={{width:"100%",padding:"8px 10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.1)",color:"#fde68a",fontSize:12,boxSizing:"border-box",outline:"none"}}/>{sidePhoneSearch.length>=3&&function(){var found=allOrders.concat(upsellOrders).filter(function(o){return phoneMatch(o.MobileNo,sidePhoneSearch);});return<div style={{marginTop:6,maxHeight:200,overflow:"auto",borderRadius:8,background:"rgba(0,0,0,.3)"}}>{found.length===0?<div style={{padding:8,fontSize:10,color:"#94a3b8",textAlign:"center"}}>ไม่พบ</div>:found.map(function(o,i){return<div key={i} style={{padding:"6px 8px",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:10}}><div style={{fontWeight:700,color:"#fde68a"}}>{o.Name} <span style={{color:"#94a3b8"}}>{o.MobileNo}</span></div>{o.TrackingNo?<span onClick={function(){copyTrack(o.TrackingNo);}} style={{color:"#93c5fd",fontWeight:700,fontSize:10,cursor:"pointer"}} title="คลิกเพื่อคัดลอก">{o.TrackingNo} 📋</span>:<span style={{color:"#64748b",fontSize:9}}>ยังไม่มีเลข</span>}</div>;})}</div>;}()}</div><button style={{width:"100%",padding:"10px",borderRadius:8,border:"1px solid rgba(251,191,36,.3)",background:"rgba(255,255,255,.08)",color:"#fcd34d",fontSize:12,fontWeight:600,cursor:"pointer"}} onClick={function(){notify("🔄 รีเฟรช...");loadOrders();loadUpsell();loadAccounts();loadParcels();}}>🔄 รีเฟรช</button></div>{isAdmin&&<div style={{padding:"0 12px 6px"}}><button style={{width:"100%",padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,.06)",background:"transparent",color:"#94a3b8",fontSize:10,cursor:"pointer"}} onClick={function(){var cur=SHEET_URL||"";var u=prompt("Google Sheet URL (Apps Script):\n\nวางว่างเพื่อปิด",cur);if(u!==null){SHEET_URL=u.trim();localStorage.setItem("sheet_url",SHEET_URL);notify(SHEET_URL?"✅ Sheet sync: ON":"⚠️ Sheet sync: OFF");}}}>{SHEET_URL?"📊 Sheet: ON":"📊 ตั้งค่า Sheet"}</button></div>}<button style={S.logoutBtn} onClick={doLogout}>🚪 ออกจากระบบ</button></aside>
-    <main style={S.main}>{page==="dashboard"&&<DashboardPage user={user} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} parcels={parcels} accounts={accounts} setPage={setPage}/>}{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices} accounts={accounts}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport} accounts={accounts}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="customer_search"&&<CustomerSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin} onEdit={editOrder} onRefresh={function(){loadOrders();loadUpsell();}}/>}{page==="parcel_check"&&<ParcelCheckPage parcels={parcels} setParcels={setParcels} onRefresh={loadParcels} accounts={accounts} user={user} isAdmin={isAdmin} notify={notify} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="parcel_report"&&isAdmin&&<ParcelReportPage parcels={parcels} accounts={accounts} user={user}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
+    <main style={S.main}>{page==="dashboard"&&<DashboardPage user={user} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} parcels={parcels} accounts={accounts} setPage={setPage}/>}{page==="orders"&&<OrdersPage orders={dayOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} viewOrder={viewOrder} setViewOrder={setViewOrder} isAdmin={isAdmin} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="upsell"&&<UpsellPage showForm={showForm} setShowForm={setShowForm} onAdd={addOrder} onDel={delOrder} onEdit={editOrder} onUploadSlip={uploadSlip} onUpdateStatus={updateStatus} onExport={handleExport} user={user} orders={upsellOrders} onRefresh={loadUpsell} isAdmin={isAdmin} allOrders={allOrders} upsellOrders={upsellOrders} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} upsellPrices={upsellPrices} onSaveUpsellPrices={saveUpsellPrices} accounts={accounts}/>}{page==="report"&&<ReportPage user={user} accounts={accounts} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="shipping"&&<ShippingPage orders={allOrders} upsellOrders={upsellOrders} isAdmin={isAdmin} isShipping={isShipping} onUpdateStatus={updateStatus} onExport={handleExport} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} onRefresh={function(){loadOrders();loadUpsell();}} onEdit={editOrder} accounts={accounts}/>}{page==="export_tracking"&&<ExportTrackingPage allOrders={allOrders} upsellOrders={upsellOrders} onExport={handleExport} accounts={accounts}/>}{page==="tracking_search"&&<TrackingSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin}/>}{page==="hr_report"&&<HRReportPage allOrders={allOrders} upsellOrders={upsellOrders} accounts={accounts}/>}{page==="customer_search"&&<CustomerSearchPage allOrders={allOrders} upsellOrders={upsellOrders} user={user} isAdmin={isAdmin} onEdit={editOrder} onRefresh={function(){loadOrders();loadUpsell();}}/>}{page==="parcel_check"&&<ParcelCheckPage parcels={parcels} setParcels={setParcels} onRefresh={loadParcels} accounts={accounts} user={user} isAdmin={isAdmin} notify={notify} allOrders={allOrders} upsellOrders={upsellOrders}/>}{page==="parcel_report"&&isAdmin&&<ParcelReportPage parcels={parcels} accounts={accounts} user={user}/>}{page==="team"&&isAdmin&&<TeamPage accounts={accounts} onAdd={addAcc} onToggle={toggleAcc} onSaveUpsellBatch={saveUpsellBatch} onDel={delAcc} onResetPw={resetPw} onEditAcc={editAcc}/>}</main></div>);}
 
 /* ===== SETUP (Supabase URL+Key) ===== */
 function SetupScreen({onSave}){var[url,setUrl]=useState("");var[key,setKey]=useState("");var[testing,setTesting]=useState(false);var[error,setError]=useState("");
@@ -3070,6 +3072,113 @@ function CustomerSearchPage({allOrders,upsellOrders,user,isAdmin,onEdit,onRefres
   </div>;
 }
 
+function HRReportPage({allOrders,upsellOrders,accounts}){
+  var[period,setPeriod]=useState("month");
+  var[selPerson,setSelPerson]=useState(null);
+
+  var dateFrom,dateTo;
+  if(period==="today"){dateFrom=todayStr();dateTo=todayStr();}
+  else if(period==="7d"){dateFrom=sevenDaysAgo();dateTo=todayStr();}
+  else if(period==="month"){dateFrom=monthStart();dateTo=todayStr();}
+  else if(period==="prev"){dateFrom=prevMonthStart();dateTo=prevMonthEnd();}
+  else{dateFrom="2020-01-01";dateTo=todayStr();}
+
+  var nickToName={};
+  (accounts||[]).forEach(function(a){var n=extractNickname(a.displayName,a.nickname);if(n)nickToName[n]=extractRealName(a.displayName);});
+
+  function filterByDate(list){return(list||[]).filter(function(o){var d=getDate(o.Timestamp);return d>=dateFrom&&d<=dateTo;});}
+  var fOrders=filterByDate(allOrders);
+  var fUpsell=filterByDate(upsellOrders);
+
+  // สรุปรายคน
+  var pm={};
+  fOrders.forEach(function(o){var p=o.SalesPerson||"?";if(!pm[p])pm[p]={name:p,realName:nickToName[p]||"",orders:0,orderSales:0,upsell:0,upsellSales:0,cod:0,transfer:0};pm[p].orders++;pm[p].orderSales+=Number(o.SalePrice)||0;var c=Number(o.COD)||0;if(c>0)pm[p].cod+=c;else pm[p].transfer+=Number(o.SalePrice)||0;});
+  fUpsell.forEach(function(o){var p=o.SalesPerson||"?";if(!pm[p])pm[p]={name:p,realName:nickToName[p]||"",orders:0,orderSales:0,upsell:0,upsellSales:0,cod:0,transfer:0};pm[p].upsell++;pm[p].upsellSales+=Number(o.SalePrice)||0;});
+  var persons=Object.values(pm).filter(function(p){return p.name!=="?";}).sort(function(a,b){return(b.orderSales+b.upsellSales)-(a.orderSales+a.upsellSales);});
+
+  var pBtn=function(k){return{padding:"10px 18px",borderRadius:10,border:period===k?"2px solid #f472b6":"1px solid #e2e8f0",background:period===k?"#fdf2f8":"#fff",color:period===k?"#be185d":"#64748b",fontSize:13,fontWeight:700,cursor:"pointer"};};
+
+  // รายละเอียดพนักงานที่เลือก
+  var detail=selPerson?pm[selPerson]:null;
+  var detailOrders=selPerson?fOrders.filter(function(o){return o.SalesPerson===selPerson;}):[];
+  var detailUpsell=selPerson?fUpsell.filter(function(o){return o.SalesPerson===selPerson;}):[];
+
+  // Group by day
+  var dayMap={};
+  detailOrders.concat(detailUpsell).forEach(function(o){
+    var d=getDate(o.Timestamp);if(!dayMap[d])dayMap[d]={date:d,count:0,sales:0};dayMap[d].count++;dayMap[d].sales+=Number(o.SalePrice)||0;
+  });
+  var days=Object.values(dayMap).sort(function(a,b){return b.date>a.date?1:-1;});
+
+  return<div>
+    <h1 style={{fontSize:22,fontWeight:800,color:"#1e293b",marginBottom:20}}>📊 ยอดขายรายคน</h1>
+
+    <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+      <button onClick={function(){setPeriod("today");}} style={pBtn("today")}>วันนี้</button>
+      <button onClick={function(){setPeriod("7d");}} style={pBtn("7d")}>7 วัน</button>
+      <button onClick={function(){setPeriod("month");}} style={pBtn("month")}>เดือนนี้</button>
+      <button onClick={function(){setPeriod("prev");}} style={pBtn("prev")}>เดือนก่อน</button>
+      <button onClick={function(){setPeriod("all");}} style={pBtn("all")}>ทั้งหมด</button>
+    </div>
+
+    {/* ตารางพนักงาน */}
+    <div style={{background:"#fff",borderRadius:14,padding:20,marginBottom:20}}>
+      <div style={{fontSize:14,fontWeight:700,color:"#1e293b",marginBottom:16}}>👤 เลือกพนักงานเพื่อดูรายละเอียด</div>
+      <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <thead><tr style={{borderBottom:"2px solid #e2e8f0"}}>
+          <th style={{padding:"10px",textAlign:"left",fontSize:11,color:"#94a3b8"}}>ชื่อเล่น</th>
+          <th style={{padding:"10px",textAlign:"left",fontSize:11,color:"#94a3b8"}}>ชื่อจริง</th>
+          <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#d97706"}}>ออเดอร์</th>
+          <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#ea580c"}}>Upsell</th>
+          <th style={{padding:"10px",textAlign:"right",fontSize:11,color:"#d97706"}}>ยอดออเดอร์</th>
+          <th style={{padding:"10px",textAlign:"right",fontSize:11,color:"#ea580c"}}>ยอด Upsell</th>
+          <th style={{padding:"10px",textAlign:"center",fontSize:11,color:"#94a3b8"}}>ดูเพิ่ม</th>
+        </tr></thead>
+        <tbody>{persons.map(function(p,i){
+          var isActive=selPerson===p.name;
+          return<tr key={p.name} onClick={function(){setSelPerson(isActive?null:p.name);}} style={{borderBottom:"1px solid #f1f5f9",cursor:"pointer",background:isActive?"#fdf2f8":""}}>
+            <td style={{padding:"12px 10px",fontWeight:700,fontSize:14,color:isActive?"#be185d":"#1e293b"}}>{p.name}</td>
+            <td style={{padding:"12px 10px",fontSize:13,color:"#64748b"}}>{p.realName}</td>
+            <td style={{padding:"12px 10px",textAlign:"center",fontWeight:700,color:"#d97706"}}>{p.orders}</td>
+            <td style={{padding:"12px 10px",textAlign:"center",fontWeight:700,color:"#ea580c"}}>{p.upsell}</td>
+            <td style={{padding:"12px 10px",textAlign:"right",fontWeight:700,color:"#d97706"}}>฿{p.orderSales.toLocaleString()}</td>
+            <td style={{padding:"12px 10px",textAlign:"right",fontWeight:700,color:"#ea580c"}}>฿{p.upsellSales.toLocaleString()}</td>
+            <td style={{padding:"12px 10px",textAlign:"center"}}><span style={{color:isActive?"#be185d":"#94a3b8"}}>{isActive?"▲":"▼"}</span></td>
+          </tr>;
+        })}</tbody>
+      </table>
+    </div>
+
+    {/* รายละเอียดพนักงานที่เลือก */}
+    {selPerson&&detail&&<div style={{background:"#fdf2f8",borderRadius:14,padding:20,border:"2px solid #f9a8d4",marginBottom:20}}>
+      <div style={{fontSize:18,fontWeight:800,color:"#be185d",marginBottom:16}}>📋 {selPerson} ({detail.realName})</div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
+        <div style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"4px solid #d97706"}}><div style={{fontSize:11,color:"#94a3b8"}}>ออเดอร์</div><div style={{fontSize:24,fontWeight:800,color:"#d97706"}}>{detail.orders}</div><div style={{fontSize:12,color:"#64748b"}}>฿{detail.orderSales.toLocaleString()}</div></div>
+        <div style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"4px solid #ea580c"}}><div style={{fontSize:11,color:"#94a3b8"}}>Upsell</div><div style={{fontSize:24,fontWeight:800,color:"#ea580c"}}>{detail.upsell}</div><div style={{fontSize:12,color:"#64748b"}}>฿{detail.upsellSales.toLocaleString()}</div></div>
+        <div style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"4px solid #ef4444"}}><div style={{fontSize:11,color:"#94a3b8"}}>COD</div><div style={{fontSize:24,fontWeight:800,color:"#ef4444"}}>฿{detail.cod.toLocaleString()}</div></div>
+        <div style={{background:"#fff",borderRadius:10,padding:14,borderLeft:"4px solid #10b981"}}><div style={{fontSize:11,color:"#94a3b8"}}>โอน</div><div style={{fontSize:24,fontWeight:800,color:"#10b981"}}>฿{detail.transfer.toLocaleString()}</div></div>
+      </div>
+
+      {/* ยอดรายวัน */}
+      {days.length>0&&<div>
+        <div style={{fontSize:14,fontWeight:700,color:"#be185d",marginBottom:10}}>📅 ยอดรายวัน</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {days.map(function(d){
+            return<div key={d.date} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",background:"#fff",borderRadius:8}}>
+              <span style={{fontWeight:700,fontSize:13,color:"#1e293b",minWidth:90}}>{d.date}</span>
+              <span style={{fontSize:12,color:"#64748b"}}>{d.count} รายการ</span>
+              <span style={{fontWeight:700,color:"#d97706",marginLeft:"auto"}}>฿{d.sales.toLocaleString()}</span>
+            </div>;
+          })}
+        </div>
+      </div>}
+    </div>}
+
+    {persons.length===0&&<div style={{background:"#fff",borderRadius:14,padding:40,textAlign:"center",color:"#94a3b8"}}>ไม่มีข้อมูลในช่วงนี้</div>}
+  </div>;
+}
+
 function TeamPage({accounts,onAdd,onToggle,onSaveUpsellBatch,onDel,onResetPw,onEditAcc}){var[show,setShow]=useState(false);var[nf,setNf]=useState({username:"",displayName:"",nickname:"",password:"",role:"user"});var[resetId,setResetId]=useState(null);var[newPw,setNewPw]=useState("");var[editAcc,setEditAcc]=useState(null);var[editSaving,setEditSaving]=useState(false);var[upsellEdit,setUpsellEdit]=useState(null);var[saving,setSaving]=useState(false);var[showPw,setShowPw]=useState(false);var[bulkMode,setBulkMode]=useState(false);var[bulkRows,setBulkRows]=useState([{username:"",displayName:"",password:"",role:"user"}]);var[bulkAdding,setBulkAdding]=useState(false);
   function handleAdd(){if(!nf.username||!nf.displayName||!nf.password){alert("กรอกให้ครบ");return;}onAdd({...nf,active:true}).then(function(ok){if(ok){setNf({username:"",displayName:"",nickname:"",password:"",role:"user"});setShow(false);}});}
   function updateBulkRow(idx,field,val){setBulkRows(function(prev){var n=[...prev];n[idx]={...n[idx]};n[idx][field]=val;return n;});}
@@ -3095,7 +3204,7 @@ function TeamPage({accounts,onAdd,onToggle,onSaveUpsellBatch,onDel,onResetPw,onE
   function saveUE(){setSaving(true);onSaveUpsellBatch(upsellEdit).then(function(){setSaving(false);setUpsellEdit(null);});}
   return<div><div style={S.pageHeader}><h1 style={S.pageTitle}>👥 พนักงาน</h1></div>
     {resetId&&<div style={S.modalOverlay} onClick={function(){setResetId(null);}}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:380}} onClick={function(e){e.stopPropagation();}}><h3 style={{margin:"0 0 14px",fontWeight:700,fontSize:15}}>🔑 รีเซ็ต Password</h3><div style={{position:"relative",marginBottom:14}}><input type={showPw?"text":"password"} value={newPw} onChange={function(e){setNewPw(e.target.value);}} placeholder="Password ใหม่" style={{...S.pInput,paddingRight:40}}/><button onClick={function(){setShowPw(!showPw);}} type="button" style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",fontSize:16,color:"#94a3b8",padding:4}}>{showPw?"🙈":"👁"}</button></div><div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><button style={S.cancelBtn} onClick={function(){setResetId(null);}}>ยกเลิก</button><button style={S.submitBtn} onClick={function(){if(newPw.length<4){alert("4+ ตัว");return;}onResetPw(resetId,newPw);setResetId(null);setNewPw("");}}>บันทึก</button></div></div></div>}
-    {editAcc&&<div style={S.modalOverlay} onClick={function(){setEditAcc(null);}}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:400}} onClick={function(e){e.stopPropagation();}}><h3 style={{margin:"0 0 16px",fontWeight:700,fontSize:15}}>✏️ แก้ไขบัญชี</h3><div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}><div><label style={S.fLabel}>Email</label><input value={editAcc.username} onChange={function(e){setEditAcc({...editAcc,username:e.target.value});}} style={S.pInput}/></div><div><label style={S.fLabel}>ชื่อ</label><input value={editAcc.displayName} onChange={function(e){setEditAcc({...editAcc,displayName:e.target.value});}} style={S.pInput}/></div><div><label style={{...S.fLabel,color:"#d97706"}}>ชื่อเล่น (ใช้ในออเดอร์)</label><input value={editAcc.nickname||""} onChange={function(e){setEditAcc({...editAcc,nickname:e.target.value});}} placeholder="เช่น ปอนด์, ออย(ช)" style={{...S.pInput,borderColor:"#fbbf24"}}/></div><div><label style={S.fLabel}>บทบาท</label><select value={editAcc.role} onChange={function(e){setEditAcc({...editAcc,role:e.target.value});}} style={S.pInput}><option value="user">พนักงาน</option><option value="shipping">จัดส่ง</option><option value="accounting">บัญชี</option><option value="admin">แอดมิน</option></select></div></div><div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><button style={S.cancelBtn} onClick={function(){setEditAcc(null);}}>ยกเลิก</button><button style={S.submitBtn} disabled={editSaving} onClick={async function(){if(!editAcc.username||!editAcc.displayName){alert("กรอก Email และชื่อ");return;}setEditSaving(true);try{var ok=await onEditAcc(editAcc.oldUsername,editAcc);if(ok){setEditAcc(null);}else{alert("บันทึกไม่สำเร็จ");}}catch(e){alert("เกิดข้อผิดพลาด:\n"+String(e.message||e).substring(0,200));}setEditSaving(false);}}>{editSaving?"⏳ กำลังบันทึก...":"บันทึก"}</button></div></div></div>}
+    {editAcc&&<div style={S.modalOverlay} onClick={function(){setEditAcc(null);}}><div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:400}} onClick={function(e){e.stopPropagation();}}><h3 style={{margin:"0 0 16px",fontWeight:700,fontSize:15}}>✏️ แก้ไขบัญชี</h3><div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}><div><label style={S.fLabel}>Email</label><input value={editAcc.username} onChange={function(e){setEditAcc({...editAcc,username:e.target.value});}} style={S.pInput}/></div><div><label style={S.fLabel}>ชื่อ</label><input value={editAcc.displayName} onChange={function(e){setEditAcc({...editAcc,displayName:e.target.value});}} style={S.pInput}/></div><div><label style={{...S.fLabel,color:"#d97706"}}>ชื่อเล่น (ใช้ในออเดอร์)</label><input value={editAcc.nickname||""} onChange={function(e){setEditAcc({...editAcc,nickname:e.target.value});}} placeholder="เช่น ปอนด์, ออย(ช)" style={{...S.pInput,borderColor:"#fbbf24"}}/></div><div><label style={S.fLabel}>บทบาท</label><select value={editAcc.role} onChange={function(e){setEditAcc({...editAcc,role:e.target.value});}} style={S.pInput}><option value="user">พนักงาน</option><option value="shipping">จัดส่ง</option><option value="accounting">บัญชี</option><option value="hr">HR</option><option value="admin">แอดมิน</option></select></div></div><div style={{display:"flex",gap:8,justifyContent:"flex-end"}}><button style={S.cancelBtn} onClick={function(){setEditAcc(null);}}>ยกเลิก</button><button style={S.submitBtn} disabled={editSaving} onClick={async function(){if(!editAcc.username||!editAcc.displayName){alert("กรอก Email และชื่อ");return;}setEditSaving(true);try{var ok=await onEditAcc(editAcc.oldUsername,editAcc);if(ok){setEditAcc(null);}else{alert("บันทึกไม่สำเร็จ");}}catch(e){alert("เกิดข้อผิดพลาด:\n"+String(e.message||e).substring(0,200));}setEditSaving(false);}}>{editSaving?"⏳ กำลังบันทึก...":"บันทึก"}</button></div></div></div>}
     <div style={{background:"#fff",borderRadius:10,padding:20,marginBottom:16,border:"1px solid #e2e8f0"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{margin:0,fontSize:14,fontWeight:700}}>บัญชี {accounts.length} คน</h3><div style={{display:"flex",gap:6}}><button onClick={function(){setBulkMode(!bulkMode);setShow(false);}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:bulkMode?"#fef3c7":"#f8fafc",color:bulkMode?"#92400e":"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>{bulkMode?"✕":"📋 เพิ่มหลายคน"}</button><button onClick={function(){setShow(!show);setBulkMode(false);}} style={{padding:"7px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:show?"#fef2f2":"#f8fafc",color:show?"#ef4444":"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>{show?"✕":"＋ เพิ่ม"}</button></div></div>
       {bulkMode&&<div style={{padding:14,marginBottom:12,borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a"}}>
         <div style={{fontSize:12,fontWeight:700,marginBottom:10,color:"#92400e"}}>📋 เพิ่มหลายคน (สูงสุด 50 คน)</div>
