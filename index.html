@@ -2155,11 +2155,6 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     syncingRef2.current=false;setFlashSyncing(false);
   }
   var autoSyncDone2=useRef(false);
-  useEffect(function(){
-    if(!autoSyncDone2.current&&allItems.length>0){autoSyncDone2.current=true;doFlashSync(true);}
-    var iv=setInterval(function(){doFlashSync(true);},180000);
-    return function(){clearInterval(iv);};
-  },[allItems.length]);
   var[flashSettings,setFlashSettings]=useState(false);
 
   // รวม orders + upsell + กรองวันที่
@@ -2168,6 +2163,12 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     (upsellOrders||[]).map(function(o){return{...o,_table:"upsell"};})
   );
   allItemsRef.current=allItems;
+
+  useEffect(function(){
+    if(!autoSyncDone2.current&&allItems.length>0){autoSyncDone2.current=true;doFlashSync(true);}
+    var iv=setInterval(function(){doFlashSync(true);},180000);
+    return function(){clearInterval(iv);};
+  },[allItems.length]);
 
   // กรองที่มา
   var sourceFiltered=sourceFilter==="ALL"?allItems:allItems.filter(function(o){return o._table===sourceFilter;});
