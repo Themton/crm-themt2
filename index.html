@@ -1004,6 +1004,8 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
 function ParcelReportPage({parcels,accounts,user}){
   var _s=useState;
   var[period,setPeriod]=_s("month");
+  var[customFrom,setCustomFrom]=_s(monthStart());
+  var[customTo,setCustomTo]=_s(todayStr());
   var todayVal=todayStr();
   var thisMonth=todayVal.substring(0,7);
   var prevM=prevMonthStart().substring(0,7);
@@ -1017,9 +1019,12 @@ function ParcelReportPage({parcels,accounts,user}){
   });
 
   var all=(parcels||[]).filter(function(p){
-    var d=(p.date||"").substring(0,7);
-    if(period==="month")return d===thisMonth;
-    if(period==="prev")return d===prevM;
+    var d=(p.date||"");
+    if(d.length<10)return false;
+    var ymd=d.substring(0,10);
+    if(period==="month")return d.substring(0,7)===thisMonth;
+    if(period==="prev")return d.substring(0,7)===prevM;
+    if(period==="custom")return ymd>=customFrom&&ymd<=customTo;
     return true;
   });
 
@@ -1045,17 +1050,27 @@ function ParcelReportPage({parcels,accounts,user}){
     return rb-ra;
   });
 
-  var periodLabel=period==="month"?"เดือน"+curMonthName:period==="prev"?"เดือนก่อน":"ทั้งหมด";
+  var periodLabel=period==="month"?"เดือน"+curMonthName:period==="prev"?"เดือนก่อน":period==="custom"?customFrom+" ถึง "+customTo:"ทั้งหมด";
   var pBtn=function(k,l){return{padding:"10px 20px",borderRadius:10,border:period===k?"2px solid #d97706":"1px solid #e2e8f0",background:period===k?"#fef3c7":"#fff",color:period===k?"#92400e":"#64748b",fontSize:14,fontWeight:700,cursor:"pointer"};};
 
   return<div>
     <h2 style={{fontSize:22,fontWeight:800,color:"#1e293b",marginBottom:20}}>👑 รายงานหัวหน้า</h2>
 
-    <div style={{display:"flex",gap:10,marginBottom:24}}>
+    <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
       <button onClick={function(){setPeriod("month");}} style={pBtn("month")}>เดือนนี้</button>
       <button onClick={function(){setPeriod("prev");}} style={pBtn("prev")}>เดือนก่อน</button>
       <button onClick={function(){setPeriod("all");}} style={pBtn("all")}>ทั้งหมด</button>
+      <span style={{color:"#d1d5db"}}>|</span>
+      <button onClick={function(){setPeriod("custom");}} style={pBtn("custom")}>📅 ระบุวัน</button>
     </div>
+    {period==="custom"&&<div style={{display:"flex",gap:8,marginBottom:24,alignItems:"center",flexWrap:"wrap"}}>
+      <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>จาก</span>
+      <input type="date" value={customFrom} onChange={function(e){setCustomFrom(e.target.value);}} style={{padding:"8px 14px",borderRadius:10,border:"2px solid #d97706",fontSize:13,outline:"none"}}/>
+      <span style={{fontSize:13,fontWeight:600,color:"#475569"}}>ถึง</span>
+      <input type="date" value={customTo} onChange={function(e){setCustomTo(e.target.value);}} style={{padding:"8px 14px",borderRadius:10,border:"2px solid #d97706",fontSize:13,outline:"none"}}/>
+      <button onClick={function(){setCustomFrom(todayStr());setCustomTo(todayStr());}} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>วันนี้</button>
+      <button onClick={function(){var y=new Date();y.setDate(y.getDate()-7);setCustomFrom(y.toISOString().slice(0,10));setCustomTo(todayStr());}} style={{padding:"8px 14px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>7 วัน</button>
+    </div>}
 
     {returnRate>0&&<div style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)",borderRadius:14,padding:20,marginBottom:20,display:"flex",alignItems:"center",gap:16,color:"#fff"}}>
       <div style={{fontSize:40}}>🚨</div>
