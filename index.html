@@ -2149,7 +2149,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
     try{
       var res=await fetch(FLASH_WORKER+"/sync");
       var data=await res.json();
-      if(!silent)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+data.updated+" รายการ");
+      if(!silent)try{notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+data.updated+" รายการ");}catch(e){}
       if(onRefresh)onRefresh();
     }catch(e){}
     syncingRef2.current=false;setFlashSyncing(false);
