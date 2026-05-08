@@ -2435,10 +2435,16 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
             <path d={areaSales} fill="url(#areaFill)"/>
             <path d={curveSales} fill="none" stroke="#d97706" strokeWidth="2" strokeLinejoin="round"/>
             <path d={curveOrders} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="4,4" strokeLinejoin="round"/>
-            {sorted.map(function(d,i){return React.createElement("g",{key:d.date},
+            {sorted.map(function(d,i){
+              var showLabel=n<=30;
+              var salesVal=d.sales>=1000?Math.round(d.sales/1000)+"k":d.sales;
+              return React.createElement("g",{key:d.date},
+              React.createElement("line",{x1:px(i),y1:PT,x2:px(i),y2:PT+cH,stroke:"#f8fafc",strokeWidth:1}),
               React.createElement("circle",{cx:px(i),cy:pyS(d.sales),r:3.5,fill:"#fff",stroke:"#d97706",strokeWidth:1.5}),
-              n<=20&&React.createElement("text",{x:px(i),y:pyS(d.sales)-10,textAnchor:"middle",fill:"#92400e",fontSize:8,fontWeight:600},"฿"+(d.sales>=1000?Math.round(d.sales/1000)+"k":d.sales)),
-              n<=15&&React.createElement("text",{x:px(i),y:H-10,textAnchor:"middle",fill:"#94a3b8",fontSize:8},d.date.substring(5))
+              showLabel&&React.createElement("text",{x:px(i),y:pyS(d.sales)-12,textAnchor:"middle",fill:"#92400e",fontSize:7,fontWeight:700},"฿"+salesVal),
+              showLabel&&React.createElement("text",{x:px(i),y:pyS(d.sales)-4,textAnchor:"middle",fill:"#3b82f6",fontSize:6},d.orders.length+" ออเดอร์"),
+              React.createElement("text",{x:px(i),y:H-PB+14,textAnchor:"middle",fill:"#64748b",fontSize:7,fontWeight:600},d.date.substring(8)+"/"+d.date.substring(5,7)),
+              n<=15&&React.createElement("text",{x:px(i),y:H-PB+24,textAnchor:"middle",fill:"#94a3b8",fontSize:6},["อา","จ","อ","พ","พฤ","ศ","ส"][new Date(d.date).getDay()])
             );})}
           </svg>
         </div>
