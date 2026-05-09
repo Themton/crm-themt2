@@ -720,18 +720,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     setFlashSyncing(false);setFlashProgress("");
   }
 
-  // Real-time sync: เปิดหน้า + ทุก 3 นาที (Worker ใช้เวลา ~100 วิ/รอบ)
-  var autoSyncDone=useRef(false);
-  useEffect(function(){
-    if(myParcels.length>0&&!autoSyncDone.current){
-      autoSyncDone.current=true;
-      syncFlashStatus(true);
-    }
-    var iv=setInterval(function(){
-      syncFlashStatus(true);
-    },180000);
-    return function(){clearInterval(iv);};
-  },[myParcels.length]);
+  // Auto-sync ปิด — ใช้ Worker Cron แทน (กดปุ่ม sync ได้ถ้าต้องการ)
 
   var importList=importData.filter(function(o){
     var d=getDate(o.Timestamp);
@@ -1298,46 +1287,8 @@ function App(){var _s=useState;
     var interval=setInterval(function(){loadOrders();loadUpsell();},60000);
     var parcelInterval=setInterval(function(){loadParcels();},30000);
 
-    // Flash auto-sync — ทำงานเบื้องหลังตลอด ไม่ต้องเปิดหน้าเช็คพัสดุ
-    var flashSyncRunning=false;
-    async function runFlashAutoSync(){
-      if(flashSyncRunning)return;
-      flashSyncRunning=true;
-      try{
-        var pending=await sbFetch("parcel_checks?select=id,tracking_no,flash_status&flash_status=not.in.(เซ็นรับแล้ว,ลูกค้ารับของ,ไม่พบข้อมูล)&tracking_no=like.TH*&order=id.asc",{range:"0-49"});
-        if(!pending||pending.length===0){flashSyncRunning=false;return;}
-        var updates={};
-        for(var i=0;i<pending.length;i++){
-          var newSt=null;
-          try{
-            var res=await flashGetTracking(pending[i].tracking_no);
-            if(res&&res.code===1&&res.data){var nf=flashStateText(res.data.state);if(nf)newSt=nf;else if(res.data.stateText)newSt=res.data.stateText;}
-            else if(res)newSt="ไม่พบข้อมูล";
-          }catch(e){}
-          if(newSt&&newSt!==pending[i].flash_status){
-            if(!updates[newSt])updates[newSt]=[];
-            updates[newSt].push(pending[i].id);
-          }
-          await new Promise(function(r){setTimeout(r,1000);});
-        }
-        var totalOk=0;
-        for(var st in updates){
-          var ids=updates[st];
-          for(var j=0;j<ids.length;j+=50){
-            var chunk=ids.slice(j,j+50);
-            try{await sbFetch("parcel_checks?id=in.("+chunk.join(",")+")",{method:"PATCH",body:{flash_status:st}});totalOk+=chunk.length;}catch(e){}
-          }
-        }
-        if(totalOk>0)loadParcels();
-      }catch(e){}
-      flashSyncRunning=false;
-    }
-    var flashFirst=setTimeout(runFlashAutoSync,3000);
-    var flashInterval=setInterval(runFlashAutoSync,60000);
-    // Sync Flash status หลังโหลดข้อมูลครั้งแรก
-    // Flash sync ถูกปิด
-    // Flash sync ถูกปิด — ไม่ซิงค์สถานะ Flash อัตโนมัติ
-    return function(){clearInterval(interval);clearInterval(parcelInterval);clearTimeout(flashFirst);clearInterval(flashInterval);};
+    // Flash auto-sync ปิด — ใช้ Worker Cron ทุก 1 นาทีแทน
+    return function(){clearInterval(interval);clearInterval(parcelInterval);};
   }},[sbOk]);
   function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"dashboard";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
   function doLogout(){localStorage.removeItem("ps_user");localStorage.removeItem("ps_page");window.location.reload();}
