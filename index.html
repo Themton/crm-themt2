@@ -1131,8 +1131,7 @@ function ParcelReportPage({parcels,accounts,user}){
     {/* 📊 กราฟวงกลม + กราฟแท่ง */}
     {total>0&&(function(){
       // Status breakdown
-      var inTransit=all.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
-      var pending=all.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ";}).length;
+      var inTransit=all.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;      var pending=all.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ";}).length;
       var other=total-delivered-returned-inTransit-pending;
       var slices=[
         {label:"ลูกค้ารับของ",val:delivered,color:"#10b981"},
@@ -1603,7 +1602,7 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
   var totalParcels=monthParcels.length;
   var delivered=monthParcels.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
   var returned=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).length;
-  var inTransit=monthParcels.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
+  var inTransit=monthParcels.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
   var returnRate=totalParcels>0?Math.round(returned/totalParcels*100):0;
   var returnCOD=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
 
@@ -2276,7 +2275,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
 
     {/* ===== Flash Status Tabs — เหมือน Flash ProShip ===== */}
     <div style={{display:"flex",gap:0,marginBottom:10,flexWrap:"wrap",overflowX:"auto"}}>
-      {[{k:"ALL",l:"ทั้งหมด",icon:"📋",c:"#475569"},{k:"รับเข้าระบบ",l:"รับเข้าระบบ",icon:"📥",c:"#6366f1"},{k:"รับพัสดุแล้ว",l:"รับพัสดุแล้ว",icon:"📦",c:"#0284c7"},{k:"กำลังขนส่ง",l:"กำลังขนส่ง",icon:"🚛",c:"#d97706"},{k:"การนำจ่าย",l:"การนำจ่าย",icon:"🚚",c:"#ea580c"},{k:"ลูกค้ารับของ",l:"ลูกค้ารับของ",icon:"✅",c:"#059669"},{k:"ติดต่อผู้รับไม่ได้",l:"ติดต่อผู้รับไม่ได้",icon:"📞",c:"#dc2626"},{k:"จัดส่งไม่สำเร็จ",l:"จัดส่งไม่สำเร็จ",icon:"❌",c:"#dc2626"},{k:"ตีกลับ",l:"ตีกลับ",icon:"↩️",c:"#dc2626"}].map(function(s){
+      {[{k:"ALL",l:"ทั้งหมด",icon:"📋",c:"#475569"},{k:"รับเข้าระบบ",l:"รับเข้าระบบ",icon:"📥",c:"#6366f1"},{k:"รับพัสดุแล้ว",l:"รับพัสดุแล้ว",icon:"📦",c:"#0284c7"},{k:"กำลังขนส่ง",l:"กำลังขนส่ง",icon:"🚛",c:"#d97706"},{k:"การนำจ่าย",l:"การนำจ่าย",icon:"🚚",c:"#ea580c"},{k:"เซ็นรับแล้ว",l:"เซ็นรับแล้ว",icon:"✅",c:"#059669"},{k:"ลูกค้ารับของ",l:"ลูกค้ารับของ",icon:"✅",c:"#059669"},{k:"พัสดุมีปัญหา",l:"พัสดุมีปัญหา",icon:"⚠️",c:"#d97706"},{k:"ปิดข้อยกเว้น",l:"ปิดข้อยกเว้น",icon:"❌",c:"#dc2626"},{k:"ตีกลับ",l:"ตีกลับ",icon:"↩️",c:"#dc2626"}].map(function(s){
         var cnt=s.k==="ALL"?allItems.filter(function(o){return o.TrackingNo;}).length:allItems.filter(function(o){return o.FlashStatus===s.k;}).length;
         var active=flashStatusFilter===s.k;
         return<button key={s.k} onClick={function(){setFlashStatusFilter(s.k);}} style={{padding:"8px 14px",border:"none",borderBottom:active?"3px solid "+s.c:"3px solid transparent",background:"transparent",color:active?s.c:cnt>0?"#475569":"#d1d5db",fontSize:11,fontWeight:active?800:600,cursor:"pointer",whiteSpace:"nowrap"}}>{s.icon} {s.l} <span style={{background:active?s.c:cnt>0?"#e2e8f0":"transparent",color:active?"#fff":cnt>0?"#64748b":"#d1d5db",padding:"1px 6px",borderRadius:8,fontSize:9,fontWeight:800,marginLeft:2}}>{cnt}</span></button>;})}
@@ -2979,7 +2978,7 @@ function TrackingSearchPage({allOrders,upsellOrders,user,isAdmin}){
           <span style={{fontSize:11,color:"#059669",fontWeight:700}}>📦 เลขพัสดุ:</span>
           <span onClick={function(){copyTrack(o.TrackingNo);}} style={{color:"#2563eb",fontWeight:800,fontSize:14,letterSpacing:.5,cursor:"pointer"}} title="คลิกเพื่อคัดลอก">{o.TrackingNo} 📋</span>
           <button onClick={function(){copyTrack(o.TrackingNo);}} style={{padding:"3px 8px",borderRadius:6,border:"1px solid #d1d5db",background:"#fff",fontSize:10,cursor:"pointer",color:"#64748b"}}>📋 คัดลอก</button>
-          {fs&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:fs==="ลูกค้ารับของ"?"#dcfce7":fs==="กำลังขนส่ง"?"#dbeafe":"#fef3c7",color:fs==="ลูกค้ารับของ"?"#166534":fs==="กำลังขนส่ง"?"#1e40af":"#92400e",fontWeight:600}}>{fs}</span>}
+          {fs&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:fs==="เซ็นรับแล้ว"||fs==="ลูกค้ารับของ"?"#dcfce7":fs==="กำลังขนส่ง"||fs==="อยู่ในระบบขนส่ง"?"#dbeafe":fs==="ตีกลับ"||fs==="ส่งคืน"||fs==="คืนสำเร็จ"?"#fecaca":"#fef3c7",color:fs==="เซ็นรับแล้ว"||fs==="ลูกค้ารับของ"?"#166534":fs==="กำลังขนส่ง"||fs==="อยู่ในระบบขนส่ง"?"#1e40af":fs==="ตีกลับ"||fs==="ส่งคืน"||fs==="คืนสำเร็จ"?"#991b1b":"#92400e",fontWeight:600}}>{fs}</span>}
         </div>:<div style={{padding:"8px 12px",borderRadius:8,background:"#fef3c7",border:"1px solid #fde68a",fontSize:12,color:"#92400e",fontWeight:600}}>⏳ ยังไม่มีเลขพัสดุ</div>}
       </div>;})}
     </div>}
