@@ -731,7 +731,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           }
         }catch(e){}
         checked++;
-        await new Promise(function(r){setTimeout(r,800);});
+        await new Promise(function(r){setTimeout(r,200);});
       }
       if(!silent)notify("🔄 ซิงค์เสร็จ — อัปเดต "+updated+"/"+checked);
       if(updated>0)onRefresh();
