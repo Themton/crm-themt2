@@ -703,35 +703,38 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     try{
       var pending=await sbFetch("parcel_checks?select=id,tracking_no,flash_status&flash_status=not.in.(เซ็นรับแล้ว,ลูกค้ารับของ,ไม่พบข้อมูล)&tracking_no=like.TH*&order=id.asc",{range:"0-199"});
       if(!pending||pending.length===0){syncingRef.current=false;setFlashSyncing(false);setFlashProgress("");if(!silent)notify("ไม่มีพัสดุ","warning");return;}
-      var updates={};var checked=0;
+      var checked=0,updated=0;
       for(var i=0;i<pending.length;i++){
         setFlashProgress("🔄 "+(i+1)+"/"+pending.length);
-        var newSt=null;
         try{
           var res=await flashGetTracking(pending[i].tracking_no);
           if(res&&res.code===1&&res.data){
             var nf=flashStateText(res.data.state);
-            if(nf)newSt=nf;
-            else if(res.data.stateText)newSt=res.data.stateText;
-          }else if(res)newSt="ไม่พบข้อมูล";
+            if(!nf&&res.data.stateText)nf=res.data.stateText;
+            var detail="",updTime="";
+            if(res.data.routes&&res.data.routes.length>0){
+              var latest=res.data.routes[0];
+              detail=latest.message||"";
+              if(latest.routedAt){var d=new Date(latest.routedAt*1000);var thM=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];updTime=d.getDate()+" "+thM[d.getMonth()]+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);}
+            }
+            if(nf){
+              var body={flash_status:nf};
+              if(detail)body.flash_detail=detail;
+              if(updTime)body.flash_updated=updTime;
+              if(nf!==pending[i].flash_status||detail){
+                await sbFetch("parcel_checks?id=eq."+pending[i].id,{method:"PATCH",body:body});
+                updated++;
+              }
+            }
+          }else{
+            await sbFetch("parcel_checks?id=eq."+pending[i].id,{method:"PATCH",body:{flash_status:"ไม่พบข้อมูล"}});
+          }
         }catch(e){}
-        if(newSt&&newSt!==pending[i].flash_status){
-          if(!updates[newSt])updates[newSt]=[];
-          updates[newSt].push(pending[i].id);
-        }
         checked++;
         await new Promise(function(r){setTimeout(r,800);});
       }
-      var totalOk=0;
-      for(var st in updates){
-        var ids=updates[st];
-        for(var j=0;j<ids.length;j+=50){
-          var chunk=ids.slice(j,j+50);
-          try{await sbFetch("parcel_checks?id=in.("+chunk.join(",")+")",{method:"PATCH",body:{flash_status:st}});totalOk+=chunk.length;}catch(e){}
-        }
-      }
-      if(!silent)notify("🔄 ซิงค์ Flash เสร็จ — อัปเดต "+totalOk+" รายการ (เช็ค "+checked+")");
-      if(totalOk>0)onRefresh();
+      if(!silent)notify("🔄 ซิงค์เสร็จ — อัปเดต "+updated+"/"+checked);
+      if(updated>0)onRefresh();
     }catch(e){
       if(!silent)notify("❌ sync ผิดพลาด: "+e.message,"warning");
     }
@@ -923,12 +926,13 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>เบอร์โทร</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>วันเช็ค</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#0284c7",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>สถานะ Flash</th>
+          <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>รายละเอียด</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>TeleSale</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"left",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>ชื่อจริง</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"right",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>COD</th>
           <th style={{background:"#f8fafc",padding:"10px 12px",textAlign:"center",fontWeight:700,color:"#475569",borderBottom:"2px solid #e2e8f0",fontSize:11,whiteSpace:"nowrap"}}>จัดการ</th>
         </tr></thead>
-        <tbody>{filtered.length===0?<tr><td colSpan={10} style={{textAlign:"center",padding:40,color:"#94a3b8",fontSize:14}}>ไม่พบข้อมูล</td></tr>:filtered.slice((currentPage-1)*pageSize,currentPage*pageSize).map(function(p,i){
+        <tbody>{filtered.length===0?<tr><td colSpan={12} style={{textAlign:"center",padding:40,color:"#94a3b8",fontSize:14}}>ไม่พบข้อมูล</td></tr>:filtered.slice((currentPage-1)*pageSize,currentPage*pageSize).map(function(p,i){
           var idx=(currentPage-1)*pageSize+i;
           var bg=i%2===0?"#fff":"#f8fafc";
           return[<tr key={p.id} style={{background:bg}}>
@@ -939,6 +943,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{p.phone}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate(p.check_date)}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{p.flash_status?<span style={{padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:700,color:(FLASH_STATUS_STYLES[p.flash_status]||{}).c||"#94a3b8",background:(FLASH_STATUS_STYLES[p.flash_status]||{}).bg||"#f1f5f9"}}>{p.flash_status}</span>:<span style={{fontSize:10,color:"#cbd5e1"}}>-</span>}</td>
+            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontSize:10,color:"#475569",maxWidth:200}}>{p.flash_detail?<div><div style={{lineHeight:1.4}}>{p.flash_detail}</div>{p.flash_updated&&<div style={{color:"#94a3b8",fontSize:9,marginTop:2}}>{p.flash_updated}</div>}</div>:<span style={{color:"#cbd5e1"}}>-</span>}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}><span style={{padding:"2px 8px",borderRadius:6,fontSize:11,fontWeight:600,background:"#f0f9ff",color:"#0369a1",border:"1px solid #bae6fd"}}>{p.telesale}</span></td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontSize:11,color:"#64748b"}}>{nickToName[p.telesale]||""}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:700,color:"#059669",textAlign:"right"}}>฿{(Number(p.cod)||0).toLocaleString()}</td>
@@ -950,7 +955,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
             </td>
           </tr>,
           expandedPno===p.tracking_no&&<tr key={p.id+"_routes"} style={{background:"#f0f9ff"}}>
-            <td colSpan={11} style={{padding:"12px 20px",borderBottom:"2px solid #bae6fd"}}>
+            <td colSpan={12} style={{padding:"12px 20px",borderBottom:"2px solid #bae6fd"}}>
               {routeLoading?<div style={{textAlign:"center",padding:16,color:"#64748b",fontSize:12}}>⏳ กำลังโหลดข้อมูล...</div>
               :!routeData||routeData.length===0?<div style={{textAlign:"center",padding:16,color:"#94a3b8",fontSize:12}}>ไม่พบข้อมูลเส้นทาง</div>
               :<table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
