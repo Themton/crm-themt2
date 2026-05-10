@@ -592,6 +592,25 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
   var[filterDateFrom,setFilterDateFrom]=_s(todayVal);
   var[filterDateTo,setFilterDateTo]=_s(todayVal);
   var[currentPage,setCurrentPage]=_s(1);
+  var[expandedPno,setExpandedPno]=_s(null);
+  var[routeData,setRouteData]=_s(null);
+  var[routeLoading,setRouteLoading]=_s(false);
+  async function toggleRoutes(pno){
+    if(expandedPno===pno){setExpandedPno(null);setRouteData(null);return;}
+    setExpandedPno(pno);setRouteData(null);setRouteLoading(true);
+    try{
+      var res=await flashGetTracking(pno);
+      if(res&&res.code===1&&res.data&&res.data.routes){
+        setRouteData(res.data.routes.map(function(r){
+          var d=new Date(r.routedAt*1000);
+          var thMonth=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+          var st=flashStateText(r.state)||(FLASH_ACTION_MAP&&FLASH_ACTION_MAP[r.routeAction])||r.routeAction||"";
+          return{status:st,message:r.message||"",time:d.getDate()+" "+thMonth[d.getMonth()]+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2),ts:r.routedAt};
+        }).sort(function(a,b){return b.ts-a.ts;}));
+      }else{setRouteData([]);}
+    }catch(e){setRouteData([]);}
+    setRouteLoading(false);
+  }
   var pageSize=200;
   var[showModal,setShowModal]=_s(false);
   var[editId,setEditId]=_s(null);
@@ -915,7 +934,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           return<tr key={p.id} style={{background:bg}}>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{idx+1}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate(p.date)}</td>
-            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"#1e40af",letterSpacing:.5}}>{p.tracking_no}</td>
+            <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontWeight:600,color:"#1e40af",letterSpacing:.5,cursor:"pointer"}} onClick={function(){toggleRoutes(p.tracking_no);}} title="คลิกดูรายละเอียดสถานะ"><span style={{textDecoration:"underline",textDecorationStyle:"dotted"}}>{p.tracking_no}</span> {expandedPno===p.tracking_no?"▲":"▼"}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontWeight:600}}>{p.customer_name}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9",fontFamily:"'JetBrains Mono',monospace",fontSize:11}}>{p.phone}</td>
             <td style={{padding:"10px 12px",borderBottom:"1px solid #f1f5f9"}}>{fmtDate(p.check_date)}</td>
@@ -929,7 +948,28 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
                 <button onClick={function(){handleDel(p.id);}} style={{padding:"3px 6px",border:"none",background:"transparent",cursor:"pointer",fontSize:13}} title="ลบ">🗑️</button>
               </div>}
             </td>
-          </tr>;
+          </tr>,
+          expandedPno===p.tracking_no&&<tr key={p.id+"_routes"} style={{background:"#f0f9ff"}}>
+            <td colSpan={11} style={{padding:"12px 20px",borderBottom:"2px solid #bae6fd"}}>
+              {routeLoading?<div style={{textAlign:"center",padding:16,color:"#64748b",fontSize:12}}>⏳ กำลังโหลดข้อมูล...</div>
+              :!routeData||routeData.length===0?<div style={{textAlign:"center",padding:16,color:"#94a3b8",fontSize:12}}>ไม่พบข้อมูลเส้นทาง</div>
+              :<table style={{width:"100%",borderCollapse:"collapse",fontSize:11}}>
+                <thead><tr>
+                  <th style={{padding:"6px 10px",textAlign:"left",fontWeight:700,color:"#0369a1",borderBottom:"1px solid #bae6fd",fontSize:10,width:120}}>สถานะ Flash</th>
+                  <th style={{padding:"6px 10px",textAlign:"left",fontWeight:700,color:"#0369a1",borderBottom:"1px solid #bae6fd",fontSize:10}}>รายละเอียด</th>
+                  <th style={{padding:"6px 10px",textAlign:"right",fontWeight:700,color:"#0369a1",borderBottom:"1px solid #bae6fd",fontSize:10,width:100}}>อัพเดต</th>
+                </tr></thead>
+                <tbody>{routeData.map(function(r,ri){
+                  var sty=FLASH_STATUS_STYLES[r.status]||{c:"#64748b",bg:"#f1f5f9"};
+                  return<tr key={ri} style={{background:ri===0?"#dbeafe":"transparent"}}>
+                    <td style={{padding:"6px 10px",borderBottom:"1px solid #e0f2fe"}}><span style={{padding:"2px 8px",borderRadius:10,fontSize:9,fontWeight:700,color:sty.c,background:sty.bg}}>{r.status}</span></td>
+                    <td style={{padding:"6px 10px",borderBottom:"1px solid #e0f2fe",color:"#334155",fontSize:11}}>{r.message}</td>
+                    <td style={{padding:"6px 10px",borderBottom:"1px solid #e0f2fe",textAlign:"right",color:"#64748b",fontSize:10,fontWeight:600,whiteSpace:"nowrap"}}>{r.time}</td>
+                  </tr>;
+                })}</tbody>
+              </table>}
+            </td>
+          </tr>];
         })}</tbody>
       </table>
     </div>
