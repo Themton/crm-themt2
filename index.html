@@ -106,7 +106,7 @@ function flashStateText(state){
   if(typeof FLASH_STATUS_MAP!=="undefined"&&FLASH_STATUS_MAP[String(s)])return FLASH_STATUS_MAP[String(s)];
   return"";
 }
-var FLASH_STATUS_STYLES={"สร้างรายการ":{c:"#6b7280",bg:"#f3f4f6"},"รับพัสดุแล้ว":{c:"#10b981",bg:"#d1fae5"},"รับเข้าระบบ":{c:"#10b981",bg:"#d1fae5"},"อยู่ในระบบขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังจัดส่ง":{c:"#8b5cf6",bg:"#ede9fe"},"การนำจ่าย":{c:"#8b5cf6",bg:"#ede9fe"},"พัสดุมีปัญหา":{c:"#d97706",bg:"#fef3c7"},"ติดต่อผู้รับไม่ได้":{c:"#d97706",bg:"#fef3c7"},"จัดส่งไม่สำเร็จ":{c:"#dc2626",bg:"#fecaca"},"ปิดข้อยกเว้น":{c:"#dc2626",bg:"#fecaca"},"เซ็นรับแล้ว":{c:"#0d9488",bg:"#ccfbf1"},"ลูกค้ารับของ":{c:"#0d9488",bg:"#ccfbf1"},"ส่งคืน":{c:"#ea580c",bg:"#fed7aa"},"คืนต้นทาง":{c:"#ea580c",bg:"#fed7aa"},"คืนสำเร็จ":{c:"#dc2626",bg:"#fecaca"},"ตีกลับ":{c:"#dc2626",bg:"#fecaca"},"ระงับ":{c:"#64748b",bg:"#f1f5f9"},"ไม่พบข้อมูล":{c:"#9ca3af",bg:"#f3f4f6"}};
+var FLASH_STATUS_STYLES={"สร้างรายการ":{c:"#6b7280",bg:"#f3f4f6"},"รับพัสดุแล้ว":{c:"#10b981",bg:"#d1fae5"},"รับเข้าระบบ":{c:"#10b981",bg:"#d1fae5"},"อยู่ในระบบขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังขนส่ง":{c:"#3b82f6",bg:"#dbeafe"},"กำลังจัดส่ง":{c:"#8b5cf6",bg:"#ede9fe"},"การนำจ่าย":{c:"#8b5cf6",bg:"#ede9fe"},"พัสดุมีปัญหา":{c:"#d97706",bg:"#fef3c7"},"ติดต่อผู้รับไม่ได้":{c:"#d97706",bg:"#fef3c7"},"จัดส่งไม่สำเร็จ":{c:"#dc2626",bg:"#fecaca"},"ปิดข้อยกเว้น":{c:"#dc2626",bg:"#fecaca"},"เซ็นรับแล้ว":{c:"#0d9488",bg:"#ccfbf1"},"ลูกค้ารับของ":{c:"#0d9488",bg:"#ccfbf1"},"ส่งคืน":{c:"#ea580c",bg:"#fed7aa"},"คืนต้นทาง":{c:"#ea580c",bg:"#fed7aa"},"คืนสำเร็จ":{c:"#dc2626",bg:"#fecaca"},"ตีกลับ":{c:"#dc2626",bg:"#fecaca"},"ตีกลับโดยระบบ":{c:"#ea580c",bg:"#fff7ed"},"ตีกลับถึงผู้จัดส่งแล้ว":{c:"#dc2626",bg:"#fecaca"},"ระงับ":{c:"#64748b",bg:"#f1f5f9"},"ไม่พบข้อมูล":{c:"#9ca3af",bg:"#f3f4f6"}};
 // สร้างใบปะหน้าเอง 100x75mm — รองรับหลายใบ
 function printCustomLabels(orders,pnos){
   var srcInfo=FLASH_SRC;var now=new Date();var dateStr=now.getDate()+"/"+(now.getMonth()+1)+"/"+now.getFullYear()+" "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
@@ -415,8 +415,8 @@ function mapRow(r){return{OrderID:r.order_id,Timestamp:r.timestamp,MobileNo:norm
 var FLASH_STATUS_MAP={"1001":"สร้างรายการ","1002":"รับเข้าระบบ","1003":"พิคกิ้งเสร็จ","1004":"แพ็คแล้ว","1005":"รับพัสดุแล้ว","1006":"กำลังขนส่ง","1007":"การนำจ่าย","1008":"ระงับ","1009":"เซ็นรับแล้ว","1010":"พัสดุมีปัญหา","1011":"ตีกลับ","1012":"ปิดข้อยกเว้น","1013":"ยกเลิก",
   "1":"รับพัสดุแล้ว","2":"อยู่ในระบบขนส่ง","3":"กำลังจัดส่ง","4":"ส่งคืน","5":"เซ็นรับแล้ว","6":"คืนสำเร็จ","7":"จัดส่งไม่สำเร็จ","8":"ยกเลิก","9":"ระงับ"};
 var FLASH_ACTION_MAP={"RECEIVE_WAREHOUSE_SCAN":"รับเข้าระบบ","SHIPMENT_WAREHOUSE_SCAN":"อยู่ในระบบขนส่ง","PICK_UP":"รับพัสดุแล้ว","RECEIVED":"รับพัสดุแล้ว","SHIPPING":"กำลังขนส่ง","IN_TRANSIT":"กำลังขนส่ง","OUT_FOR_DELIVERY":"การนำจ่าย","DELIVERY":"การนำจ่าย","DELIVERY_TICKET_CREATION_SCAN":"กำลังจัดส่ง","DELIVERY_CONFIRM":"เซ็นรับแล้ว","DELIVERED":"เซ็นรับแล้ว","FAILED_DELIVERY":"จัดส่งไม่สำเร็จ","PROBLEM_SHIPMENT":"พัสดุมีปัญหา","RETURN":"ตีกลับ","RETURNED":"ตีกลับ","CANCELLED":"ยกเลิก"};
-var FLASH_STATUS_COLOR={"สร้างรายการ":"#94a3b8","รับเข้าระบบ":"#6366f1","รับพัสดุแล้ว":"#0284c7","กำลังขนส่ง":"#d97706","อยู่ในระบบขนส่ง":"#3b82f6","กำลังจัดส่ง":"#8b5cf6","การนำจ่าย":"#ea580c","เซ็นรับแล้ว":"#059669","ลูกค้ารับของ":"#059669","พัสดุมีปัญหา":"#d97706","ติดต่อผู้รับไม่ได้":"#d97706","ตีกลับ":"#dc2626","ส่งคืน":"#ea580c","คืนสำเร็จ":"#dc2626","คืนต้นทาง":"#ea580c","ปิดข้อยกเว้น":"#dc2626","จัดส่งไม่สำเร็จ":"#dc2626","ระงับ":"#64748b","ยกเลิก":"#64748b"};
-function FlashStatusBadge({status}){if(!status)return null;var co=FLASH_STATUS_COLOR[status]||"#94a3b8";var icon=status==="เซ็นรับแล้ว"||status==="ลูกค้ารับของ"?"✅":status==="การนำจ่าย"||status==="กำลังจัดส่ง"?"🚚":status==="กำลังขนส่ง"||status==="อยู่ในระบบขนส่ง"?"📦":status==="รับเข้าระบบ"?"📥":status==="ตีกลับ"||status==="จัดส่งไม่สำเร็จ"||status==="ปิดข้อยกเว้น"||status==="คืนสำเร็จ"||status==="ส่งคืน"||status==="คืนต้นทาง"?"❌":status==="พัสดุมีปัญหา"||status==="ติดต่อผู้รับไม่ได้"?"⚠️":status==="ระงับ"?"⏸️":"📋";return<span style={{padding:"2px 6px",borderRadius:10,fontSize:9,fontWeight:700,background:co+"20",color:co}}>{icon} {status}</span>;}
+var FLASH_STATUS_COLOR={"สร้างรายการ":"#94a3b8","รับเข้าระบบ":"#6366f1","รับพัสดุแล้ว":"#0284c7","กำลังขนส่ง":"#d97706","อยู่ในระบบขนส่ง":"#3b82f6","กำลังจัดส่ง":"#8b5cf6","การนำจ่าย":"#ea580c","เซ็นรับแล้ว":"#059669","ลูกค้ารับของ":"#059669","พัสดุมีปัญหา":"#d97706","ติดต่อผู้รับไม่ได้":"#d97706","ตีกลับ":"#dc2626","ตีกลับโดยระบบ":"#ea580c","ตีกลับถึงผู้จัดส่งแล้ว":"#dc2626","ส่งคืน":"#ea580c","คืนสำเร็จ":"#dc2626","คืนต้นทาง":"#ea580c","ปิดข้อยกเว้น":"#dc2626","จัดส่งไม่สำเร็จ":"#dc2626","ระงับ":"#64748b","ยกเลิก":"#64748b"};
+function FlashStatusBadge({status}){if(!status)return null;var co=FLASH_STATUS_COLOR[status]||"#94a3b8";var icon=status==="เซ็นรับแล้ว"||status==="ลูกค้ารับของ"?"✅":status==="การนำจ่าย"||status==="กำลังจัดส่ง"?"🚚":status==="กำลังขนส่ง"||status==="อยู่ในระบบขนส่ง"?"📦":status==="รับเข้าระบบ"?"📥":status==="ตีกลับ"||status==="จัดส่งไม่สำเร็จ"||status==="ปิดข้อยกเว้น"||status==="คืนสำเร็จ"||status==="ส่งคืน"||status==="คืนต้นทาง"||status==="ตีกลับถึงผู้จัดส่งแล้ว"?"❌":status==="ตีกลับโดยระบบ"?"🔄":status==="พัสดุมีปัญหา"||status==="ติดต่อผู้รับไม่ได้"?"⚠️":status==="ระงับ"?"⏸️":"📋";return<span style={{padding:"2px 6px",borderRadius:10,fontSize:9,fontWeight:700,background:co+"20",color:co}}>{icon} {status}</span>;}
 async function dbGetAccounts(){try{var data=await sbFetch("accounts?select=*");return(data||[]).map(function(a){return{username:a.email,password:String(a.password),displayName:a.display_name,nickname:a.nickname||"",role:a.role,active:a.active,canUpsell:a.can_upsell};});}catch(e){console.error("dbGetAccounts:",e);return[];}}
 async function dbGetOrders(userId){try{var q="orders?select=*&order=timestamp.desc";if(userId&&userId!=="ALL"){q+="&account_email=eq."+encodeURIComponent(userId);}var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch(q,{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all.map(mapRow);}catch(e){console.error("dbGetOrders:",e);return[];}}
 async function dbGetUpsell(userId){try{var q="upsell?select=*&order=timestamp.desc";if(userId&&userId!=="ALL"){q+="&account_email=eq."+encodeURIComponent(userId);}var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch(q,{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all.map(mapRow);}catch(e){console.error("dbGetUpsell:",e);return[];}}
@@ -657,7 +657,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
       :filterStatus==="ว่างเปล่า"?!p.flash_status
       :filterStatus==="เซ็นรับแล้ว"?(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")
       :filterStatus==="รอจัดส่ง"?(!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ")
-      :filterStatus==="ตีกลับ"?(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ")
+      :filterStatus==="ตีกลับ"?(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว")
       :p.flash_status===filterStatus;
     var mt=filterTele==="ทั้งหมด"||p.telesale===filterTele;
     var md=true;
@@ -672,7 +672,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     return ms&&mst&&mt&&md;
   });
 
-  var summary={total:filtered.length,confirmed:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length,pending:filtered.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length,returned:filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).length,totalCOD:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
+  var summary={total:filtered.length,confirmed:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length,pending:filtered.filter(function(p){return!p.flash_status||p.flash_status==="สร้างรายการ"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length,returned:filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";}).length,totalCOD:filtered.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0)};
 
   // --- Import logic (lazy — คำนวณตอนเปิด modal เท่านั้น) ---
   var[importData,setImportData]=_s([]);
@@ -728,6 +728,11 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           if(res&&res.code===1&&res.data){
             var nf=flashStateText(res.data.state);
             if(!nf&&res.data.stateText)nf=res.data.stateText;
+            // แยกสถานะตีกลับให้ละเอียด
+            if(nf==="ตีกลับ"||nf==="ส่งคืน"||nf==="คืนสำเร็จ"){
+              var hasReturn=res.data.routes&&res.data.routes.some(function(r){return(r.message||"").indexOf("ถึงผู้จัดส่ง")!==-1||(r.message||"").indexOf("คืนสำเร็จ")!==-1||(r.message||"").indexOf("ส่งคืนต้นทาง")!==-1;});
+              nf=hasReturn?"ตีกลับถึงผู้จัดส่งแล้ว":"ตีกลับโดยระบบ";
+            }
             var detail="",updTime="";
             if(res.data.routes&&res.data.routes.length>0){
               var matched=res.data.routes.find(function(r){return r.state===res.data.state;})||res.data.routes[0];
@@ -873,7 +878,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     {/* แจ้งเตือนอัตราตีกลับ — สีแดงเด่นชัด */}
     {summary.total>0&&summary.returned>0&&(function(){
       var returnRate=Math.round(summary.returned/summary.total*100);
-      var returnCOD=filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+      var returnCOD=filtered.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
       return<div style={{background:"linear-gradient(135deg,#dc2626,#b91c1c)",borderRadius:14,padding:"20px 24px",marginBottom:16,border:"2px solid #991b1b",display:"flex",alignItems:"center",gap:16,flexWrap:"wrap",boxShadow:"0 4px 16px rgba(220,38,38,.3)"}}>
         <div style={{fontSize:40}}>🚨</div>
         <div style={{flex:1}}>
@@ -1120,7 +1125,7 @@ function ParcelReportPage({parcels,accounts,user}){
 
   var total=all.length;
   var delivered=all.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
-  var returned=all.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).length;
+  var returned=all.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";}).length;
   var deliveredCOD=all.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
   var returnRate=total>0?Math.round(returned/total*100):0;
   var deliverRate=total>0?Math.round(delivered/total*100):0;
@@ -1132,7 +1137,7 @@ function ParcelReportPage({parcels,accounts,user}){
     if(!pm[t])pm[t]={name:t,realName:nickToName[t]||"",total:0,delivered:0,returned:0,cod:0};
     pm[t].total++;
     if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ"){pm[t].delivered++;pm[t].cod+=Number(p.cod)||0;}
-    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ")pm[t].returned++;
+    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว")pm[t].returned++;
   });
   var persons=Object.values(pm).sort(function(a,b){
     var ra=a.total>0?a.delivered/a.total:0;
@@ -1478,11 +1483,11 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
     var mP=allP.filter(function(p){return(p.date||"").substring(0,7)===currentMonth;});
     var mTotal=mP.length;
     var mDelivered=mP.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
-    var mReturned=mP.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).length;
+    var mReturned=mP.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";}).length;
     var mInTransit=mP.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
     var mReturnRate=mTotal>0?Math.round(mReturned/mTotal*100):0;
     var mDeliverRate=mTotal>0?Math.round(mDelivered/mTotal*100):0;
-    var mReturnCOD=mP.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+    var mReturnCOD=mP.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
 
     // สรุปรายคน
     var staffMap={};
@@ -1490,12 +1495,12 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
     monthO.forEach(function(o){var p=o.SalesPerson||"?";if(!staffMap[p])staffMap[p]={name:p,realName:nickToName[p]||"",todayOrders:0,todaySales:0,monthOrders:0,parcels:0,delivered:0,returned:0};staffMap[p].monthOrders++;});
     mP.forEach(function(p){var t=p.telesale||"?";if(!staffMap[t])staffMap[t]={name:t,realName:nickToName[t]||"",todayOrders:0,todaySales:0,monthOrders:0,parcels:0,delivered:0,returned:0};staffMap[t].parcels++;
       if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")staffMap[t].delivered++;
-      if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ")staffMap[t].returned++;
+      if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว")staffMap[t].returned++;
     });
     var staffList=Object.values(staffMap).filter(function(s){return s.name!=="?";}).sort(function(a,b){return b.todaySales-a.todaySales;});
 
     // สถานะพัสดุ
-    var statuses=[["เซ็นรับแล้ว","#059669"],["ลูกค้ารับของ","#059669"],["อยู่ในระบบขนส่ง","#3b82f6"],["กำลังขนส่ง","#d97706"],["สร้างรายการ","#6b7280"],["การนำจ่าย","#8b5cf6"],["กำลังจัดส่ง","#8b5cf6"],["ตีกลับ","#ef4444"],["ส่งคืน","#ea580c"],["คืนต้นทาง","#ea580c"],["คืนสำเร็จ","#dc2626"],["ปิดข้อยกเว้น","#dc2626"],["จัดส่งไม่สำเร็จ","#dc2626"],["พัสดุมีปัญหา","#d97706"],["ติดต่อผู้รับไม่ได้","#d97706"],["ระงับ","#64748b"],["รับเข้าระบบ","#10b981"],["รับพัสดุแล้ว","#0284c7"]];
+    var statuses=[["เซ็นรับแล้ว","#059669"],["ลูกค้ารับของ","#059669"],["อยู่ในระบบขนส่ง","#3b82f6"],["กำลังขนส่ง","#d97706"],["สร้างรายการ","#6b7280"],["การนำจ่าย","#8b5cf6"],["กำลังจัดส่ง","#8b5cf6"],["ตีกลับโดยระบบ","#ea580c"],["ตีกลับถึงผู้จัดส่งแล้ว","#dc2626"],["ตีกลับ","#ef4444"],["ส่งคืน","#ea580c"],["คืนต้นทาง","#ea580c"],["คืนสำเร็จ","#dc2626"],["ปิดข้อยกเว้น","#dc2626"],["จัดส่งไม่สำเร็จ","#dc2626"],["พัสดุมีปัญหา","#d97706"],["ติดต่อผู้รับไม่ได้","#d97706"],["ระงับ","#64748b"],["รับเข้าระบบ","#10b981"],["รับพัสดุแล้ว","#0284c7"]];
     var statusCounts=statuses.map(function(s){return{label:s[0],color:s[1],count:mP.filter(function(p){return p.flash_status===s[0];}).length};}).filter(function(s){return s.count>0;});
 
     return<div>
@@ -1601,7 +1606,7 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {warning.map(function(s){
               var failRate=Math.round(s.returned/s.parcels*100);
-              var lostCOD=mP.filter(function(p){return p.telesale===s.name&&(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ");}).reduce(function(sum,p){return sum+(Number(p.cod)||0);},0);
+              var lostCOD=mP.filter(function(p){return p.telesale===s.name&&(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว");}).reduce(function(sum,p){return sum+(Number(p.cod)||0);},0);
               return<div key={s.name} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:"#fff",borderRadius:10,border:"1px solid #fecaca"}}>
                 <div style={{fontSize:24}}>🚨</div>
                 <div style={{flex:1}}>
@@ -1663,10 +1668,10 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
   var todaySales2=todayOrders.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
   var totalParcels=monthParcels.length;
   var delivered=monthParcels.filter(function(p){return p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ";}).length;
-  var returned=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).length;
+  var returned=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";}).length;
   var inTransit=monthParcels.filter(function(p){return p.flash_status==="อยู่ในระบบขนส่ง"||p.flash_status==="กำลังขนส่ง"||p.flash_status==="กำลังจัดส่ง"||p.flash_status==="การนำจ่าย"||p.flash_status==="รับพัสดุแล้ว"||p.flash_status==="รับเข้าระบบ";}).length;
   var returnRate=totalParcels>0?Math.round(returned/totalParcels*100):0;
-  var returnCOD=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
+  var returnCOD=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";}).reduce(function(s,p){return s+(Number(p.cod)||0);},0);
 
   return<div>
     <div style={{marginBottom:24}}>
@@ -1675,7 +1680,7 @@ function DashboardPage({user,isAdmin,allOrders,upsellOrders,parcels,accounts,set
     </div>
 
     {returnRate>0&&(function(){
-      var returnedParcels=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ";});
+      var returnedParcels=monthParcels.filter(function(p){return p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว";});
       return<div style={{marginBottom:24}}>
         {/* แถบเตือนหลัก */}
         <div style={{background:"linear-gradient(135deg,#dc2626,#991b1b)",borderRadius:"16px 16px 0 0",padding:"24px 28px",color:"#fff"}}>
@@ -3171,7 +3176,7 @@ function HRDashboard({allOrders,upsellOrders,accounts,parcels,setPage}){
   todayO.forEach(function(o){var p=o.SalesPerson||"?";if(!pm[p])pm[p]={name:p,realName:nickToName[p]||"",todayOrders:0,monthOrders:0,monthSales:0,parcels:0,delivered:0,returned:0,returnCOD:0};pm[p].todayOrders++;});
   mP.forEach(function(p){var t=p.telesale||"?";if(!pm[t])pm[t]={name:t,realName:nickToName[t]||"",todayOrders:0,monthOrders:0,monthSales:0,parcels:0,delivered:0,returned:0,returnCOD:0};pm[t].parcels++;
     if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")pm[t].delivered++;
-    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"){pm[t].returned++;pm[t].returnCOD+=Number(p.cod)||0;}
+    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว"){pm[t].returned++;pm[t].returnCOD+=Number(p.cod)||0;}
   });
   var persons=Object.values(pm).filter(function(p){return p.name!=="?";});
 
@@ -3281,7 +3286,7 @@ function HRDashboard({allOrders,upsellOrders,accounts,parcels,setPage}){
       prevO.forEach(function(o){var p=o.SalesPerson||"?";if(!prev[p])prev[p]={orders:0,sales:0,parcels:0,delivered:0,returned:0};prev[p].orders++;prev[p].sales+=Number(o.SalePrice)||0;});
       prevP.forEach(function(p){var t=p.telesale||"?";if(!prev[t])prev[t]={orders:0,sales:0,parcels:0,delivered:0,returned:0};prev[t].parcels++;
         if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")prev[t].delivered++;
-        if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ")prev[t].returned++;
+        if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว")prev[t].returned++;
       });
 
       var allNames={};persons.forEach(function(p){allNames[p.name]=true;});Object.keys(prev).forEach(function(n){if(n!=="?")allNames[n]=true;});
@@ -3365,7 +3370,7 @@ function HRReportPage({allOrders,upsellOrders,accounts,parcels}){
   fUpsell.forEach(function(o){var p=o.SalesPerson||"?";if(!pm[p])pm[p]={name:p,realName:nickToName[p]||"",orders:0,orderSales:0,upsell:0,upsellSales:0,cod:0,transfer:0,parcels:0,delivered:0,returned:0,returnCOD:0};pm[p].upsell++;pm[p].upsellSales+=Number(o.SalePrice)||0;});
   fParcels.forEach(function(p){var t=p.telesale||"?";if(!pm[t])pm[t]={name:t,realName:nickToName[t]||"",orders:0,orderSales:0,upsell:0,upsellSales:0,cod:0,transfer:0,parcels:0,delivered:0,returned:0,returnCOD:0};pm[t].parcels++;
     if(p.flash_status==="เซ็นรับแล้ว"||p.flash_status==="ลูกค้ารับของ")pm[t].delivered++;
-    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"){pm[t].returned++;pm[t].returnCOD+=Number(p.cod)||0;}
+    if(p.flash_status==="ส่งคืน"||p.flash_status==="คืนสำเร็จ"||p.flash_status==="คืนต้นทาง"||p.flash_status==="จัดส่งไม่สำเร็จ"||p.flash_status==="ปิดข้อยกเว้น"||p.flash_status==="ตีกลับ"||p.flash_status==="ตีกลับโดยระบบ"||p.flash_status==="ตีกลับถึงผู้จัดส่งแล้ว"){pm[t].returned++;pm[t].returnCOD+=Number(p.cod)||0;}
   });
   var persons=Object.values(pm).filter(function(p){return p.name!=="?";}).sort(function(a,b){return(b.orderSales+b.upsellSales)-(a.orderSales+a.upsellSales);});
 
