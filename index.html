@@ -567,7 +567,20 @@ async function dbAddAccount(d){await sbFetch("accounts",{method:"POST",body:{ema
 async function dbToggleAccount(email){var data=await sbFetch("accounts?email=eq."+encodeURIComponent(email)+"&select=active");if(data&&data[0]){await sbFetch("accounts?email=eq."+encodeURIComponent(email),{method:"PATCH",body:{active:!data[0].active}});}}
 async function dbDeleteAccount(email){await sbFetch("accounts?email=eq."+encodeURIComponent(email),{method:"DELETE"});}
 async function dbResetPassword(email,pw){await sbFetch("accounts?email=eq."+encodeURIComponent(email),{method:"PATCH",body:{password:pw}});}
-async function dbEditAccount(oldEmail,d){var up={};if(d.username)up.email=d.username;if(d.displayName)up.display_name=d.displayName;if(d.nickname!==undefined)up.nickname=d.nickname;up.role=d.role||"user";await sbFetch("accounts?email=eq."+encodeURIComponent(oldEmail),{method:"PATCH",body:up});}
+async function dbEditAccount(oldEmail,d,oldNickname){
+  var up={};
+  if(d.username)up.email=d.username;
+  if(d.displayName!==undefined)up.display_name=d.displayName;
+  if(d.nickname!==undefined)up.nickname=d.nickname;
+  up.role=d.role||"user";
+  await sbFetch("accounts?email=eq."+encodeURIComponent(oldEmail),{method:"PATCH",body:up});
+  // อัพเดตชื่อเล่นในทุกตาราง
+  if(oldNickname&&d.nickname&&oldNickname!==d.nickname){
+    await sbFetch("orders?sales_person=eq."+encodeURIComponent(oldNickname),{method:"PATCH",body:{sales_person:d.nickname}});
+    await sbFetch("upsell?sales_person=eq."+encodeURIComponent(oldNickname),{method:"PATCH",body:{sales_person:d.nickname}});
+    await sbFetch("parcel_checks?telesale=eq."+encodeURIComponent(oldNickname),{method:"PATCH",body:{telesale:d.nickname}});
+  }
+}
 async function dbSaveUpsellBatch(usernames){var all=await sbFetch("accounts?select=email,can_upsell");for(var i=0;i<(all||[]).length;i++){var should=usernames.indexOf(all[i].email)>=0;if(all[i].can_upsell!==should)await sbFetch("accounts?email=eq."+encodeURIComponent(all[i].email),{method:"PATCH",body:{can_upsell:should}});}}
 /* ===== PARCEL CHECK DB ===== */
 async function dbGetParcels(){try{var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch("parcel_checks?select=*&order=created_at.desc",{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all;}catch(e){console.error("dbGetParcels:",e);return[];}}
@@ -1414,9 +1427,14 @@ function App(){var _s=useState;
   async function delAcc(u){try{await dbDeleteAccount(u);notify("ลบแล้ว","warning");await loadAccounts();}catch(e){}}
   async function resetPw(u,pw){try{await dbResetPassword(u,pw);notify("รีเซ็ตแล้ว");}catch(e){}}
   async function editAcc(old,data){try{
-    await dbEditAccount(old,data);
-    notify("✅ แก้ไขบัญชีสำเร็จ — ออเดอร์เก่าคงชื่อเดิมไว้เป็นประวัติ");
+    var oldAcc=accounts.find(function(a){return a.username===old;});
+    var oldNickname=oldAcc?extractNickname(oldAcc.displayName,oldAcc.nickname):"";
+    await dbEditAccount(old,data,oldNickname);
+    notify("✅ แก้ไขบัญชีสำเร็จ — อัพเดตชื่อทุกหน้าแล้ว");
     await loadAccounts();
+    await loadOrders();
+    await loadUpsell();
+    await loadParcels();
     var cur=userRef.current;if(cur&&cur.username===old){var u2={...cur,...data};userRef.current=u2;setUser(u2);localStorage.setItem("ps_user",JSON.stringify(u2));}return true;
   }catch(e){notify("แก้ไขผิดพลาด: "+String(e.message||e),"warning");return false;}}
   var canUpsell=user.canUpsell||isAdmin;
