@@ -728,10 +728,10 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
           if(res&&res.code===1&&res.data){
             var nf=flashStateText(res.data.state);
             if(!nf&&res.data.stateText)nf=res.data.stateText;
-            // แยกสถานะตีกลับให้ละเอียด
+            // แยกสถานะตีกลับ: ส่งคืน = กำลังส่งกลับ, ตีกลับ = ถึงผู้จัดส่งแล้ว
             if(nf==="ตีกลับ"||nf==="ส่งคืน"||nf==="คืนสำเร็จ"){
-              var hasReturn=res.data.routes&&res.data.routes.some(function(r){return(r.message||"").indexOf("ถึงผู้จัดส่ง")!==-1||(r.message||"").indexOf("คืนสำเร็จ")!==-1||(r.message||"").indexOf("ส่งคืนต้นทาง")!==-1;});
-              nf=hasReturn?"ตีกลับถึงผู้จัดส่งแล้ว":"ตีกลับโดยระบบ";
+              var hasArrived=res.data.routes&&res.data.routes.some(function(r){return(r.message||"").indexOf("ถึงผู้จัดส่ง")!==-1||(r.message||"").indexOf("คืนสำเร็จ")!==-1||(r.message||"").indexOf("ส่งคืนต้นทาง")!==-1;});
+              nf=hasArrived?"ตีกลับ":"ส่งคืน";
             }
             var detail="",updTime="";
             if(res.data.routes&&res.data.routes.length>0){
