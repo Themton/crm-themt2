@@ -601,12 +601,21 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     try{
       var res=await flashGetTracking(pno);
       if(res&&res.code===1&&res.data&&res.data.routes){
-        setRouteData(res.data.routes.map(function(r){
+        var thMonth=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+        var mapped=res.data.routes.map(function(r){
           var d=new Date(r.routedAt*1000);
-          var thMonth=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
           var st=flashStateText(r.state)||(FLASH_ACTION_MAP&&FLASH_ACTION_MAP[r.routeAction])||r.routeAction||"";
           return{status:st,message:r.message||"",time:d.getDate()+" "+thMonth[d.getMonth()]+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2),ts:r.routedAt};
-        }).sort(function(a,b){return b.ts-a.ts;}));
+        }).sort(function(a,b){return b.ts-a.ts;});
+        setRouteData(mapped);
+        if(mapped.length>0){
+          var latest=mapped[0];
+          var p=myParcels.find(function(x){return x.tracking_no===pno;});
+          if(p&&!p.flash_detail){
+            await sbFetch("parcel_checks?id=eq."+p.id,{method:"PATCH",body:{flash_detail:latest.message,flash_updated:latest.time}});
+            p.flash_detail=latest.message;p.flash_updated=latest.time;
+          }
+        }
       }else{setRouteData([]);}
     }catch(e){setRouteData([]);}
     setRouteLoading(false);
