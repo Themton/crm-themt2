@@ -609,11 +609,19 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
         }).sort(function(a,b){return b.ts-a.ts;});
         setRouteData(mapped);
         if(mapped.length>0){
-          var latest=mapped[0];
           var p=myParcels.find(function(x){return x.tracking_no===pno;});
-          if(p&&!p.flash_detail){
-            await sbFetch("parcel_checks?id=eq."+p.id,{method:"PATCH",body:{flash_detail:latest.message,flash_updated:latest.time}});
-            p.flash_detail=latest.message;p.flash_updated=latest.time;
+          if(p){
+            var matchedRoute=res.data.routes.find(function(r){return r.state===res.data.state;})||res.data.routes[0];
+            var md=new Date(matchedRoute.routedAt*1000);
+            var mThM=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];
+            var mTime=md.getDate()+" "+mThM[md.getMonth()]+" "+("0"+md.getHours()).slice(-2)+":"+("0"+md.getMinutes()).slice(-2);
+            var mDetail=matchedRoute.message||"";
+            var mStatus=flashStateText(res.data.state)||res.data.stateText||"";
+            var body={flash_detail:mDetail,flash_updated:mTime};
+            if(mStatus&&mStatus!==p.flash_status)body.flash_status=mStatus;
+            await sbFetch("parcel_checks?id=eq."+p.id,{method:"PATCH",body:body});
+            p.flash_detail=mDetail;p.flash_updated=mTime;
+            if(body.flash_status)p.flash_status=mStatus;
           }
         }
       }else{setRouteData([]);}
@@ -722,9 +730,9 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
             if(!nf&&res.data.stateText)nf=res.data.stateText;
             var detail="",updTime="";
             if(res.data.routes&&res.data.routes.length>0){
-              var latest=res.data.routes[0];
-              detail=latest.message||"";
-              if(latest.routedAt){var d=new Date(latest.routedAt*1000);var thM=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];updTime=d.getDate()+" "+thM[d.getMonth()]+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);}
+              var matched=res.data.routes.find(function(r){return r.state===res.data.state;})||res.data.routes[0];
+              detail=matched.message||"";
+              if(matched.routedAt){var d=new Date(matched.routedAt*1000);var thM=["ม.ค.","ก.พ.","มี.ค.","เม.ย.","พ.ค.","มิ.ย.","ก.ค.","ส.ค.","ก.ย.","ต.ค.","พ.ย.","ธ.ค."];updTime=d.getDate()+" "+thM[d.getMonth()]+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);}
             }
             if(nf){
               var body={flash_status:nf};
