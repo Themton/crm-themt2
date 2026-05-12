@@ -55,7 +55,7 @@ var FLASH_MCH_ID = localStorage.getItem("flash_mchId") || "CBF1654";
 var FLASH_KEY = localStorage.getItem("flash_key") || "976a16aac51569cb55b055c0665fef802d77a8dfad05b277b6fe312985e360e3";
 var FLASH_BASE = localStorage.getItem("flash_env") === "training" ? "https://api-training.flashexpress.com" : "https://api.flashexpress.com";
 var FLASH_ENV = localStorage.getItem("flash_env") || "production";
-var _defaultSrc={name:"THE MT",phone:"0882720183",province:"พิษณุโลก",city:"วังทอง",district:"วังทอง",zip:"65130",address:"888/11 ม.6"};
+var _defaultSrc={name:"THE MT",phone:"0985966184",province:"พิษณุโลก",city:"วังทอง",district:"วังทอง",zip:"65130",address:"888/11 ม.6"};
 var _savedSrc=null;try{_savedSrc=JSON.parse(localStorage.getItem("flash_src"));}catch(e){}
 var FLASH_SRC=(_savedSrc&&_savedSrc.province)?_savedSrc:_defaultSrc;
 var FLASH_PDF_PROXY = localStorage.getItem("flash_pdf_proxy") || "";
