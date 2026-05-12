@@ -1367,12 +1367,8 @@ function App(){var _s=useState;
   useEffect(function(){if(sbOk){loadAccounts();loadUpsellPrices();loadParcels();}},[sbOk]);
   useEffect(function(){if(accounts.length>0&&(allOrders.length>0||upsellOrders.length>0)){var em={};accounts.forEach(function(a){em[a.username]=a.displayName;});if(allOrders.length>0&&!allOrders[0].StaffName){setAllOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}if(upsellOrders.length>0&&!upsellOrders[0].StaffName){setUpsellOrders(function(p){return p.map(function(o){return{...o,StaffName:em[o.AccountEmail]||""};});});}}},[accounts]);
   useEffect(function(){if(userRef.current&&sbOk){loadOrders();loadUpsell();
-    // Auto-refresh ทุก 15 วินาที
-    var interval=setInterval(function(){loadOrders();loadUpsell();},60000);
-    var parcelInterval=setInterval(function(){loadParcels();},30000);
-
-    // Flash auto-sync ปิด — ใช้ Worker Cron ทุก 1 นาทีแทน
-    return function(){clearInterval(interval);clearInterval(parcelInterval);};
+    // ไม่ auto-reload — ลด Egress (Worker Cron ดูแลสถานะ Flash แทน)
+    return function(){};
   }},[sbOk]);
   function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"dashboard";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
   function doLogout(){localStorage.removeItem("ps_user");localStorage.removeItem("ps_page");window.location.reload();}
