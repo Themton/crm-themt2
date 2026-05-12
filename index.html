@@ -734,7 +734,7 @@ function ParcelCheckPage({parcels,setParcels,onAdd,onEdit,onDelete,onRefresh,acc
     syncingRef.current=true;
     setFlashSyncing(true);
     try{
-      var pending=await sbFetch("parcel_checks?select=id,tracking_no,flash_status&flash_status=not.in.(เซ็นรับแล้ว,ลูกค้ารับของ,ไม่พบข้อมูล)&tracking_no=like.TH*&order=id.asc",{range:"0-199"});
+      var pending=await sbFetch("parcel_checks?select=id,tracking_no,flash_status&flash_status=not.in.(เซ็นรับแล้ว,ลูกค้ารับของ,ไม่พบข้อมูล)&tracking_no=like.TH*&order=id.desc",{range:"0-199"});
       if(!pending||pending.length===0){syncingRef.current=false;setFlashSyncing(false);setFlashProgress("");if(!silent)notify("ไม่มีพัสดุ","warning");return;}
       var checked=0,updated=0;
       for(var i=0;i<pending.length;i++){
