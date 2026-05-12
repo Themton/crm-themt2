@@ -55,9 +55,7 @@ var FLASH_MCH_ID = localStorage.getItem("flash_mchId") || "CBF1654";
 var FLASH_KEY = localStorage.getItem("flash_key") || "976a16aac51569cb55b055c0665fef802d77a8dfad05b277b6fe312985e360e3";
 var FLASH_BASE = localStorage.getItem("flash_env") === "training" ? "https://api-training.flashexpress.com" : "https://api.flashexpress.com";
 var FLASH_ENV = localStorage.getItem("flash_env") || "production";
-var _defaultSrc={name:"THE MT",phone:"0985966184",province:"พิษณุโลก",city:"วังทอง",district:"วังทอง",zip:"65130",address:"888/11 ม.6"};
-var _savedSrc=null;try{_savedSrc=JSON.parse(localStorage.getItem("flash_src"));}catch(e){}
-var FLASH_SRC=(_savedSrc&&_savedSrc.province)?_savedSrc:_defaultSrc;
+var FLASH_SRC={name:"THE MT",phone:"0985966184",province:"พิษณุโลก",city:"วังทอง",district:"วังทอง",zip:"65130",address:"888/11 ม.6"};
 var FLASH_PDF_PROXY = localStorage.getItem("flash_pdf_proxy") || "";
 async function flashSign(params){var keys=Object.keys(params).filter(function(k){return k!=="sign"&&params[k]!==undefined&&params[k]!==""&&params[k]!==null;}).sort();var stringA=keys.map(function(k){return k+"="+params[k];}).join("&");var stringSignTemp=stringA+"&key="+FLASH_KEY;var enc=new TextEncoder().encode(stringSignTemp);var hash=await crypto.subtle.digest("SHA-256",enc);return Array.from(new Uint8Array(hash)).map(function(b){return b.toString(16).padStart(2,"0");}).join("").toUpperCase();}
 var FLASH_WORKER=localStorage.getItem("flash_worker")||"https://flash-proxy.themtja.workers.dev";
@@ -2408,7 +2406,7 @@ function ShippingPage({orders,upsellOrders,isAdmin,isShipping,onUpdateStatus,onE
           var env=document.getElementById("f_env").value||"training";FLASH_ENV=env;localStorage.setItem("flash_env",env);
           FLASH_BASE=env==="production"?"https://api.flashexpress.com":"https://api-training.flashexpress.com";
           FLASH_SRC={name:document.getElementById("f_srcName").value,phone:document.getElementById("f_srcPhone").value,address:document.getElementById("f_srcAddr").value,district:document.getElementById("f_srcDist").value,city:document.getElementById("f_srcCity").value,province:document.getElementById("f_srcProv").value,zip:document.getElementById("f_srcZip").value};
-          localStorage.setItem("flash_src",JSON.stringify(FLASH_SRC));
+          // อัพเดตค่าผู้ส่ง (ไม่บันทึก localStorage)
           alert("✅ บันทึกแล้ว! ("+(env==="production"?"Production":"Training")+")");setFlashSettings(false);
         }} style={{padding:"8px 20px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#d97706,#b45309)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>💾 บันทึก</button>
       </div>}
