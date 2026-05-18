@@ -2860,6 +2860,17 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         var lastDate=null;var lastDateStr="—";
         myAll.forEach(function(o){var d=getDate(o.Timestamp);if(!lastDate||d>lastDate){lastDate=d;lastDateStr=d;}});
         
+        // Last work time: time range on last order day
+        var lastWorkTime="—";
+        if(lastDate){
+          var lastDayOrders=myAll.filter(function(o){return getDate(o.Timestamp)===lastDate;}).sort(function(a,b){return a.Timestamp>b.Timestamp?1:-1;});
+          if(lastDayOrders.length>0){
+            var ft2=getTime(lastDayOrders[0].Timestamp);
+            var lt2=getTime(lastDayOrders[lastDayOrders.length-1].Timestamp);
+            lastWorkTime=ft2+(lastDayOrders.length>1?" - "+lt2:"")+" ("+lastDayOrders.length+")";
+          }
+        }
+        
         // Days since last order
         var daysSince=lastDate?Math.floor((today-new Date(lastDate))/(1000*60*60*24)):999;
         
@@ -2921,7 +2932,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         else if(daysSince>2){status="slow";statusLabel="🟡 ช้า";statusColor="#d97706";}
         
         
-        return{nick:nick,realName:a.displayName,email:a.username,count:myPeriod.length,countAll:myAll.length,sales:sales,lastDate:lastDateStr,daysSince:daysSince,avgPerDay:avgPerDay,activeDays:activeDays.size,firstToday:firstToday,lastToday:lastToday,todayCount:todayOrders.length,status:status,statusLabel:statusLabel,statusColor:statusColor,avgSale:avgSale,cancelRate:cancelRate,cancelCount:cancelCount,myUpsellCount:myUpsellCount,burstCount:burstCount,workHours:workHours,flags:flags,isOnline:isOnline,onlineLabel:onlineLabel,lastLoginStr:lastLoginStr,lastSeenStr:lastSeenStr};
+        return{nick:nick,realName:a.displayName,email:a.username,count:myPeriod.length,countAll:myAll.length,sales:sales,lastDate:lastDateStr,daysSince:daysSince,avgPerDay:avgPerDay,activeDays:activeDays.size,firstToday:firstToday,lastToday:lastToday,todayCount:todayOrders.length,status:status,statusLabel:statusLabel,statusColor:statusColor,avgSale:avgSale,cancelRate:cancelRate,cancelCount:cancelCount,myUpsellCount:myUpsellCount,burstCount:burstCount,workHours:workHours,flags:flags,isOnline:isOnline,onlineLabel:onlineLabel,lastWorkTime:lastWorkTime};
       }).sort(function(a,b){return a.count===b.count?b.sales-a.sales:b.count-a.count;});
       
       var inactive=staffData.filter(function(s){return s.status==="inactive";}).length;
@@ -2940,7 +2951,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
           React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
             React.createElement("thead",null,
               React.createElement("tr",{style:{background:"#f8fafc"}},
-                ["#","ชื่อ","ออนไลน์","สถานะ","ออเดอร์","ยอดขาย","เฉลี่ย/วัน","ยอด/ออเดอร์","ยกเลิก","Upsell","วันทำงาน","ส่งล่าสุด","ห่างกี่วัน","วันนี้","เวลาเข้า","ชม.ทำงาน","เข้าระบบล่าสุด","เห็นล่าสุด"].map(function(h,i){
+                ["#","ชื่อ","ออนไลน์","สถานะ","ออเดอร์","ยอดขาย","เฉลี่ย/วัน","ยอด/ออเดอร์","ยกเลิก","Upsell","วันทำงาน","ส่งล่าสุด","ห่างกี่วัน","วันนี้","เวลาเข้า","ชม.ทำงาน","ทำงานล่าสุด"].map(function(h,i){
                   return React.createElement("th",{key:i,style:{padding:"10px 10px",textAlign:i>2?"center":"left",fontWeight:700,color:"#64748b",borderBottom:"2px solid #e5e7eb",whiteSpace:"nowrap",fontSize:11}},h);
                 })
               )
@@ -2969,8 +2980,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
                   React.createElement("td",{style:{padding:"10px 10px",textAlign:"center",fontWeight:700,color:s.todayCount===0?"#dc2626":"#059669"}},s.todayCount),
                   React.createElement("td",{style:{padding:"10px 10px",textAlign:"center",fontSize:11,color:"#64748b"}},s.firstToday),
                   React.createElement("td",{style:{padding:"10px 10px",textAlign:"center",fontSize:11,color:"#64748b"}},s.workHours),
-                  React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:10,color:"#64748b",whiteSpace:"nowrap"}},s.lastLoginStr),
-                  React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:10,color:"#64748b",whiteSpace:"nowrap"}},s.lastSeenStr)
+                  React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:10,color:"#64748b",whiteSpace:"nowrap"}},s.lastWorkTime)
                 );
               })
             )
