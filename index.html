@@ -1369,8 +1369,17 @@ function App(){var _s=useState;
     var interval=setInterval(function(){loadOrders();loadUpsell();loadParcels();},3600000);
     return function(){clearInterval(interval);};
   }},[sbOk]);
-  function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"dashboard";localStorage.setItem("ps_page",defaultPage);window.location.reload();}
-  function doLogout(){localStorage.removeItem("ps_user");localStorage.removeItem("ps_page");window.location.reload();}
+  function doLogin(acc){localStorage.setItem("ps_user",JSON.stringify(acc));var defaultPage=acc.role==="shipping"?"shipping":"dashboard";localStorage.setItem("ps_page",defaultPage);sbFetch("accounts?email=eq."+encodeURIComponent(acc.username),{method:"PATCH",body:{last_login:new Date().toISOString(),last_seen:new Date().toISOString()}}).catch(function(){});window.location.reload();}
+  function doLogout(){var u=userRef.current;if(u)sbFetch("accounts?email=eq."+encodeURIComponent(u.username),{method:"PATCH",body:{last_seen:new Date().toISOString()}}).catch(function(){});localStorage.removeItem("ps_user");localStorage.removeItem("ps_page");window.location.reload();}
+  
+  // Heartbeat: update last_seen every 60s
+  useEffect(function(){
+    var u=userRef.current;if(!u)return;
+    function ping(){sbFetch("accounts?email=eq."+encodeURIComponent(u.username),{method:"PATCH",body:{last_seen:new Date().toISOString()}}).catch(function(){});}
+    ping();
+    var iv=setInterval(ping,60000);
+    return function(){clearInterval(iv);};
+  },[]);
   if(!sbOk)return<SetupScreen onSave={function(url,key){localStorage.setItem("sb_url",url);localStorage.setItem("sb_key",key);SUPABASE_URL=url;SUPABASE_KEY=key;sbReady=true;setSbOk(true);}}/>;
   if(!user)return<LoginScreen accounts={accounts} onLogin={doLogin} onReload={loadAccounts} onSetup={function(){setSbOk(false);}}/>;
   var isAdmin=user.role==="admin";
@@ -2833,6 +2842,17 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         var myPeriod=preFiltered.filter(function(o){return o.SalesPerson===nick;});
         var sales=myPeriod.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
         
+        // Login/Activity tracking from accounts
+        var lastLogin=a.last_login||null;
+        var lastSeen=a.last_seen||null;
+        var lastLoginStr=lastLogin?function(){try{var d=new Date(lastLogin);return d.toLocaleDateString("th-TH",{day:"2-digit",month:"short"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});}catch(e){return"—";}}():"ไม่เคย";
+        var lastSeenStr=lastSeen?function(){try{var d=new Date(lastSeen);return d.toLocaleDateString("th-TH",{day:"2-digit",month:"short"})+" "+d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit"});}catch(e){return"—";}}():"ไม่เคย";
+        
+        // Online status (seen within 3 minutes)
+        var isOnline=lastSeen&&(today.getTime()-new Date(lastSeen).getTime()<3*60*1000);
+        var minutesAgo=lastSeen?Math.floor((today.getTime()-new Date(lastSeen).getTime())/(60*1000)):999999;
+        var onlineLabel=isOnline?"🟢 ออนไลน์":minutesAgo<60?"🟡 "+minutesAgo+" นาที":minutesAgo<1440?"🔴 "+Math.floor(minutesAgo/60)+" ชม.":"⚫ "+Math.floor(minutesAgo/1440)+" วัน";
+        
         // Last order date
         var lastDate=null;var lastDateStr="—";
         myAll.forEach(function(o){var d=getDate(o.Timestamp);if(!lastDate||d>lastDate){lastDate=d;lastDateStr=d;}});
@@ -2886,6 +2906,9 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         if(burstCount>0)flags.push("⚡ ส่งรวด "+burstCount+"ครั้ง");
         if(myPeriod.length>0&&activeDays.size===1&&myPeriod.length>10)flags.push("📅 ส่งวันเดียว");
         if(Number(avgPerDay)>0&&Number(avgPerDay)<0.5)flags.push("📉 เฉลี่ยต่ำ");
+        if(!lastLogin)flags.push("🚫 ไม่เคยเข้าระบบ");
+        if(isOnline&&todayOrders.length===0)flags.push("👀 ออนไลน์แต่ไม่ส่ง");
+        if(minutesAgo>1440&&myPeriod.length===0)flags.push("💤 ไม่เข้าระบบ");
         
         // Status
         var status="active";var statusLabel="✅ ปกติ";var statusColor="#059669";
@@ -2894,7 +2917,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         else if(daysSince>2){status="slow";statusLabel="🟡 ช้า";statusColor="#d97706";}
         else if(flags.length>0){status="flag";statusLabel="🟠 มีธง";statusColor="#ea580c";}
         
-        return{nick:nick,realName:a.displayName,email:a.username,count:myPeriod.length,countAll:myAll.length,sales:sales,lastDate:lastDateStr,daysSince:daysSince,avgPerDay:avgPerDay,activeDays:activeDays.size,firstToday:firstToday,lastToday:lastToday,todayCount:todayOrders.length,status:status,statusLabel:statusLabel,statusColor:statusColor,avgSale:avgSale,cancelRate:cancelRate,cancelCount:cancelCount,myUpsellCount:myUpsellCount,burstCount:burstCount,workHours:workHours,flags:flags};
+        return{nick:nick,realName:a.displayName,email:a.username,count:myPeriod.length,countAll:myAll.length,sales:sales,lastDate:lastDateStr,daysSince:daysSince,avgPerDay:avgPerDay,activeDays:activeDays.size,firstToday:firstToday,lastToday:lastToday,todayCount:todayOrders.length,status:status,statusLabel:statusLabel,statusColor:statusColor,avgSale:avgSale,cancelRate:cancelRate,cancelCount:cancelCount,myUpsellCount:myUpsellCount,burstCount:burstCount,workHours:workHours,flags:flags,isOnline:isOnline,onlineLabel:onlineLabel,lastLoginStr:lastLoginStr,lastSeenStr:lastSeenStr};
       }).sort(function(a,b){return a.count===b.count?b.sales-a.sales:b.count-a.count;});
       
       var inactive=staffData.filter(function(s){return s.status==="inactive";}).length;
@@ -2914,7 +2937,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
           React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
             React.createElement("thead",null,
               React.createElement("tr",{style:{background:"#f8fafc"}},
-                ["#","ชื่อ","สถานะ","ออเดอร์","ยอดขาย","เฉลี่ย/วัน","ยอด/ออเดอร์","ยกเลิก","Upsell","วันทำงาน","ส่งล่าสุด","ห่างกี่วัน","วันนี้","เวลาเข้า","ชม.ทำงาน","ธงเตือน"].map(function(h,i){
+                ["#","ชื่อ","ออนไลน์","สถานะ","ออเดอร์","ยอดขาย","เฉลี่ย/วัน","ยอด/ออเดอร์","ยกเลิก","Upsell","วันทำงาน","ส่งล่าสุด","ห่างกี่วัน","วันนี้","เวลาเข้า","ชม.ทำงาน","เข้าระบบล่าสุด","เห็นล่าสุด","ธงเตือน"].map(function(h,i){
                   return React.createElement("th",{key:i,style:{padding:"10px 10px",textAlign:i>2?"center":"left",fontWeight:700,color:"#64748b",borderBottom:"2px solid #e5e7eb",whiteSpace:"nowrap",fontSize:11}},h);
                 })
               )
@@ -2927,6 +2950,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
                     React.createElement("div",{style:{fontWeight:700,fontSize:13}},s.nick),
                     React.createElement("div",{style:{fontSize:10,color:"#94a3b8"}},s.email)
                   ),
+                  React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:11,whiteSpace:"nowrap"}},React.createElement("span",{style:{fontWeight:700}},s.onlineLabel)),
                   React.createElement("td",{style:{padding:"10px 12px"}},
                     React.createElement("span",{style:{padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:700,color:s.statusColor,background:s.status==="inactive"?"#fef2f2":s.status==="warning"?"#fffbeb":s.status==="slow"?"#fefce8":"#f0fdf4"}},s.statusLabel)
                   ),
@@ -2942,7 +2966,9 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
                   React.createElement("td",{style:{padding:"10px 10px",textAlign:"center",fontWeight:700,color:s.todayCount===0?"#dc2626":"#059669"}},s.todayCount),
                   React.createElement("td",{style:{padding:"10px 10px",textAlign:"center",fontSize:11,color:"#64748b"}},s.firstToday),
                   React.createElement("td",{style:{padding:"10px 10px",textAlign:"center",fontSize:11,color:"#64748b"}},s.workHours),
-                  React.createElement("td",{style:{padding:"10px 10px",fontSize:10,maxWidth:180}},
+                  React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:10,color:"#64748b",whiteSpace:"nowrap"}},s.lastLoginStr),
+                  React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:10,color:"#64748b",whiteSpace:"nowrap"}},s.lastSeenStr),
+                  React.createElement("td",{style:{padding:"10px 10px",fontSize:10,maxWidth:200}},
                     s.flags.length>0?s.flags.map(function(f,fi){return React.createElement("span",{key:fi,style:{display:"inline-block",padding:"2px 6px",borderRadius:4,background:"#fef2f2",color:"#dc2626",fontSize:10,fontWeight:600,marginRight:4,marginBottom:2}},f);}):React.createElement("span",{style:{color:"#94a3b8"}},"—")
                   )
                 );
