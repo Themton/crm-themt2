@@ -2851,7 +2851,10 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         // Online status (seen within 3 minutes)
         var isOnline=lastSeen&&(today.getTime()-new Date(lastSeen).getTime()<3*60*1000);
         var minutesAgo=lastSeen?Math.floor((today.getTime()-new Date(lastSeen).getTime())/(60*1000)):999999;
+        var workStart=9;var workEnd=18;var nowHour=today.getHours();
+        var isWorkTime=nowHour>=workStart&&nowHour<workEnd;
         var onlineLabel=isOnline?"🟢 ออนไลน์":minutesAgo<60?"🟡 "+minutesAgo+" นาที":minutesAgo<1440?"🔴 "+Math.floor(minutesAgo/60)+" ชม.":"⚫ "+Math.floor(minutesAgo/1440)+" วัน";
+        if(!isWorkTime&&!isOnline)onlineLabel="🌙 นอกเวลางาน";
         
         // Last order date
         var lastDate=null;var lastDateStr="—";
@@ -2906,9 +2909,10 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         if(burstCount>0)flags.push("⚡ ส่งรวด "+burstCount+"ครั้ง");
         if(myPeriod.length>0&&activeDays.size===1&&myPeriod.length>10)flags.push("📅 ส่งวันเดียว");
         if(Number(avgPerDay)>0&&Number(avgPerDay)<0.5)flags.push("📉 เฉลี่ยต่ำ");
-        if(!lastLogin)flags.push("🚫 ไม่เคยเข้าระบบ");
-        if(isOnline&&todayOrders.length===0)flags.push("👀 ออนไลน์แต่ไม่ส่ง");
-        if(minutesAgo>1440&&myPeriod.length===0)flags.push("💤 ไม่เข้าระบบ");
+        var isWorkTime2=nowHour>=workStart&&nowHour<workEnd;
+        if(isWorkTime2&&isOnline&&todayOrders.length===0)flags.push("👀 ออนไลน์แต่ไม่ส่ง");
+        if(isWorkTime2&&!isOnline&&todayOrders.length===0&&minutesAgo>60)flags.push("💤 ไม่เข้าระบบ (เวลางาน)");
+        if(minutesAgo>1440&&myPeriod.length===0)flags.push("💤 หายไป "+Math.floor(minutesAgo/1440)+" วัน");
         
         // Status
         var status="active";var statusLabel="✅ ปกติ";var statusColor="#059669";
