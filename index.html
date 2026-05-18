@@ -2821,6 +2821,100 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
       );
     })()}
 
+    {/* ตารางวิเคราะห์พนักงาน */}
+    {isAdmin&&(function(){
+      var allStaff=(accounts||[]).filter(function(a){return a.active&&a.role!=="admin"&&a.role!=="shipping"&&a.role!=="hr"&&a.role!=="accounting";});
+      var allOrd=(allOrders||[]).concat(upsellOrders||[]);
+      var today=new Date();var todayS=todayStr();
+      
+      var staffData=allStaff.map(function(a){
+        var nick=extractNickname(a.displayName,a.nickname);
+        var myAll=allOrd.filter(function(o){return o.SalesPerson===nick;});
+        var myPeriod=preFiltered.filter(function(o){return o.SalesPerson===nick;});
+        var sales=myPeriod.reduce(function(s,o){return s+(Number(o.SalePrice)||0);},0);
+        
+        // Last order date
+        var lastDate=null;var lastDateStr="—";
+        myAll.forEach(function(o){var d=getDate(o.Timestamp);if(!lastDate||d>lastDate){lastDate=d;lastDateStr=d;}});
+        
+        // Days since last order
+        var daysSince=lastDate?Math.floor((today-new Date(lastDate))/(1000*60*60*24)):999;
+        
+        // Orders per day in period
+        var periodDays=1;
+        if(period==="7d")periodDays=7;
+        else if(period==="month")periodDays=Math.floor((today-new Date(monthStart()))/(1000*60*60*24))+1;
+        else if(period==="prev")periodDays=30;
+        else if(period==="all")periodDays=Math.max(Math.floor((today-new Date("2025-01-01"))/(1000*60*60*24)),1);
+        else if(period==="custom")periodDays=Math.max(Math.floor((new Date(customTo)-new Date(customFrom))/(1000*60*60*24))+1,1);
+        var avgPerDay=(myPeriod.length/periodDays).toFixed(1);
+        
+        // Active days (unique days with orders in period)
+        var activeDays=new Set();
+        myPeriod.forEach(function(o){activeDays.add(getDate(o.Timestamp));});
+        
+        // First order time today
+        var todayOrders=myAll.filter(function(o){return getDate(o.Timestamp)===todayS;}).sort(function(a,b){return a.Timestamp>b.Timestamp?1:-1;});
+        var firstToday=todayOrders.length>0?getTime(todayOrders[0].Timestamp):"—";
+        var lastToday=todayOrders.length>0?getTime(todayOrders[todayOrders.length-1].Timestamp):"—";
+        
+        // Status
+        var status="active";var statusLabel="✅ ปกติ";var statusColor="#059669";
+        if(myPeriod.length===0&&daysSince>3){status="inactive";statusLabel="🔴 ไม่ทำงาน";statusColor="#dc2626";}
+        else if(myPeriod.length===0){status="warning";statusLabel="⚠️ ยังไม่ส่ง";statusColor="#d97706";}
+        else if(daysSince>2){status="slow";statusLabel="🟡 ช้า";statusColor="#d97706";}
+        
+        return{nick:nick,realName:a.displayName,email:a.username,count:myPeriod.length,countAll:myAll.length,sales:sales,lastDate:lastDateStr,daysSince:daysSince,avgPerDay:avgPerDay,activeDays:activeDays.size,firstToday:firstToday,lastToday:lastToday,todayCount:todayOrders.length,status:status,statusLabel:statusLabel,statusColor:statusColor};
+      }).sort(function(a,b){return a.count===b.count?b.sales-a.sales:b.count-a.count;});
+      
+      var inactive=staffData.filter(function(s){return s.status==="inactive";}).length;
+      var warning=staffData.filter(function(s){return s.status==="warning";}).length;
+      
+      return React.createElement("div",{style:{marginBottom:24,background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
+        React.createElement("div",{style:{padding:"16px 20px",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",alignItems:"center"}},
+          React.createElement("span",{style:{fontSize:16,fontWeight:800,color:"#1e293b"}},"🔍 วิเคราะห์พนักงาน ("+allStaff.length+")"),
+          React.createElement("div",{style:{display:"flex",gap:12}},
+            inactive>0&&React.createElement("span",{style:{padding:"4px 12px",borderRadius:8,background:"#fef2f2",color:"#dc2626",fontSize:12,fontWeight:700}},"🔴 ไม่ทำงาน "+inactive),
+            warning>0&&React.createElement("span",{style:{padding:"4px 12px",borderRadius:8,background:"#fffbeb",color:"#d97706",fontSize:12,fontWeight:700}},"⚠️ ยังไม่ส่ง "+warning)
+          )
+        ),
+        React.createElement("div",{style:{overflowX:"auto"}},
+          React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+            React.createElement("thead",null,
+              React.createElement("tr",{style:{background:"#f8fafc"}},
+                ["#","ชื่อ","สถานะ","ออเดอร์","ยอดขาย","เฉลี่ย/วัน","วันที่ทำงาน","ส่งล่าสุด","ห่างกี่วัน","วันนี้","เวลาเข้า","เวลาล่าสุด"].map(function(h,i){
+                  return React.createElement("th",{key:i,style:{padding:"10px 12px",textAlign:i>2?"center":"left",fontWeight:700,color:"#64748b",borderBottom:"2px solid #e5e7eb",whiteSpace:"nowrap",fontSize:11}},h);
+                })
+              )
+            ),
+            React.createElement("tbody",null,
+              staffData.map(function(s,i){
+                return React.createElement("tr",{key:s.email,style:{borderBottom:"1px solid #f3f4f6",background:s.status==="inactive"?"#fef2f2":s.status==="warning"?"#fffbeb":"transparent"}},
+                  React.createElement("td",{style:{padding:"10px 12px",fontWeight:700,color:"#94a3b8"}},i+1),
+                  React.createElement("td",{style:{padding:"10px 12px"}},
+                    React.createElement("div",{style:{fontWeight:700,fontSize:13}},s.nick),
+                    React.createElement("div",{style:{fontSize:10,color:"#94a3b8"}},s.email)
+                  ),
+                  React.createElement("td",{style:{padding:"10px 12px"}},
+                    React.createElement("span",{style:{padding:"3px 10px",borderRadius:6,fontSize:11,fontWeight:700,color:s.statusColor,background:s.status==="inactive"?"#fef2f2":s.status==="warning"?"#fffbeb":s.status==="slow"?"#fefce8":"#f0fdf4"}},s.statusLabel)
+                  ),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,fontSize:15,color:s.count===0?"#dc2626":"#1e293b"}},s.count),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,color:"#d97706"}},"฿"+s.sales.toLocaleString()),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontWeight:600,color:Number(s.avgPerDay)<1?"#dc2626":"#059669"}},s.avgPerDay),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontWeight:600}},s.activeDays+" วัน"),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontSize:11,color:s.daysSince>3?"#dc2626":"#64748b"}},s.lastDate),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,color:s.daysSince>3?"#dc2626":s.daysSince>1?"#d97706":"#059669"}},s.daysSince>900?"—":s.daysSince+" วัน"),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontWeight:700,color:s.todayCount===0?"#dc2626":"#059669"}},s.todayCount),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontSize:11,color:"#64748b"}},s.firstToday),
+                  React.createElement("td",{style:{padding:"10px 12px",textAlign:"center",fontSize:11,color:"#64748b"}},s.lastToday)
+                );
+              })
+            )
+          )
+        )
+      );
+    })()}
+
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:24}}>
       <div style={{background:"#fff",borderRadius:14,padding:20,borderLeft:"4px solid #d97706"}}>
         <div style={{fontSize:12,color:"#94a3b8"}}>ออเดอร์</div>
