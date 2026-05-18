@@ -2860,10 +2860,12 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         var lastDate=null;var lastDateStr="—";
         myAll.forEach(function(o){var d=getDate(o.Timestamp);if(!lastDate||d>lastDate){lastDate=d;lastDateStr=d;}});
         
-        // Last work time: time range on last order day
+        // Last work time: time range on last order day IN SELECTED PERIOD
         var lastWorkTime="—";
-        if(lastDate){
-          var lastDayOrders=myAll.filter(function(o){return getDate(o.Timestamp)===lastDate;}).sort(function(a,b){return a.Timestamp>b.Timestamp?1:-1;});
+        var periodLastDate=null;
+        myPeriod.forEach(function(o){var d=getDate(o.Timestamp);if(!periodLastDate||d>periodLastDate)periodLastDate=d;});
+        if(periodLastDate){
+          var lastDayOrders=myPeriod.filter(function(o){return getDate(o.Timestamp)===periodLastDate;}).sort(function(a,b){return a.Timestamp>b.Timestamp?1:-1;});
           if(lastDayOrders.length>0){
             var ft2=getTime(lastDayOrders[0].Timestamp);
             var lt2=getTime(lastDayOrders[lastDayOrders.length-1].Timestamp);
