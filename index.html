@@ -280,8 +280,8 @@ function prevMonthEnd(){var d=new Date();d.setDate(0);return d.getFullYear()+"-"
 function threeMonthsAgo(){var d=new Date();d.setMonth(d.getMonth()-3);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function dateBtnStyle(active){return{padding:"6px 12px",borderRadius:8,border:active?"2px solid #d97706":"1px solid #e2e8f0",background:active?"#fef3c7":"#fff",color:active?"#92400e":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"};}
 function nowThai(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0")+"+07:00";}
-function getTime(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime())){var s=String(ts);var m=s.match(/T(\d{2}:\d{2}:\d{2})/);return m?m[1]:s.split(" ")[1]||"";}return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");}
-function getDate(ts){if(!ts)return"";var d=new Date(ts);if(isNaN(d.getTime()))return String(ts||"").substring(0,10);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function getTime(ts){if(!ts)return"";try{var d=new Date(ts);if(!isNaN(d.getTime())){return d.toLocaleTimeString("th-TH",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false,timeZone:"Asia/Bangkok"});}}catch(e){}var s=String(ts);var m=s.match(/(\d{2}:\d{2}:\d{2})/);return m?m[1]:"";}
+function getDate(ts){if(!ts)return"";try{var d=new Date(ts);if(!isNaN(d.getTime())){var y=d.toLocaleDateString("en-CA",{timeZone:"Asia/Bangkok"});return y;}}catch(e){}return String(ts||"").substring(0,10);}
 // สรุปสินค้าจาก Remark
 function parseProducts(orders){
   var products={};
@@ -2833,7 +2833,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
     {/* ตารางวิเคราะห์พนักงาน */}
     {isAdmin&&(function(){
       var allStaff=(accounts||[]).filter(function(a){return a.active&&a.role!=="admin"&&a.role!=="shipping"&&a.role!=="hr"&&a.role!=="accounting";});
-      var allOrd=(allOrders||[]).concat(upsellOrders||[]);
+      var allOrd=(allOrders||[]).map(function(o){return{...o,_table:"orders"};}).concat((upsellOrders||[]).map(function(o){return{...o,_table:"upsell"};}));
       var today=new Date();var todayS=todayStr();
       
       var staffData=allStaff.map(function(a){
@@ -2867,7 +2867,8 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
           if(lastDayOrders.length>0){
             var ft2=getTime(lastDayOrders[0].Timestamp);
             var lt2=getTime(lastDayOrders[lastDayOrders.length-1].Timestamp);
-            lastWorkTime=ft2+(lastDayOrders.length>1?" - "+lt2:"")+" ("+lastDayOrders.length+")";
+            var hasUpsell=lastDayOrders.some(function(o){return o._table==="upsell";});
+            lastWorkTime=ft2+(lastDayOrders.length>1?" - "+lt2:"")+" ("+lastDayOrders.length+")"+(hasUpsell?" 🔥":"");
           }
         }
         
