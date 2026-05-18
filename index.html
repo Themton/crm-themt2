@@ -2919,14 +2919,14 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         if(myPeriod.length===0&&daysSince>3){status="inactive";statusLabel="🔴 ไม่ทำงาน";statusColor="#dc2626";}
         else if(myPeriod.length===0){status="warning";statusLabel="⚠️ ยังไม่ส่ง";statusColor="#d97706";}
         else if(daysSince>2){status="slow";statusLabel="🟡 ช้า";statusColor="#d97706";}
-        else if(flags.length>0){status="flag";statusLabel="🟠 มีธง";statusColor="#ea580c";}
+        
         
         return{nick:nick,realName:a.displayName,email:a.username,count:myPeriod.length,countAll:myAll.length,sales:sales,lastDate:lastDateStr,daysSince:daysSince,avgPerDay:avgPerDay,activeDays:activeDays.size,firstToday:firstToday,lastToday:lastToday,todayCount:todayOrders.length,status:status,statusLabel:statusLabel,statusColor:statusColor,avgSale:avgSale,cancelRate:cancelRate,cancelCount:cancelCount,myUpsellCount:myUpsellCount,burstCount:burstCount,workHours:workHours,flags:flags,isOnline:isOnline,onlineLabel:onlineLabel,lastLoginStr:lastLoginStr,lastSeenStr:lastSeenStr};
       }).sort(function(a,b){return a.count===b.count?b.sales-a.sales:b.count-a.count;});
       
       var inactive=staffData.filter(function(s){return s.status==="inactive";}).length;
       var warning=staffData.filter(function(s){return s.status==="warning";}).length;
-      var flagged=staffData.filter(function(s){return s.flags.length>0;}).length;
+      
       
       return React.createElement("div",{style:{marginBottom:24,background:"#fff",borderRadius:14,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.06)"}},
         React.createElement("div",{style:{padding:"16px 20px",borderBottom:"1px solid #e5e7eb",display:"flex",justifyContent:"space-between",alignItems:"center"}},
@@ -2934,14 +2934,13 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
           React.createElement("div",{style:{display:"flex",gap:12}},
             inactive>0&&React.createElement("span",{style:{padding:"4px 12px",borderRadius:8,background:"#fef2f2",color:"#dc2626",fontSize:12,fontWeight:700}},"🔴 ไม่ทำงาน "+inactive),
             warning>0&&React.createElement("span",{style:{padding:"4px 12px",borderRadius:8,background:"#fffbeb",color:"#d97706",fontSize:12,fontWeight:700}},"⚠️ ยังไม่ส่ง "+warning),
-            flagged>0&&React.createElement("span",{style:{padding:"4px 12px",borderRadius:8,background:"#fff7ed",color:"#ea580c",fontSize:12,fontWeight:700}},"🚩 มีธง "+flagged)
           )
         ),
         React.createElement("div",{style:{overflowX:"auto"}},
           React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
             React.createElement("thead",null,
               React.createElement("tr",{style:{background:"#f8fafc"}},
-                ["#","ชื่อ","ออนไลน์","สถานะ","ออเดอร์","ยอดขาย","เฉลี่ย/วัน","ยอด/ออเดอร์","ยกเลิก","Upsell","วันทำงาน","ส่งล่าสุด","ห่างกี่วัน","วันนี้","เวลาเข้า","ชม.ทำงาน","เข้าระบบล่าสุด","เห็นล่าสุด","ธงเตือน"].map(function(h,i){
+                ["#","ชื่อ","ออนไลน์","สถานะ","ออเดอร์","ยอดขาย","เฉลี่ย/วัน","ยอด/ออเดอร์","ยกเลิก","Upsell","วันทำงาน","ส่งล่าสุด","ห่างกี่วัน","วันนี้","เวลาเข้า","ชม.ทำงาน","เข้าระบบล่าสุด","เห็นล่าสุด"].map(function(h,i){
                   return React.createElement("th",{key:i,style:{padding:"10px 10px",textAlign:i>2?"center":"left",fontWeight:700,color:"#64748b",borderBottom:"2px solid #e5e7eb",whiteSpace:"nowrap",fontSize:11}},h);
                 })
               )
@@ -2972,8 +2971,6 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
                   React.createElement("td",{style:{padding:"10px 10px",textAlign:"center",fontSize:11,color:"#64748b"}},s.workHours),
                   React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:10,color:"#64748b",whiteSpace:"nowrap"}},s.lastLoginStr),
                   React.createElement("td",{style:{padding:"10px 8px",textAlign:"center",fontSize:10,color:"#64748b",whiteSpace:"nowrap"}},s.lastSeenStr),
-                  React.createElement("td",{style:{padding:"10px 10px",fontSize:10,maxWidth:200}},
-                    s.flags.length>0?s.flags.map(function(f,fi){return React.createElement("span",{key:fi,style:{display:"inline-block",padding:"2px 6px",borderRadius:4,background:"#fef2f2",color:"#dc2626",fontSize:10,fontWeight:600,marginRight:4,marginBottom:2}},f);}):React.createElement("span",{style:{color:"#94a3b8"}},"—")
                   )
                 );
               })
