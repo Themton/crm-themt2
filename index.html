@@ -2878,7 +2878,7 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         var periodDays=1;
         if(period==="7d")periodDays=7;
         else if(period==="month")periodDays=Math.floor((today-new Date(monthStart()))/(1000*60*60*24))+1;
-        else if(period==="prev")periodDays=30;
+        else if(period==="prev"){var pm1=new Date(prevMonthStart());var pm2=new Date(prevMonthEnd());periodDays=Math.floor((pm2-pm1)/(1000*60*60*24))+1;}
         else if(period==="all")periodDays=Math.max(Math.floor((today-new Date("2025-01-01"))/(1000*60*60*24)),1);
         else if(period==="custom")periodDays=Math.max(Math.floor((new Date(customTo)-new Date(customFrom))/(1000*60*60*24))+1,1);
         var avgPerDay=(myPeriod.length/periodDays).toFixed(1);
