@@ -421,22 +421,12 @@ async function dbGetOrders(userId){try{var q="orders?select=*&order=timestamp.de
 async function dbGetUpsell(userId){try{var q="upsell?select=*&order=timestamp.desc";if(userId&&userId!=="ALL"){q+="&account_email=eq."+encodeURIComponent(userId);}var all=[];var page=0;var pageSize=1000;while(true){var from=page*pageSize;var to=from+pageSize-1;var data=await sbFetch(q,{range:from+"-"+to});if(!data||data.length===0)break;all=all.concat(data);if(data.length<pageSize)break;page++;}return all.map(mapRow);}catch(e){console.error("dbGetUpsell:",e);return[];}}
 async function dbAddOrder(d,isUpsell){
   var table=isUpsell?"upsell":"orders";
-  var maxRetry=3;
-  for(var attempt=0;attempt<maxRetry;attempt++){
-    var oid;
-    if(attempt===0){try{oid=await sbRpc("generate_order_id");}catch(e){oid=null;}}
-    if(!oid)oid="ORD-"+todayStr().replace(/-/g,"")+"-"+String(Date.now()).slice(-6)+Math.random().toString(36).slice(2,6);
-    var thaiTS=nowThai();
-    var row={order_id:oid,timestamp:thaiTS,mobile_no:d.MobileNo,name:d.Name,address:d.Address,sub_district:d.SubDistrict,district:d.District,province:d.Province||"",zip:d.ZIP,customer_fb_line:d.CustomerFBLine||"",sales_channel:"CRM",sales_person:d.SalesPerson,account_email:d.AccountEmail||"",sale_price:Number(d.SalePrice)||0,cod:Number(d.COD)||0,remark:d.Remark||"",slip_url:""};
-    try{
-      await sbFetch(table,{method:"POST",body:row,prefer:"return=representation"});
-      syncToSheet(isUpsell?"addUpsell":"addOrder",{OrderID:oid,Timestamp:nowThai(),MobileNo:d.MobileNo,Name:d.Name,Address:d.Address,SubDistrict:d.SubDistrict,District:d.District,ZIP:d.ZIP,CustomerFBLine:d.CustomerFBLine||"",SalesChannel:"CRM",SalesPerson:d.SalesPerson,SalePrice:Number(d.SalePrice)||0,COD:Number(d.COD)||0,Remark:d.Remark||"",Province:d.Province||""});
-      return{orderId:oid};
-    }catch(e){
-      if(e.message&&e.message.indexOf("duplicate")!==-1&&attempt<maxRetry-1){await new Promise(function(r){setTimeout(r,300);});continue;}
-      throw e;
-    }
-  }
+  var oid="ORD-"+todayStr().replace(/-/g,"")+"-"+(typeof crypto!=="undefined"&&crypto.randomUUID?crypto.randomUUID().slice(0,8):(Date.now().toString(36)+Math.random().toString(36).slice(2,8)));
+  var thaiTS=nowThai();
+  var row={order_id:oid,timestamp:thaiTS,mobile_no:d.MobileNo,name:d.Name,address:d.Address,sub_district:d.SubDistrict,district:d.District,province:d.Province||"",zip:d.ZIP,customer_fb_line:d.CustomerFBLine||"",sales_channel:"CRM",sales_person:d.SalesPerson,account_email:d.AccountEmail||"",sale_price:Number(d.SalePrice)||0,cod:Number(d.COD)||0,remark:d.Remark||"",slip_url:""};
+  await sbFetch(table,{method:"POST",body:row,prefer:"return=representation"});
+  syncToSheet(isUpsell?"addUpsell":"addOrder",{OrderID:oid,Timestamp:nowThai(),MobileNo:d.MobileNo,Name:d.Name,Address:d.Address,SubDistrict:d.SubDistrict,District:d.District,ZIP:d.ZIP,CustomerFBLine:d.CustomerFBLine||"",SalesChannel:"CRM",SalesPerson:d.SalesPerson,SalePrice:Number(d.SalePrice)||0,COD:Number(d.COD)||0,Remark:d.Remark||"",Province:d.Province||""});
+  return{orderId:oid};
 }
 async function dbEditOrder(oid,data){
   var body={mobile_no:data.MobileNo,name:data.Name,address:data.Address,sub_district:data.SubDistrict,district:data.District,province:data.Province||"",zip:data.ZIP,customer_fb_line:data.CustomerFBLine||"",sale_price:Number(data.SalePrice)||0,cod:Number(data.COD)||0,remark:data.Remark||""};
