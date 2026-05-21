@@ -2851,8 +2851,8 @@ function ReportPage({user,accounts,allOrders,upsellOrders}){
         var minutesAgo=lastSeen?Math.floor((today.getTime()-new Date(lastSeen).getTime())/(60*1000)):999999;
         var workStart=9;var workEnd=18;var nowHour=today.getHours();
         var isWorkTime=nowHour>=workStart&&nowHour<workEnd;
-        var onlineLabel=isOnline?"🟢 ออนไลน์":minutesAgo<60?"🟡 "+minutesAgo+" นาที":minutesAgo<1440?"🔴 "+Math.floor(minutesAgo/60)+" ชม.":"⚫ "+Math.floor(minutesAgo/1440)+" วัน";
-        if(!isWorkTime&&!isOnline)onlineLabel="🌙 นอกเวลางาน";
+        var onlineLabel=!lastSeen?"⚫ ไม่เคยเข้า":isOnline?"🟢 ออนไลน์":minutesAgo<60?"🟡 "+minutesAgo+" นาที":minutesAgo<1440?"🔴 "+Math.floor(minutesAgo/60)+" ชม.":"⚫ "+Math.floor(minutesAgo/1440)+" วัน";
+        if(lastSeen&&!isWorkTime&&!isOnline)onlineLabel="🌙 นอกเวลางาน";
         
         // Last order date
         var lastDate=null;var lastDateStr="—";
